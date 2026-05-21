@@ -1,0 +1,125 @@
+"use client";
+
+import { Suspense, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
+
+export default function LoginPageWrapper() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPage />
+    </Suspense>
+  );
+}
+
+function LoginPage() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const next = params.get("next") || "/";
+  const { signInEmail } = useAuth();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim() || !password) {
+      setError("이메일과 비밀번호를 입력해주세요.");
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+    try {
+      const acc = await signInEmail({ email, password });
+      if (acc.type === "lawyer") {
+        router.replace("/lawyer/dashboard");
+      } else {
+        router.replace(decodeURIComponent(next));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "로그인에 실패했습니다.");
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-[#F4F5F7] flex items-center justify-center px-5 py-12">
+      <div className="w-full max-w-[420px]">
+        <Link
+          href="/"
+          className="block text-center text-[22px] font-bold tracking-tight text-[#191F28] mb-8"
+        >
+          법률<span className="text-[#4338CA]">AI</span>
+        </Link>
+
+        <div className="bg-white rounded-2xl p-7 lg:p-8 shadow-[0_1px_2px_rgba(25,31,40,0.04),0_8px_24px_rgba(25,31,40,0.06)]">
+          <h1 className="text-[22px] font-bold text-[#191F28] tracking-tight">
+            로그인
+          </h1>
+          <p className="mt-1.5 text-[14px] text-[#8B95A1] font-medium">
+            이메일과 비밀번호를 입력하세요
+          </p>
+
+          <form onSubmit={handleSubmit} className="mt-7 space-y-2.5">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="이메일"
+              autoComplete="email"
+              required
+              className="w-full h-12 px-4 rounded-xl border border-[#E5E8EB] focus:border-[#4338CA] focus:outline-none focus:ring-4 focus:ring-[#4338CA]/14 text-[15px] font-medium text-[#191F28] placeholder:text-[#8B95A1] transition-all duration-200"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="비밀번호"
+              autoComplete="current-password"
+              required
+              className="w-full h-12 px-4 rounded-xl border border-[#E5E8EB] focus:border-[#4338CA] focus:outline-none focus:ring-4 focus:ring-[#4338CA]/14 text-[15px] font-medium text-[#191F28] placeholder:text-[#8B95A1] transition-all duration-200"
+            />
+
+            {error && (
+              <p className="text-[13px] text-[#EF4444] font-medium pt-1">
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full h-12 rounded-xl bg-[#4338CA] hover:bg-[#6366F1] active:bg-[#3730A3] disabled:bg-[#E5E8EB] disabled:text-[#B0B8C1] text-white font-semibold text-[15px] transition-colors duration-200 mt-2"
+            >
+              {submitting ? "로그인 중..." : "로그인"}
+            </button>
+          </form>
+
+          <div className="mt-6 pt-5 border-t border-[#F2F4F6] flex items-center justify-between text-[13px]">
+            <Link
+              href="/signup"
+              className="font-semibold text-[#4338CA] hover:text-[#6366F1] transition-colors duration-200"
+            >
+              회원가입
+            </Link>
+            <Link
+              href="/login"
+              className="font-medium text-[#8B95A1] hover:text-[#191F28] transition-colors duration-200"
+              onClick={(e) => {
+                e.preventDefault();
+                alert(
+                  "비밀번호 재설정은 준비 중입니다. 관리자에게 문의해주세요.",
+                );
+              }}
+            >
+              비밀번호 찾기
+            </Link>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}

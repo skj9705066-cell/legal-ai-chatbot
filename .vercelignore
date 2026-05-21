@@ -1,0 +1,5 @@
+screenshots/
+scripts/
+dev-server.log
+*.log
+.env.local
