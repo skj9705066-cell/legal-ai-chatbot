@@ -5,6 +5,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 
+function KakaoIcon() {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 3C6.477 3 2 6.477 2 10.762c0 2.793 1.829 5.243 4.578 6.65l-1.157 4.243a.5.5 0 0 0 .766.557l4.95-3.276c.282.026.572.04.863.04 5.523 0 10-3.477 10-7.762S17.523 3 12 3z" />
+    </svg>
+  );
+}
+
 export default function LoginPageWrapper() {
   return (
     <Suspense fallback={null}>
@@ -17,7 +25,7 @@ function LoginPage() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/";
-  const { signInEmail } = useAuth();
+  const { signInEmail, signInWithKakao } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -63,7 +71,26 @@ function LoginPage() {
             이메일과 비밀번호를 입력하세요
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-7 space-y-2.5">
+          {/* 카카오 로그인 */}
+          <div className="mt-7">
+            <button
+              type="button"
+              onClick={() => void signInWithKakao()}
+              className="w-full h-12 rounded-xl flex items-center justify-center gap-2.5 font-semibold text-[15px] transition-all duration-200 hover:brightness-95 active:scale-[0.98]"
+              style={{ backgroundColor: "#FEE500", color: "#191919" }}
+            >
+              <KakaoIcon />
+              카카오로 로그인
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3 mt-5">
+            <div className="flex-1 h-px bg-[#E5E8EB]" />
+            <span className="text-[12px] text-[#B0B8C1] font-medium">또는</span>
+            <div className="flex-1 h-px bg-[#E5E8EB]" />
+          </div>
+
+          <form onSubmit={handleSubmit} className="mt-5 space-y-2.5">
             <input
               type="email"
               value={email}
@@ -98,7 +125,7 @@ function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 pt-5 border-t border-[#F2F4F6] flex items-center justify-between text-[13px]">
+          <div className="mt-5 pt-5 border-t border-[#F2F4F6] flex items-center justify-between text-[13px]">
             <Link
               href="/signup"
               className="font-semibold text-[#4338CA] hover:text-[#6366F1] transition-colors duration-200"

@@ -23,9 +23,17 @@ const SPECIALTIES: LawyerSpecialty[] = [
 
 type Tab = "user" | "lawyer";
 
+function KakaoIcon() {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 3C6.477 3 2 6.477 2 10.762c0 2.793 1.829 5.243 4.578 6.65l-1.157 4.243a.5.5 0 0 0 .766.557l4.95-3.276c.282.026.572.04.863.04 5.523 0 10-3.477 10-7.762S17.523 3 12 3z" />
+    </svg>
+  );
+}
+
 export default function SignupPage() {
   const router = useRouter();
-  const { signUpEmail, registerLawyer } = useAuth();
+  const { signUpEmail, registerLawyer, signInWithKakao } = useAuth();
 
   const [tab, setTab] = useState<Tab>("user");
   const [error, setError] = useState<string | null>(null);
@@ -152,6 +160,26 @@ export default function SignupPage() {
           {tab === "lawyer" && (
             <div className="mt-4 px-3.5 py-3 rounded-lg bg-[#FFF7ED] text-[13px] text-[#9A3412] font-medium leading-[1.6]">
               ⓘ 변호사 가입은 관리자 승인 후 활동이 가능합니다.
+            </div>
+          )}
+
+          {/* 카카오 소셜 가입 — 일반 사용자 탭에서만 노출 */}
+          {tab === "user" && (
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={() => void signInWithKakao()}
+                className="w-full h-12 rounded-xl flex items-center justify-center gap-2.5 font-semibold text-[15px] transition-all duration-200 hover:brightness-95 active:scale-[0.98]"
+                style={{ backgroundColor: "#FEE500", color: "#191919" }}
+              >
+                <KakaoIcon />
+                카카오로 가입하기
+              </button>
+              <div className="flex items-center gap-3 mt-5">
+                <div className="flex-1 h-px bg-[#E5E8EB]" />
+                <span className="text-[12px] text-[#B0B8C1] font-medium">또는 이메일로 가입</span>
+                <div className="flex-1 h-px bg-[#E5E8EB]" />
+              </div>
             </div>
           )}
 

@@ -260,21 +260,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const signInWithOAuth = useCallback(
-    async (_provider: "kakao" | "google"): Promise<UserAccount> => {
-      throw new Error("소셜 로그인은 준비 중입니다. 이메일로 로그인해주세요.");
-    },
-    [],
-  );
+  const signInWithKakao = useCallback(async (): Promise<UserAccount> => {
+    const base = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+    const redirectUri = `${base}/auth/kakao/callback`;
+    const params = new URLSearchParams({
+      client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID!,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "profile_nickname,account_email",
+    });
+    window.location.href = `https://kauth.kakao.com/oauth/authorize?${params}`;
+    return new Promise<UserAccount>(() => {}); // 페이지 이동 후 절대 resolve되지 않음
+  }, []);
 
-  const signInWithKakao = useCallback(
-    () => signInWithOAuth("kakao"),
-    [signInWithOAuth],
-  );
-  const signInWithGoogle = useCallback(
-    () => signInWithOAuth("google"),
-    [signInWithOAuth],
-  );
+  const signInWithGoogle = useCallback(async (): Promise<UserAccount> => {
+    throw new Error("Google 로그인은 준비 중입니다. 이메일로 로그인해주세요.");
+  }, []);
 
   const registerLawyer = useCallback(
     async (input: LawyerRegistrationInput): Promise<LawyerAccount> => {
