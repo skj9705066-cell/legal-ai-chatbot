@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
     body: new URLSearchParams({
       grant_type: "authorization_code",
-      client_id: process.env.KAKAO_REST_API_KEY!,  // 서버 토큰 교환은 REST API 키
+      client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID!,
       redirect_uri: redirectUri,
       code,
     }),

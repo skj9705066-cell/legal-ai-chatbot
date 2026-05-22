@@ -261,18 +261,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signInWithKakao = useCallback(async (): Promise<UserAccount> => {
-    const Kakao = (window as Window & { Kakao?: KakaoSDK }).Kakao;
-    if (!Kakao) {
-      throw new Error("카카오 SDK가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.");
-    }
-    if (!Kakao.isInitialized()) {
-      Kakao.init(process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID!);
-    }
     const base = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-    Kakao.Auth.authorize({
-      redirectUri: `${base}/auth/kakao/callback`,
+    const redirectUri = `${base}/auth/kakao/callback`;
+    const params = new URLSearchParams({
+      client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID!,
+      redirect_uri: redirectUri,
+      response_type: "code",
       scope: "profile_nickname,account_email",
     });
+    window.location.href = `https://kauth.kakao.com/oauth/authorize?${params}`;
     return new Promise<UserAccount>(() => {}); // 페이지 이동 후 절대 resolve되지 않음
   }, []);
 
