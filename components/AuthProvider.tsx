@@ -54,8 +54,8 @@ interface AuthContextValue {
   loading: boolean;
   signUpEmail: (input: EmailSignUpInput) => Promise<UserAccount>;
   signInEmail: (input: EmailSignInInput) => Promise<UserAccount | LawyerAccount>;
-  signInWithKakao: () => Promise<UserAccount>;
-  signInWithGoogle: () => Promise<UserAccount>;
+  signInWithKakao: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   registerLawyer: (input: LawyerRegistrationInput) => Promise<LawyerAccount>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -260,21 +260,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const signInWithKakao = useCallback(async (): Promise<UserAccount> => {
-    const base = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-    const redirectUri = `${base}/auth/kakao/callback`;
-    const params = new URLSearchParams({
-      client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID!,
-      redirect_uri: redirectUri,
-      response_type: "code",
-      scope: "profile_nickname,account_email",
+  // Supabase가 Kakao OAuth 전체 흐름을 처리. 브라우저가 카카오로 이동하므로 반환값 없음.
+  const signInWithKakao = useCallback(async (): Promise<void> => {
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "kakao",
+      options: { redirectTo },
     });
-    window.location.href = `https://kauth.kakao.com/oauth/authorize?${params}`;
-    return new Promise<UserAccount>(() => {}); // 페이지 이동 후 절대 resolve되지 않음
+    if (error) throw new Error(error.message);
   }, []);
 
-  const signInWithGoogle = useCallback(async (): Promise<UserAccount> => {
-    throw new Error("Google 로그인은 준비 중입니다. 이메일로 로그인해주세요.");
+  const signInWithGoogle = useCallback(async (): Promise<void> => {
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+    if (error) throw new Error(error.message);
   }, []);
 
   const registerLawyer = useCallback(

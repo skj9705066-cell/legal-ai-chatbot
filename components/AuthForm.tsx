@@ -31,12 +31,12 @@ export default function AuthForm({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function handle(promise: () => Promise<Account>) {
+  async function handle(promise: () => Promise<Account | void>) {
     setError(null);
     setSubmitting(true);
     try {
       const acc = await promise();
-      onSuccess?.(acc);
+      if (acc) onSuccess?.(acc);
     } catch (err) {
       setError(err instanceof Error ? err.message : "오류가 발생했습니다.");
       setSubmitting(false);

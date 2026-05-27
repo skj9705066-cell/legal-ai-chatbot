@@ -168,7 +168,13 @@ export default function SignupPage() {
             <div className="mt-5">
               <button
                 type="button"
-                onClick={() => void signInWithKakao()}
+                onClick={async () => {
+                  try {
+                    await signInWithKakao();
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "카카오 로그인에 실패했습니다.");
+                  }
+                }}
                 className="w-full h-12 rounded-xl flex items-center justify-center gap-2.5 font-semibold text-[15px] transition-all duration-200 hover:brightness-95 active:scale-[0.98]"
                 style={{ backgroundColor: "#FEE500", color: "#191919" }}
               >

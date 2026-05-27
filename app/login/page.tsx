@@ -29,7 +29,14 @@ function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    const e = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("error")
+      : null;
+    if (e === "oauth_failed") return "소셜 로그인 처리 중 오류가 발생했습니다.";
+    if (e === "oauth_denied") return "카카오 로그인을 취소했습니다.";
+    return null;
+  });
   const [submitting, setSubmitting] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
 
@@ -76,7 +83,13 @@ function LoginPage() {
           <div className="mt-7">
             <button
               type="button"
-              onClick={() => void signInWithKakao()}
+              onClick={async () => {
+                try {
+                  await signInWithKakao();
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "카카오 로그인에 실패했습니다.");
+                }
+              }}
               className="w-full h-12 rounded-xl flex items-center justify-center gap-2.5 font-semibold text-[15px] transition-all duration-200 hover:brightness-95 active:scale-[0.98]"
               style={{ backgroundColor: "#FEE500", color: "#191919" }}
             >
