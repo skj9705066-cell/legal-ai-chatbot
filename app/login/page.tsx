@@ -31,6 +31,7 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -125,25 +126,27 @@ function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-5 pt-5 border-t border-[#F2F4F6] flex items-center justify-between text-[13px]">
-            <Link
-              href="/signup"
-              className="font-semibold text-[#4338CA] hover:text-[#6366F1] transition-colors duration-200"
-            >
-              회원가입
-            </Link>
-            <Link
-              href="/login"
-              className="font-medium text-[#8B95A1] hover:text-[#191F28] transition-colors duration-200"
-              onClick={(e) => {
-                e.preventDefault();
-                alert(
-                  "비밀번호 재설정은 준비 중입니다. 관리자에게 문의해주세요.",
-                );
-              }}
-            >
-              비밀번호 찾기
-            </Link>
+          <div className="mt-5 pt-5 border-t border-[#F2F4F6] space-y-3">
+            <div className="flex items-center justify-between text-[13px]">
+              <Link
+                href="/signup"
+                className="font-semibold text-[#4338CA] hover:text-[#6366F1] transition-colors duration-200"
+              >
+                회원가입
+              </Link>
+              <button
+                type="button"
+                onClick={() => setForgotSent(true)}
+                className="font-medium text-[#8B95A1] hover:text-[#191F28] transition-colors duration-200"
+              >
+                비밀번호 찾기
+              </button>
+            </div>
+            {forgotSent && (
+              <p className="text-[13px] text-[#4338CA] font-medium bg-[#EEF2FF] rounded-lg px-3 py-2.5">
+                비밀번호 재설정 기능은 준비 중입니다. contact@legal-ai.kr로 문의해주세요.
+              </p>
+            )}
           </div>
         </div>
       </div>

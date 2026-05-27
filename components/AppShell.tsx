@@ -5,7 +5,11 @@ import { AuthProvider } from "./AuthProvider";
 import BottomNav from "./BottomNav";
 import TopNav from "./TopNav";
 
-const BOTTOM_NAV_ROUTES = [/^\/$/, /^\/mypage(\?|$|\/)/];
+const BOTTOM_NAV_ROUTES = [
+  /^\/$/,
+  /^\/mypage(\?|$|\/)/,
+  /^\/lawyer\/dashboard/,
+];
 
 export default function AppShell({
   children,

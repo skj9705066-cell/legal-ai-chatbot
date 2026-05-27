@@ -51,6 +51,8 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -141,17 +143,23 @@ export default function AdminDashboardPage() {
     setToast({ message: "변호사가 승인되었습니다", type: "success" });
     void load();
   }
-  async function reject(id: string) {
-    const reason = window.prompt("거절 사유를 입력해주세요");
-    if (!reason || !reason.trim()) return;
+  async function confirmReject() {
+    if (!rejectingId) return;
+    const reason = rejectReason.trim();
+    if (!reason) {
+      setToast({ message: "거절 사유를 입력해주세요", type: "error" });
+      return;
+    }
     const { error } = await supabase
       .from("lawyers")
-      .update({ status: "rejected", reject_reason: reason.trim() })
-      .eq("id", id);
+      .update({ status: "rejected", reject_reason: reason })
+      .eq("id", rejectingId);
     if (error) {
       setToast({ message: error.message, type: "error" });
       return;
     }
+    setRejectingId(null);
+    setRejectReason("");
     setToast({ message: "변호사 신청을 거절했습니다", type: "success" });
     void load();
   }
@@ -306,7 +314,7 @@ export default function AdminDashboardPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => reject(l.id)}
+                    onClick={() => { setRejectingId(l.id); setRejectReason(""); }}
                     className="shrink-0 h-8 px-3 rounded-lg bg-white border border-[#E5E8EB] hover:border-[#EF4444] hover:text-[#EF4444] text-[#4E5968] text-[12px] font-semibold transition-colors duration-200"
                   >
                     거절
@@ -317,6 +325,57 @@ export default function AdminDashboardPage() {
           )}
         </section>
       </div>
+
+      {rejectingId && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 animate-fade-in">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl w-full max-w-[440px]"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#F2F4F6]">
+              <h3 className="text-[16px] font-bold text-[#191F28]">거절 사유 입력</h3>
+              <button
+                type="button"
+                onClick={() => { setRejectingId(null); setRejectReason(""); }}
+                className="w-8 h-8 -mr-2 flex items-center justify-center rounded-lg hover:bg-[#F4F5F7] text-[#8B95A1]"
+                aria-label="닫기"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M6 6l12 12M6 18L18 6" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-[13px] text-[#4E5968] font-medium">
+                변호사 신청을 거절합니다. 사유를 입력해주세요.
+              </p>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={4}
+                placeholder="예: 서류 미비 — 변호사 등록증 사본 미제출"
+                className="w-full px-3 py-2.5 rounded-lg border border-[#E5E8EB] focus:border-[#4338CA] focus:outline-none focus:ring-4 focus:ring-[#4338CA]/14 text-[13px] font-medium text-[#191F28] placeholder:text-[#8B95A1] transition-all duration-200 resize-none"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setRejectingId(null); setRejectReason(""); }}
+                  className="flex-1 h-11 rounded-lg bg-white border border-[#E5E8EB] hover:bg-[#F4F5F7] text-[#4E5968] text-[14px] font-semibold transition-colors duration-200"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmReject}
+                  className="flex-1 h-11 rounded-lg bg-[#EF4444] hover:bg-[#DC2626] text-white text-[14px] font-semibold transition-colors duration-200"
+                >
+                  거절 확정
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <Toast

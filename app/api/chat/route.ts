@@ -5,6 +5,7 @@ import type {
   MessageParam,
   ToolUnion,
 } from "@anthropic-ai/sdk/resources/messages";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -157,6 +158,24 @@ const SEARCH_START_MARKER = "WS_START";
 const SEARCH_END_MARKER = "WS_END";
 
 export async function POST(req: NextRequest) {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip") ??
+    "unknown";
+  const rl = rateLimit(`chat:${ip}`, 20, 60_000);
+  if (!rl.ok) {
+    return new Response(
+      JSON.stringify({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+        },
+      },
+    );
+  }
+
   const { messages } = (await req.json()) as { messages: IncomingMessage[] };
 
   const encoder = new TextEncoder();
