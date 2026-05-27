@@ -157,6 +157,13 @@ async function loadAccount(userId: string): Promise<Account | null> {
   return mapUserAccount(profile);
 }
 
+function getOAuthRedirectTo(): string {
+  const base =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
+    (typeof window !== "undefined" ? window.location.origin : "");
+  return `${base}/auth/callback`;
+}
+
 function describeAuthError(message: string): string {
   if (/Invalid login credentials/i.test(message))
     return "이메일 또는 비밀번호가 올바르지 않습니다.";
@@ -260,21 +267,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  // Supabase가 Kakao OAuth 전체 흐름을 처리. 브라우저가 카카오로 이동하므로 반환값 없음.
   const signInWithKakao = useCallback(async (): Promise<void> => {
-    const redirectTo = `${window.location.origin}/auth/callback`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "kakao",
-      options: { redirectTo },
+      options: { redirectTo: getOAuthRedirectTo() },
     });
     if (error) throw new Error(error.message);
   }, []);
 
   const signInWithGoogle = useCallback(async (): Promise<void> => {
-    const redirectTo = `${window.location.origin}/auth/callback`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo },
+      options: { redirectTo: getOAuthRedirectTo() },
     });
     if (error) throw new Error(error.message);
   }, []);
