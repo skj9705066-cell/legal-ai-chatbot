@@ -55,15 +55,25 @@ const Ic = {
       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
     </svg>
   ),
+  clock: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+  ),
+  x: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6 6 18M6 6l12 12"/>
+    </svg>
+  ),
 };
 
 /* ─── 데이터 ─────────────────────────────────────────────── */
 const POPULAR = [
-  { emoji: "🏠", label: "전세보증금 분쟁",  seed: "전세보증금을 돌려받지 못하고 있어요" },
-  { emoji: "👨‍👩‍👧", label: "이혼/재산분할",   seed: "이혼 재산분할 상담이 필요해요" },
-  { emoji: "🚗", label: "교통사고 합의",   seed: "교통사고 합의금 상담이 필요해요" },
-  { emoji: "👮", label: "형사 변호",       seed: "형사 사건 변호 상담이 필요해요" },
-  { emoji: "💰", label: "임금체불 해결",   seed: "임금체불 해결 방법을 알고 싶어요" },
+  { emoji: "🏠", label: "전세보증금 분쟁",  seed: "전세보증금을 돌려받지 못하고 있어요", bg: "#EFF6FF" },
+  { emoji: "👨‍👩‍👧", label: "이혼/재산분할",   seed: "이혼 재산분할 상담이 필요해요",        bg: "#FDF2F8" },
+  { emoji: "🚗", label: "교통사고 합의",   seed: "교통사고 합의금 상담이 필요해요",        bg: "#FFF7ED" },
+  { emoji: "👮", label: "형사 변호",       seed: "형사 사건 변호 상담이 필요해요",         bg: "#F5F3FF" },
+  { emoji: "💰", label: "임금체불 해결",   seed: "임금체불 해결 방법을 알고 싶어요",       bg: "#F0FDF4" },
 ];
 
 type QuickSlug = "criminal" | "divorce" | "realestate" | "labor" | "contract" | "damages";
@@ -161,6 +171,32 @@ function pillByName(name: string): Pastel {
 function anonymizeName(n: string) { return `${n.charAt(0)}○○`; }
 function anonymizeFirm(f: string) { return f.startsWith("법무법인") ? "법무법인 ○○" : "○○ 법률사무소"; }
 
+/* ─── 공지 배너 ─────────────────────────────────────── */
+function AnnounceBanner() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    if (!sessionStorage.getItem("lawsel_banner_closed")) setShow(true);
+  }, []);
+  if (!show) return null;
+  return (
+    <div className="bg-[#3730A3] h-9 flex items-center justify-between px-4 md:px-10 shrink-0">
+      <div className="flex-1 text-center text-[13px] text-white font-medium">
+        🎉 지금 가입하면 첫 AI 상담 무료!{" "}
+        <Link href="/signup" className="underline underline-offset-2 font-bold ml-1 hover:text-white/90">
+          자세히 &gt;
+        </Link>
+      </div>
+      <button
+        onClick={() => { setShow(false); sessionStorage.setItem("lawsel_banner_closed", "1"); }}
+        className="shrink-0 ml-3 text-white/60 hover:text-white transition-colors"
+        aria-label="닫기"
+      >
+        {Ic.x}
+      </button>
+    </div>
+  );
+}
+
 /* ─── 신뢰 지표 카운터 (무한 반복: 5초 간격) ──────────── */
 function StatCell({ target, decimals, suffix, label }: (typeof TRUST_STATS)[0]) {
   const [n, setN] = useState(0);
@@ -199,12 +235,24 @@ function StatCell({ target, decimals, suffix, label }: (typeof TRUST_STATS)[0]) 
   }, [runAnim]);
 
   const display = decimals > 0 ? n.toFixed(decimals) : Math.round(n).toLocaleString("ko-KR");
+
+  const iconEl =
+    label === "AI 상담"    ? Ic.chat  :
+    label === "검증 변호사" ? Ic.users :
+    label === "평균 매칭"  ? Ic.clock :
+    label === "만족도"     ? Ic.star  : null;
+
   return (
-    <div ref={ref} className="text-center py-4 px-2 md:py-6">
-      <p className="text-[22px] md:text-[32px] font-extrabold text-[#4338CA] leading-none tabular-nums">
+    <div ref={ref} className="text-center py-4 px-2 md:py-6 flex flex-col items-center gap-1">
+      {iconEl && (
+        <span className="text-[#4338CA] opacity-60 mb-0.5">
+          {iconEl}
+        </span>
+      )}
+      <p className="text-[22px] md:text-[40px] font-extrabold text-[#4338CA] leading-none tabular-nums">
         {display}{done ? suffix : ""}
       </p>
-      <p className="mt-1.5 text-[11px] md:text-[13px] text-[#6B7280] font-medium">{label}</p>
+      <p className="mt-0.5 text-[11px] md:text-[13px] text-[#6B7280] font-medium">{label}</p>
     </div>
   );
 }
@@ -379,13 +427,14 @@ function PopularCarousel({ onSelect }: { onSelect: (seed: string) => void }) {
             key={item.label}
             data-pc
             onClick={() => onSelect(item.seed)}
-            className="flex-none min-w-[148px] md:min-w-[180px] snap-start bg-white rounded-[14px] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-[#F3F4F6] text-left active:scale-[0.97] hover:border-[#C7D2FE] transition-all"
+            className="flex-none min-w-[160px] md:min-w-[190px] snap-start rounded-[16px] p-4 md:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.07)] border border-white/80 text-left active:scale-[0.97] hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition-all"
+            style={{ backgroundColor: item.bg }}
           >
-            <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded-[4px] leading-none">인기</span>
-              <span className="text-2xl leading-none">{item.emoji}</span>
             </div>
-            <p className="text-[13px] font-semibold text-[#111827] leading-snug">{item.label}</p>
+            <span className="text-[32px] leading-none block mb-2">{item.emoji}</span>
+            <p className="text-[13px] md:text-[14px] font-semibold text-[#111827] leading-snug">{item.label}</p>
           </button>
         ))}
       </div>
@@ -482,6 +531,7 @@ export default function HomePage() {
 
         {/* ══ ① 헤더 ══════════════════════════════════════════ */}
         <header className="sticky top-0 z-40 bg-white border-b border-[#F0F0F0] pt-safe-top shrink-0">
+          <AnnounceBanner />
           {/* 모바일 헤더 */}
           <div className="md:hidden h-14 flex items-center justify-between px-5">
             <LawselLogo iconSize={22} textClass="text-[18px]" />
@@ -540,22 +590,36 @@ export default function HomePage() {
 
         <main className="flex-1">
 
-          {/* ══ ② 검색 바 ════════════════════════════════════ */}
-          <section className="px-5 md:px-10 pt-5 md:pt-10 pb-3 md:pb-8 bg-white">
-            <div className="md:max-w-[600px] md:mx-auto">
+          {/* ══ ② 히어로 (타이틀 + 검색) ════════════════════ */}
+          <section className="relative overflow-hidden bg-gradient-to-br from-[#4338CA] via-[#4F46E5] to-[#6366F1] px-5 md:px-10 pt-9 md:pt-14 pb-20 md:pb-24 rounded-b-[32px]">
+            {/* 장식 원형 */}
+            <div aria-hidden className="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-white/5 pointer-events-none" />
+            <div aria-hidden className="absolute bottom-4 -left-12 w-48 h-48 rounded-full bg-white/5 pointer-events-none" />
+
+            <div className="md:max-w-[640px] md:mx-auto relative z-10">
+              <p className="text-white/75 text-[13px] font-semibold mb-3 inline-flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block" />
+                AI 법률 상담 플랫폼
+              </p>
+              <h1 className="text-white font-extrabold text-[28px] md:text-[40px] leading-tight tracking-tight mb-2.5">
+                법률 고민,<br className="md:hidden" /> 로셀에 물어보세요
+              </h1>
+              <p className="text-white/65 text-[15px] md:text-[17px] mb-7">
+                AI가 분석하고, 변호사가 해결합니다
+              </p>
               <Link href="/ai-consultation"
-                className="flex items-center gap-3 h-[52px] md:h-[60px] px-4 md:px-6 rounded-[26px] md:rounded-[30px] border-2 border-[#4338CA] text-[#9CA3AF] hover:bg-[#F8F7FF] transition-colors">
+                className="flex items-center gap-3 h-[54px] md:h-[62px] px-5 md:px-6 rounded-[27px] bg-white text-[#9CA3AF] shadow-[0_4px_24px_rgba(0,0,0,0.22)] hover:shadow-[0_6px_32px_rgba(0,0,0,0.28)] transition-all">
                 <span className="text-[#4338CA] shrink-0">{Ic.search}</span>
                 <span className="text-[15px] md:text-[17px] truncate">어떤 법률 문제가 있으신가요?</span>
               </Link>
             </div>
           </section>
 
-          {/* ══ ③ 퀵 액션 카드 ════════════════════════════════ */}
-          <section className="px-5 md:px-10 pb-5 md:pb-10 bg-white">
+          {/* ══ ③ 퀵 액션 카드 (히어로 위에 떠있게) ════════ */}
+          <section className="px-5 md:px-10 -mt-10 relative z-10 pb-5 md:pb-10">
             <div className="grid grid-cols-2 gap-3 md:gap-6">
               <Link href="/ai-consultation"
-                className="group bg-white rounded-2xl p-5 md:p-7 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-[#F3F4F6] hover:border-[#C7D2FE] active:scale-[0.97] transition-all">
+                className="group bg-white rounded-2xl p-5 md:p-7 shadow-[0_8px_32px_rgba(67,56,202,0.15)] hover:shadow-[0_12px_40px_rgba(67,56,202,0.22)] border border-[#F3F4F6] hover:border-[#C7D2FE] active:scale-[0.97] transition-all">
                 <div className="w-11 h-11 md:w-16 md:h-16 rounded-full bg-[#EEF2FF] flex items-center justify-center text-[#4338CA] mb-3 md:mb-5 group-hover:bg-[#E0E7FF] transition-colors">
                   {Ic.chat}
                 </div>
@@ -563,7 +627,7 @@ export default function HomePage() {
                 <p className="mt-1 text-[13px] md:text-[15px] text-[#6B7280]">무료로 AI에게 물어보세요</p>
               </Link>
               <Link href="/lawyers"
-                className="group bg-white rounded-2xl p-5 md:p-7 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-[#F3F4F6] hover:border-[#A7F3D0] active:scale-[0.97] transition-all">
+                className="group bg-white rounded-2xl p-5 md:p-7 shadow-[0_8px_32px_rgba(67,56,202,0.15)] hover:shadow-[0_12px_40px_rgba(67,56,202,0.22)] border border-[#F3F4F6] hover:border-[#A7F3D0] active:scale-[0.97] transition-all">
                 <div className="w-11 h-11 md:w-16 md:h-16 rounded-full bg-[#D1FAE5] flex items-center justify-center text-[#059669] mb-3 md:mb-5 group-hover:bg-[#A7F3D0] transition-colors">
                   {Ic.users}
                 </div>
@@ -575,7 +639,7 @@ export default function HomePage() {
 
           {/* ══ ④ 신뢰 지표 ══════════════════════════════════ */}
           <section className="px-5 md:px-10 pb-4 md:pb-8 bg-white">
-            <div className="bg-[#F8F7FF] rounded-2xl grid grid-cols-4 divide-x divide-[#E8E5FF]">
+            <div className="bg-[#F0F0FF] rounded-2xl grid grid-cols-4 divide-x divide-[#E0E0FF]">
               {TRUST_STATS.map((s, i) => (
                 <div key={i}>
                   <StatCell {...s} />
