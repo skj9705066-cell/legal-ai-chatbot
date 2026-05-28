@@ -33,10 +33,14 @@ export default function AppShell({
   return (
     <AuthProvider>
       {!isHome && <TopNav />}
-      <div className={showBottomNav ? "pb-20" : undefined}>
+      <div className={showBottomNav ? "pb-20 md:pb-0" : undefined}>
         {children}
       </div>
-      {showBottomNav && <BottomNav />}
+      {showBottomNav && (
+        <div className="md:hidden">
+          <BottomNav />
+        </div>
+      )}
     </AuthProvider>
   );
 }
