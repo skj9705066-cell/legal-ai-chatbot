@@ -245,16 +245,16 @@ function StatCell({ target, decimals, suffix, label }: (typeof TRUST_STATS)[0]) 
       {/* 아이콘: SVG 크기 강제 통일 (모바일 20px / PC 24px) */}
       {iconEl && (
         <span className="text-[#4338CA]/60 flex items-center justify-center mb-1.5
-                         [&>svg]:w-5 [&>svg]:h-5 md:[&>svg]:w-6 md:[&>svg]:h-6">
+                         [&>svg]:w-4 [&>svg]:h-4 md:[&>svg]:w-6 md:[&>svg]:h-6">
           {iconEl}
         </span>
       )}
       {/* 숫자: 접미어 invisible placeholder로 너비 고정 (레이아웃 흔들림 방지) */}
-      <p className="text-[24px] md:text-[32px] font-extrabold text-[#4338CA] leading-none tabular-nums whitespace-nowrap">
+      <p className="text-[18px] md:text-[32px] font-extrabold text-[#4338CA] leading-none tabular-nums whitespace-nowrap">
         {display}<span className={done ? "" : "invisible"}>{suffix}</span>
       </p>
       {/* 라벨 */}
-      <p className="mt-1 text-[11px] md:text-[13px] text-[#6B7280] font-medium whitespace-nowrap">{label}</p>
+      <p className="mt-1 text-[10px] md:text-[13px] text-[#6B7280] font-medium whitespace-nowrap">{label}</p>
     </div>
   );
 }
