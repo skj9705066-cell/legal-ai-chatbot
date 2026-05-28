@@ -103,7 +103,7 @@ export default function LawyerDashboardPage() {
         <aside className="hidden lg:flex flex-col bg-navy-900 text-white min-h-screen sticky top-0">
           <div className="px-7 py-8">
             <div className="text-[20px] font-bold tracking-luxe">
-              법률<span className="text-gold">AI</span>
+              로<span className="text-gold">셀</span>
               <span className="ml-2 text-[10px] tracking-eyebrow text-gold">PARTNER</span>
             </div>
           </div>
@@ -133,7 +133,7 @@ export default function LawyerDashboardPage() {
           <header className="lg:hidden sticky top-0 z-30 bg-white/85 backdrop-blur-xl border-b border-surface-line pt-safe-top">
             <div className="max-w-md mx-auto h-14 px-6 flex items-center justify-between">
               <div className="text-[18px] font-bold tracking-luxe text-navy-900">
-                법률<span className="text-gold">AI</span>
+                로<span className="text-gold">셀</span>
                 <span className="ml-2 text-caption text-gold-700">PARTNER</span>
               </div>
               <Link href="/chat/rooms" className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-surface-subtle">

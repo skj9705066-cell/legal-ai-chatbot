@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import AuthButtons from "./AuthButtons";
-import RobotMascot from "./RobotMascot";
+import LawselLogo from "./LawselLogo";
 import { generateId } from "@/lib/storage";
 
 interface NavItem {
@@ -60,11 +60,8 @@ export default function TopNav() {
   return (
     <header className="hidden lg:block sticky top-0 z-40 pt-safe-top bg-white border-b border-[#E5E8EB]">
       <div className="max-w-screen-xl mx-auto px-8 h-16 flex items-center justify-between gap-8">
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          <RobotMascot size="sm" className="w-8 h-auto" />
-          <span className="text-[22px] font-bold tracking-tight text-[#191F28]">
-            로<span className="text-[#4338CA]">셀</span>
-          </span>
+        <Link href="/" className="shrink-0">
+          <LawselLogo iconSize={28} textClass="text-[22px]" />
         </Link>
 
         <nav className="flex-1 flex items-center justify-center gap-1">

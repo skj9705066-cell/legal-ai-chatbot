@@ -24,7 +24,7 @@ const H = 630;
 
 /* ── SVG scale icon (inline, same geometry as LawselLogo) ────── */
 const SCALE_SVG = `
-<svg width="96" height="96" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="150" height="150" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="og-g" x1="2" y1="4" x2="30" y2="28" gradientUnits="userSpaceOnUse">
       <stop stop-color="#a5b4fc"/>
@@ -104,7 +104,7 @@ const HTML = `<!DOCTYPE html>
     border: 1px solid rgba(255,255,255,0.15);
     border-radius: 999px;
     padding: 6px 16px;
-    font-size: 15px;
+    font-size: 22px;
     font-weight: 700;
     color: rgba(255,255,255,0.8);
     letter-spacing: 0.02em;
@@ -153,7 +153,7 @@ const HTML = `<!DOCTYPE html>
   }
 
   .logo-text {
-    font-size: 80px;
+    font-size: 160px;
     font-weight: 900;
     color: white;
     letter-spacing: -3px;
@@ -164,7 +164,7 @@ const HTML = `<!DOCTYPE html>
   }
 
   .headline {
-    font-size: 38px;
+    font-size: 57px;
     font-weight: 700;
     color: rgba(255,255,255,0.95);
     letter-spacing: -1px;
@@ -173,7 +173,7 @@ const HTML = `<!DOCTYPE html>
   }
 
   .sub {
-    font-size: 22px;
+    font-size: 29px;
     font-weight: 400;
     color: rgba(255,255,255,0.6);
     letter-spacing: 0.04em;

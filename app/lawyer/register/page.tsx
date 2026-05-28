@@ -197,7 +197,7 @@ export default function LawyerRegisterPage() {
             href="/"
             className="flex items-center gap-2.5 text-[18px] font-bold tracking-luxe text-navy-900"
           >
-            법률<span className="text-gold">AI</span>
+            로<span className="text-gold">셀</span>
             <span className="hidden sm:inline text-caption text-gold-700">
               PARTNER
             </span>
@@ -301,7 +301,7 @@ function HeroScreen({ onStart }: { onStart: () => void }) {
             href="/"
             className="flex items-center gap-2.5 text-[18px] font-bold tracking-luxe text-white"
           >
-            법률<span className="text-gold">AI</span>
+            로<span className="text-gold">셀</span>
             <span className="hidden sm:inline text-caption text-gold">
               PARTNER
             </span>

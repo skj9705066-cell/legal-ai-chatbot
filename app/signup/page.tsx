@@ -121,7 +121,7 @@ export default function SignupPage() {
           href="/"
           className="block text-center text-[22px] font-bold tracking-tight text-[#191F28] mb-7"
         >
-          법률<span className="text-[#4338CA]">AI</span>
+          로<span className="text-[#4338CA]">셀</span>
         </Link>
 
         <div className="bg-white rounded-2xl p-7 lg:p-8 shadow-[0_1px_2px_rgba(25,31,40,0.04),0_8px_24px_rgba(25,31,40,0.06)]">

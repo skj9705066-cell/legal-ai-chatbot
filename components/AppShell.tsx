@@ -28,17 +28,15 @@ export default function AppShell({
     return <AuthProvider>{children}</AuthProvider>;
   }
 
+  const isHome = pathname === "/";
+
   return (
     <AuthProvider>
-      <TopNav />
-      <div className={showBottomNav ? "pb-20 lg:pb-0" : undefined}>
+      {!isHome && <TopNav />}
+      <div className={showBottomNav ? "pb-20" : undefined}>
         {children}
       </div>
-      {showBottomNav && (
-        <div className="lg:hidden">
-          <BottomNav />
-        </div>
-      )}
+      {showBottomNav && <BottomNav />}
     </AuthProvider>
   );
 }

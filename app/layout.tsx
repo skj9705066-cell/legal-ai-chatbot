@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import AppShell from "@/components/AppShell";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import SplashScreen from "@/components/SplashScreen";
 import "./globals.css";
 
 const SITE_URL = "https://lawsel.kr";
@@ -8,7 +9,7 @@ const SITE_NAME = "로셀";
 const DEFAULT_TITLE = "로셀 — AI 법률 상담 플랫폼";
 const DEFAULT_DESC =
   "로셀 — 딱 맞는 변호사를 골라드립니다. AI가 한국 법령·판례를 분석하고, 전문 변호사를 매칭합니다.";
-const OG_IMAGE = `${SITE_URL}/og-image.png`;
+const OG_IMAGE = `${SITE_URL}/og-image.png?v=2`;
 const OG_DESC = "딱 맞는 변호사를 골라드립니다. 24시간 무료 AI 법률 상담.";
 
 export const metadata: Metadata = {
@@ -247,6 +248,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <SplashScreen />
         <AppShell>{children}</AppShell>
         <ServiceWorkerRegister />
       </body>

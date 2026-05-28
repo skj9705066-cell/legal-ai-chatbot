@@ -28,7 +28,7 @@ export default function AdminLoginPage() {
     <div className="min-h-screen bg-[#F4F5F7] flex items-center justify-center px-5 py-12">
       <div className="w-full max-w-[400px] bg-white rounded-2xl p-8 shadow-[0_1px_2px_rgba(25,31,40,0.04),0_8px_24px_rgba(25,31,40,0.08)]">
         <p className="text-[22px] font-bold tracking-tight text-[#191F28]">
-          법률<span className="text-[#4338CA]">AI</span> 관리자
+          로<span className="text-[#4338CA]">셀</span> 관리자
         </p>
         <p className="mt-1.5 text-[14px] text-[#8B95A1] font-medium">
           관리자 권한이 부여된 계정으로 로그인하세요

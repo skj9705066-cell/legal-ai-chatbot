@@ -71,7 +71,7 @@ export default function AdminLayout({
             </svg>
           </button>
           <p className="text-[16px] font-bold tracking-tight text-[#191F28]">
-            법률<span className="text-[#4338CA]">AI</span> 관리자
+            로<span className="text-[#4338CA]">셀</span> 관리자
           </p>
           <div className="w-10" aria-hidden />
         </div>
