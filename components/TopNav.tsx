@@ -32,6 +32,12 @@ const ITEMS: NavItem[] = [
       (p.startsWith("/mypage") && s.includes("tab=matching")),
   },
   {
+    key: "blog",
+    label: "블로그",
+    href: "/blog",
+    match: (p) => p.startsWith("/blog"),
+  },
+  {
     key: "mypage",
     label: "마이",
     href: "/mypage",

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
+import { BLOG_POSTS } from "@/lib/blog-data";
 
-const BASE = "https://legal-ai-chatbot-five.vercel.app";
+const BASE = "https://lawsel.kr";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
@@ -48,5 +49,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.3,
     },
+    {
+      url: `${BASE}/blog`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.8,
+    },
+    ...BLOG_POSTS.map((post) => ({
+      url: `${BASE}/blog/${post.slug}`,
+      lastModified: new Date(post.date),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
   ];
 }

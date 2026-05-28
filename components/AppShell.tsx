@@ -11,6 +11,7 @@ const BOTTOM_NAV_ROUTES = [
   /^\/lawyer\/dashboard/,
   /^\/lawyers(\/|$)/,
   /^\/chat\/rooms(\/|$)/,
+  /^\/blog(\/|$)/,
 ];
 
 export default function AppShell({

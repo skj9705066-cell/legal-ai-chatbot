@@ -8,6 +8,7 @@ import { DEMO_LAWYERS } from "@/lib/lawyers";
 import Footer from "@/components/Footer";
 import ScrollReveal from "@/components/ScrollReveal";
 import RobotMascot from "@/components/RobotMascot";
+import { BLOG_POSTS, CATEGORY_COLOR } from "@/lib/blog-data";
 import type { Lawyer } from "@/lib/types";
 
 const TRENDING = [
@@ -189,7 +190,7 @@ export default function HomePage() {
         <div className="max-w-md mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-[20px] font-bold tracking-tight text-[#191F28]">
             <RobotMascot size="sm" className="w-7 h-auto" />
-            법률<span className="text-[#4338CA]">AI</span>
+            로<span className="text-[#4338CA]">셀</span>
           </Link>
         </div>
       </header>
@@ -541,6 +542,65 @@ export default function HomePage() {
             </div>
           </ScrollReveal>
           <LawyerScroll lawyers={DEMO_LAWYERS} />
+        </div>
+      </section>
+
+      {/* ===== Latest Blog Posts ===== */}
+      <section className="px-6 lg:px-8 py-16 lg:py-20">
+        <div className="max-w-[1200px] mx-auto">
+          <ScrollReveal className="max-w-[800px] mb-7 lg:mb-9">
+            <div className="flex items-end justify-between">
+              <div>
+                <h2 className="text-[24px] lg:text-[28px] font-bold text-[#191F28] tracking-tight">
+                  최신 법률 가이드
+                </h2>
+                <p className="mt-1.5 text-[14px] lg:text-[15px] text-[#8B95A1] font-medium">
+                  알아두면 힘이 되는 법률 상식
+                </p>
+              </div>
+              <Link
+                href="/blog"
+                className="text-[14px] lg:text-[15px] font-semibold text-[#4338CA] hover:text-[#6366F1] transition-colors shrink-0"
+              >
+                전체 보기 →
+              </Link>
+            </div>
+          </ScrollReveal>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {BLOG_POSTS.slice()
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .slice(0, 3)
+              .map((post, i) => {
+                const color = CATEGORY_COLOR[post.category] ?? { bg: "#F2F4F6", text: "#4E5968" };
+                return (
+                  <ScrollReveal key={post.slug} delay={i * 80}>
+                    <Link
+                      href={`/blog/${post.slug}`}
+                      className="group block bg-white rounded-2xl overflow-hidden border border-[#E5E8EB] hover:border-[#4338CA]/40 hover:shadow-[0_4px_24px_rgba(67,56,202,0.08)] transition-all duration-200"
+                    >
+                      <div
+                        className="h-32 flex items-center justify-center text-4xl"
+                        style={{ background: color.bg }}
+                      >
+                        {post.thumbnail}
+                      </div>
+                      <div className="p-5">
+                        <span
+                          className="inline-flex items-center px-2.5 h-6 rounded-full text-[11px] font-semibold mb-2"
+                          style={{ background: color.bg, color: color.text }}
+                        >
+                          {post.category}
+                        </span>
+                        <h3 className="text-[15px] font-bold text-[#191F28] leading-[1.45] group-hover:text-[#4338CA] transition-colors">
+                          {post.title}
+                        </h3>
+                      </div>
+                    </Link>
+                  </ScrollReveal>
+                );
+              })}
+          </div>
         </div>
       </section>
 

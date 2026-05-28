@@ -15,6 +15,11 @@ interface NavTab {
 }
 
 const Icon = {
+  blog: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M4 6h16M4 10h16M4 14h10M4 18h7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
   home: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M3 11.5L12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-8.5z" strokeLinecap="round" strokeLinejoin="round" />
@@ -67,6 +72,13 @@ const USER_TABS: NavTab[] = [
     href: "/lawyers",
     match: (p) => p.startsWith("/lawyers") || p.startsWith("/matching"),
     icon: Icon.lawyers,
+  },
+  {
+    key: "blog",
+    label: "블로그",
+    href: "/blog",
+    match: (p) => p.startsWith("/blog"),
+    icon: Icon.blog,
   },
   {
     key: "mypage",
@@ -140,7 +152,7 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-surface-line" aria-label="주요 메뉴">
-      <ul className="max-w-md mx-auto px-2 grid grid-cols-4">
+      <ul className="max-w-md mx-auto px-2 grid grid-cols-5">
         {TABS.map((tab) => {
           const active = tab.match(pathname);
           const isMyTab = tab.key === "mypage";
