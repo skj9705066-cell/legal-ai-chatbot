@@ -38,6 +38,9 @@ export interface LawyerRow {
   status: LawyerDBStatus;
   reject_reason: string | null;
   bio: string | null;
+  one_liner: string | null;
+  consultation_methods: string[] | null;
+  base_fee_manwon: number | null;
   created_at: string;
 }
 
@@ -58,6 +61,33 @@ export interface MatchingRow {
   consultation_id: string | null;
   user_id: string | null;
   status: MatchingDBStatus;
+  case_summary: Json | null;
+  fee_min: number;
+  fee_max: number;
+  consultation_method: string;
+  created_at: string;
+}
+
+export interface ChatRoomRow {
+  id: string;
+  matching_id: string | null;
+  user_id: string;
+  lawyer_user_id: string;
+  lawyer_id: string;
+  created_at: string;
+  last_message_at: string;
+}
+
+export interface MessageRow {
+  id: string;
+  room_id: string;
+  sender_id: string;
+  content: string;
+  file_name: string | null;
+  file_data: string | null;
+  file_type: string | null;
+  file_size: number | null;
+  is_read: boolean;
   created_at: string;
 }
 
@@ -114,6 +144,33 @@ export interface MatchingInsert {
   consultation_id?: string | null;
   user_id?: string | null;
   status?: MatchingDBStatus;
+  case_summary?: Json | null;
+  fee_min?: number;
+  fee_max?: number;
+  consultation_method?: string;
+  created_at?: string;
+}
+
+export interface ChatRoomInsert {
+  id?: string;
+  matching_id?: string | null;
+  user_id: string;
+  lawyer_user_id: string;
+  lawyer_id: string;
+  created_at?: string;
+  last_message_at?: string;
+}
+
+export interface MessageInsert {
+  id?: string;
+  room_id: string;
+  sender_id: string;
+  content: string;
+  file_name?: string | null;
+  file_data?: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
+  is_read?: boolean;
   created_at?: string;
 }
 
@@ -158,6 +215,18 @@ export type Database = {
         Row: ProposalRow;
         Insert: ProposalInsert;
         Update: Partial<ProposalRow>;
+        Relationships: [];
+      };
+      chat_rooms: {
+        Row: ChatRoomRow;
+        Insert: ChatRoomInsert;
+        Update: Partial<ChatRoomRow>;
+        Relationships: [];
+      };
+      messages: {
+        Row: MessageRow;
+        Insert: MessageInsert;
+        Update: Partial<MessageRow>;
         Relationships: [];
       };
     };

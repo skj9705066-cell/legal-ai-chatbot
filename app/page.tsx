@@ -532,9 +532,12 @@ export default function HomePage() {
               <h2 className="text-[24px] lg:text-[28px] font-bold text-[#191F28] tracking-tight">
                 함께하는 전문 변호사
               </h2>
-              <span className="text-[14px] lg:text-[15px] font-medium text-[#8B95A1]">
-                {DEMO_LAWYERS.length}명
-              </span>
+              <Link
+                href="/lawyers"
+                className="text-[14px] lg:text-[15px] font-semibold text-[#4338CA] hover:text-[#6366F1] transition-colors"
+              >
+                전체 보기 →
+              </Link>
             </div>
           </ScrollReveal>
           <LawyerScroll lawyers={DEMO_LAWYERS} />

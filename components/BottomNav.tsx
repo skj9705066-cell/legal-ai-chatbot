@@ -17,46 +17,35 @@ interface NavTab {
 const Icon = {
   home: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path
-        d="M3 11.5L12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-8.5z"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M3 11.5L12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-8.5z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  aiChat: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  lawyers: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="9" cy="7" r="3.2" strokeLinejoin="round" />
+      <circle cx="17" cy="7" r="3.2" strokeLinejoin="round" />
+      <path d="M3 21v-1a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v1M14 14h4a3 3 0 0 1 3 3v1" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
   chat: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path
-        d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  ),
-  matching: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <circle cx="9" cy="7" r="3.2" strokeLinejoin="round" />
-      <circle cx="17" cy="7" r="3.2" strokeLinejoin="round" />
-      <path
-        d="M3 21v-1a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v1M14 14h4a3 3 0 0 1 3 3v1"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
   user: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
       <circle cx="12" cy="8" r="4" strokeLinejoin="round" />
-      <path
-        d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
 };
 
-const TABS: NavTab[] = [
+const USER_TABS: NavTab[] = [
   {
     key: "home",
     label: "홈",
@@ -65,27 +54,57 @@ const TABS: NavTab[] = [
     icon: Icon.home,
   },
   {
-    key: "chat",
+    key: "aiChat",
     label: "AI 상담",
     href: "/chat/new",
-    match: (p) => p.startsWith("/chat"),
+    match: (p) => p.startsWith("/chat") && !p.startsWith("/chat/rooms"),
     action: "newChat",
-    icon: Icon.chat,
+    icon: Icon.aiChat,
   },
   {
-    key: "matching",
-    label: "매칭",
-    href: "/mypage?tab=matching",
-    match: (p) => p.startsWith("/matching") || /\?.*tab=matching/.test(p),
-    icon: Icon.matching,
+    key: "lawyers",
+    label: "변호사",
+    href: "/lawyers",
+    match: (p) => p.startsWith("/lawyers") || p.startsWith("/matching"),
+    icon: Icon.lawyers,
   },
   {
     key: "mypage",
     label: "마이",
     href: "/mypage",
-    match: (p) =>
-      (p.startsWith("/mypage") || p.startsWith("/lawyer/dashboard")) &&
-      !/\?.*tab=matching/.test(p),
+    match: (p) => p.startsWith("/mypage"),
+    action: "mypage",
+    icon: Icon.user,
+  },
+];
+
+const LAWYER_TABS: NavTab[] = [
+  {
+    key: "home",
+    label: "홈",
+    href: "/",
+    match: (p) => p === "/",
+    icon: Icon.home,
+  },
+  {
+    key: "dashboard",
+    label: "사건",
+    href: "/lawyer/dashboard",
+    match: (p) => p.startsWith("/lawyer/dashboard"),
+    icon: Icon.lawyers,
+  },
+  {
+    key: "chatRooms",
+    label: "채팅",
+    href: "/chat/rooms",
+    match: (p) => p.startsWith("/chat/rooms"),
+    icon: Icon.chat,
+  },
+  {
+    key: "mypage",
+    label: "마이",
+    href: "/mypage",
+    match: (p) => p.startsWith("/mypage") || p.startsWith("/lawyer/register"),
     action: "mypage",
     icon: Icon.user,
   },
@@ -97,6 +116,8 @@ export default function BottomNav() {
   const { account, loading } = useAuth();
 
   const isLawyer = account?.type === "lawyer";
+  const TABS = isLawyer ? LAWYER_TABS : USER_TABS;
+
   const myTabHref = !account
     ? "/login?next=/mypage"
     : isLawyer
@@ -118,10 +139,7 @@ export default function BottomNav() {
   }
 
   return (
-    <nav
-      className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-surface-line"
-      aria-label="주요 메뉴"
-    >
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-surface-line" aria-label="주요 메뉴">
       <ul className="max-w-md mx-auto px-2 grid grid-cols-4">
         {TABS.map((tab) => {
           const active = tab.match(pathname);
@@ -136,9 +154,7 @@ export default function BottomNav() {
               <Link
                 href={href}
                 onClick={(e) => handleClick(e, tab)}
-                className={`flex flex-col items-center justify-center gap-1 pt-3 pb-2.5 transition-colors duration-200 ${
-                  active ? "text-[#4338CA]" : "text-[#8B95A1] hover:text-[#191F28]"
-                }`}
+                className={`flex flex-col items-center justify-center gap-1 pt-3 pb-2.5 transition-colors duration-200 ${active ? "text-[#4338CA]" : "text-[#8B95A1] hover:text-[#191F28]"}`}
               >
                 <span className="relative w-6 h-6">
                   {tab.icon}
@@ -146,9 +162,7 @@ export default function BottomNav() {
                     <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#4338CA]" />
                   )}
                 </span>
-                <span className="text-[12px] font-semibold tracking-luxe">
-                  {label}
-                </span>
+                <span className="text-[12px] font-semibold tracking-luxe">{label}</span>
               </Link>
             </li>
           );

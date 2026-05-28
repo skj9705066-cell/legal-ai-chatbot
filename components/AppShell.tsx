@@ -9,6 +9,8 @@ const BOTTOM_NAV_ROUTES = [
   /^\/$/,
   /^\/mypage(\?|$|\/)/,
   /^\/lawyer\/dashboard/,
+  /^\/lawyers(\/|$)/,
+  /^\/chat\/rooms(\/|$)/,
 ];
 
 export default function AppShell({
