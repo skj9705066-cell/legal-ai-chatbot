@@ -448,7 +448,7 @@ export interface AdminSettings {
 }
 
 export const DEFAULT_SETTINGS: AdminSettings = {
-  siteName: "법률AI",
+  siteName: "로셀",
   systemPrompt:
     "당신은 한국 법률 전문 AI 상담사입니다. 사용자의 법률 문제를 분석하여 적용 가능한 법령, 관련 판례, 핵심 쟁점을 안내합니다. 부정확한 정보를 제공하지 않으며, 필요한 경우 web_search 도구로 최신 법령·판례를 확인합니다.",
   matchingFeeRate: 8,

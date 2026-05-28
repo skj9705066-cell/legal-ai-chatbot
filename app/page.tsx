@@ -209,7 +209,7 @@ export default function HomePage() {
                   <RobotMascot size="sm" className="w-9 h-auto animate-float" />
                 </span>
                 <span className="inline-flex items-center text-[13px] lg:text-[14px] font-semibold px-3.5 h-8 rounded-full bg-[#4338CA] text-white tracking-tight">
-                  AI 법률 상담
+                  로셀 AI 상담
                 </span>
               </div>
 
@@ -439,7 +439,7 @@ export default function HomePage() {
         <div className="max-w-[1200px] mx-auto">
           <ScrollReveal className="px-6 lg:px-8 mb-7 lg:mb-9 max-w-[800px]">
             <h2 className="text-[24px] lg:text-[28px] font-bold text-[#191F28] tracking-tight">
-              왜 법률AI인가요?
+              왜 로셀인가요?
             </h2>
           </ScrollReveal>
           <WhyCards />
@@ -691,13 +691,13 @@ function WhyCards() {
       bg: "#EEF2FF",
       emoji: "🤖",
       title: "일반 AI와 다릅니다",
-      desc: "일반 AI는 한국 법을 정확히 알지 못합니다. 법률AI는 한국 법령·판례를 기반으로 분석합니다.",
+      desc: "일반 AI는 한국 법을 정확히 알지 못합니다. 로셀은 한국 법령·판례를 기반으로 분석합니다.",
     },
     {
       bg: "#E8FAF0",
       emoji: "💰",
       title: "무료로 먼저 파악합니다",
-      desc: "기존 서비스는 상담비를 먼저 내야 합니다. 법률AI는 AI 분석이 무료입니다.",
+      desc: "기존 서비스는 상담비를 먼저 내야 합니다. 로셀은 AI 분석이 무료입니다.",
     },
     {
       bg: "#F0EBFF",

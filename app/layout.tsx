@@ -4,10 +4,10 @@ import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
 const SITE_URL = "https://legal-ai-chatbot-five.vercel.app";
-const SITE_NAME = "법률AI";
-const DEFAULT_TITLE = "법률AI - AI 법률 상담 무료 | 변호사 매칭 플랫폼";
+const SITE_NAME = "로셀";
+const DEFAULT_TITLE = "로셀 — AI 법률 상담 플랫폼";
 const DEFAULT_DESC =
-  "AI가 한국 법령·판례를 분석하고, 전문 변호사를 매칭합니다. 24시간 무료 AI 법률 상담.";
+  "로셀 — 딱 맞는 변호사를 골라드립니다. AI가 한국 법령·판례를 분석하고, 전문 변호사를 매칭합니다.";
 const OG_IMAGE = `${SITE_URL}/icon-512.png`;
 
 export const metadata: Metadata = {
@@ -19,10 +19,11 @@ export const metadata: Metadata = {
   },
   description: DEFAULT_DESC,
   keywords: [
+    "로셀",
+    "Lawsel",
     "AI 법률상담",
     "무료 법률상담",
     "변호사 매칭",
-    "법률AI",
     "법률 정보",
     "한국 법령",
     "판례 검색",
@@ -34,7 +35,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
-  publisher: "(주)법률AI",
+  publisher: "(주)로셀",
 
   openGraph: {
     type: "website",
@@ -177,7 +178,7 @@ const faqSchema = {
   mainEntity: [
     {
       "@type": "Question",
-      name: "법률AI AI 상담은 무료인가요?",
+      name: "로셀 AI 상담은 무료인가요?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "AI 법률 상담은 완전 무료입니다. 변호사 매칭 후 실제 상담 비용은 변호사별로 다를 수 있습니다.",
@@ -188,7 +189,7 @@ const faqSchema = {
       name: "AI가 법적 조언을 제공하나요?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "법률AI는 일반적인 법령·판례 정보를 안내합니다. 변호사법 제109조에 따라 구체적인 법률 사무는 변호사만이 수행할 수 있으며, 중요한 법적 사안은 반드시 변호사와 상담하시기 바랍니다.",
+        text: "로셀은 일반적인 법령·판례 정보를 안내합니다. 변호사법 제109조에 따라 구체적인 법률 사무는 변호사만이 수행할 수 있으며, 중요한 법적 사안은 반드시 변호사와 상담하시기 바랍니다.",
       },
     },
     {

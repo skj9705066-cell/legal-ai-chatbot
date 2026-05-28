@@ -30,7 +30,7 @@ const ACCEPTED: Record<string, AttachmentMediaType> = {
 };
 
 const AI_GREETING =
-  "안녕하세요, 법률AI 전문 상담사입니다. 어떤 법률 문제로 고민이신지 간단히 말씀해 주시겠어요? 상황을 파악한 뒤 관련 법령과 판례를 찾아 분석해 드리겠습니다.";
+  "안녕하세요, 로셀 AI 상담사입니다. 어떤 법률 문제로 고민이신지 간단히 말씀해 주시겠어요? 상황을 파악한 뒤 관련 법령과 판례를 찾아 분석해 드리겠습니다.";
 
 const SEARCH_START_MARKER = "WS_START";
 const SEARCH_END_MARKER = "WS_END";
@@ -458,7 +458,7 @@ export default function ChatPage({
                 </svg>
                 <span>
                   <strong className="font-semibold">본 서비스는 생성형 AI를 기반으로 운영됩니다.</strong>{" "}
-                  법률AI는 일반적인 법령·판례 정보를 안내하며, 변호사법 제109조에 따라 구체적인 법률 사무를 수행하지 않습니다.
+                  로셀은 일반적인 법령·판례 정보를 안내하며, 변호사법 제109조에 따라 구체적인 법률 사무를 수행하지 않습니다.
                   AI가 제공하는 정보는 법적 조언이 아니므로 중요한 사안은 반드시 변호사와 상담하시기 바랍니다.
                 </span>
               </div>
@@ -761,7 +761,7 @@ function ChatSidebar({
             : "AI 분석 진행 중..."}
         </button>
         <p className="text-[12px] text-text-muted leading-[1.7] mt-4 font-medium">
-          법률AI는 법률상담의 수행 주체가 아닙니다. 본 서비스는 생성형 AI 기반으로 일반적인 법령·판례 정보를 제공하며, 변호사법 제109조에 따라 구체적인 법률 사무를 수행하지 않습니다.
+          로셀은 법률상담의 수행 주체가 아닙니다. 본 서비스는 생성형 AI 기반으로 일반적인 법령·판례 정보를 제공하며, 변호사법 제109조에 따라 구체적인 법률 사무를 수행하지 않습니다.
         </p>
       </section>
     </div>

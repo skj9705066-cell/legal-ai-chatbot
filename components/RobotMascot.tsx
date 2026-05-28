@@ -11,7 +11,7 @@ export default function RobotMascot({
   size = "md",
   expression = "smile",
   className,
-  ariaLabel = "법률AI 로봇 변호사",
+  ariaLabel = "로셀 AI 변호사",
 }: Props) {
   const w = SIZE_PX[size];
   const h = Math.round(w * 1.2);

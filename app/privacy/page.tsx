@@ -3,10 +3,10 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "개인정보처리방침",
-  description: "법률AI 개인정보처리방침. 수집 항목, 이용 목적, 보유 기간, 제3자 제공, 이용자 권리를 확인하세요.",
+  description: "로셀 개인정보처리방침. 수집 항목, 이용 목적, 보유 기간, 제3자 제공, 이용자 권리를 확인하세요.",
   openGraph: {
     title: "개인정보처리방침",
-    description: "법률AI 개인정보 수집·이용·보호 방침을 확인하세요.",
+    description: "로셀 개인정보 수집·이용·보호 방침을 확인하세요.",
     url: "https://legal-ai-chatbot-five.vercel.app/privacy",
   },
   alternates: {
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
       </div>
 
       <p className="mb-8 text-[15px] text-primary-700 leading-relaxed">
-        (주)법률AI(이하 "회사")는 개인정보보호법 및 관련 법령을 준수하며,
+        (주)로셀(이하 "회사")는 개인정보보호법 및 관련 법령을 준수하며,
         이용자의 개인정보를 소중히 여깁니다. 본 방침은 회사가 이용자의 개인정보를
         어떻게 수집·이용·보호하는지 안내합니다.
       </p>

@@ -11,7 +11,7 @@ const LINKS = [
 ];
 
 const COMPANY = {
-  name: "(주)법률AI",
+  name: "(주)로셀",
   ceo: "대표 김재인",
   bizNo: "사업자등록번호 123-45-67890",
   reportNo: "통신판매업신고 제2025-서울강남-1234호",
@@ -27,12 +27,12 @@ export default function Footer() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-10 lg:gap-16">
           <div>
             <Link href="/" className="text-[22px] font-bold tracking-tight text-white">
-              법률<span className="text-[#6366F1]">AI</span>
+              로<span className="text-[#6366F1]">셀</span>
             </Link>
             <p className="text-[14px] text-[#8B95A1] leading-[1.7] mt-4 mb-6">
-              AI 법률 상담부터 변호사 매칭까지.
+              딱 맞는 변호사를 골라드립니다.
               <br />
-              누구나 받을 수 있는 법률 서비스.
+              AI 분석부터 변호사 매칭까지 한번에.
             </p>
             <Link
               href="/lawyer/register"
@@ -85,7 +85,7 @@ export default function Footer() {
             </div>
 
             <p className="text-[12px] text-[#6B7684] pt-6 border-t border-[#2A323C]">
-              © {new Date().getFullYear()} 법률AI Inc. All rights reserved.
+              © {new Date().getFullYear()} 로셀 Inc. All rights reserved.
             </p>
           </div>
         </div>

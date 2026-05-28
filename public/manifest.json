@@ -1,7 +1,7 @@
 {
-  "name": "법률AI",
-  "short_name": "법률AI",
-  "description": "AI가 분석하고, 변호사가 해결합니다",
+  "name": "로셀 (Lawsel)",
+  "short_name": "로셀",
+  "description": "로셀 — 딱 맞는 변호사를 골라드립니다",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

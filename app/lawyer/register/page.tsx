@@ -322,7 +322,7 @@ function HeroScreen({ onStart }: { onStart: () => void }) {
           </p>
 
           <h1 className="text-display text-white">
-            법률AI<br className="lg:hidden" />
+            로셀<br className="lg:hidden" />
             <span className="lg:ml-3 text-gold-grad">파트너 변호사</span>
           </h1>
           <p className="mt-7 lg:mt-9 text-body text-white/75 max-w-xl lg:mx-auto">

@@ -57,7 +57,7 @@ export default function TopNav() {
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <RobotMascot size="sm" className="w-8 h-auto" />
           <span className="text-[22px] font-bold tracking-tight text-[#191F28]">
-            법률<span className="text-[#4338CA]">AI</span>
+            로<span className="text-[#4338CA]">셀</span>
           </span>
         </Link>
 
