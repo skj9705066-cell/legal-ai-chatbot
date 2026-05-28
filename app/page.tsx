@@ -161,30 +161,43 @@ function pillByName(name: string): Pastel {
 function anonymizeName(n: string) { return `${n.charAt(0)}○○`; }
 function anonymizeFirm(f: string) { return f.startsWith("법무법인") ? "법무법인 ○○" : "○○ 법률사무소"; }
 
-/* ─── 신뢰 지표 카운터 ──────────────────────────────────── */
+/* ─── 신뢰 지표 카운터 (무한 반복: 5초 간격) ──────────── */
 function StatCell({ target, decimals, suffix, label }: (typeof TRUST_STATS)[0]) {
   const [n, setN] = useState(0);
   const [done, setDone] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const fired = useRef(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+
+  const runAnim = useCallback(() => {
+    setN(0);
+    setDone(false);
+    const dur = 1000, t0 = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min((now - t0) / dur, 1);
+      setN(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(tick);
+      else { setN(target); setDone(true); }
+    };
+    requestAnimationFrame(tick);
+  }, [target]);
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const io = new IntersectionObserver(([e]) => {
-      if (!e.isIntersecting || fired.current) return;
-      fired.current = true;
-      const dur = 1000, t0 = performance.now();
-      const tick = (now: number) => {
-        const p = Math.min((now - t0) / dur, 1);
-        setN(target * (1 - Math.pow(1 - p, 3)));
-        if (p < 1) requestAnimationFrame(tick);
-        else { setN(target); setDone(true); }
-      };
-      requestAnimationFrame(tick);
+      if (e.isIntersecting && !intervalRef.current) {
+        runAnim();
+        // 5초(애니메이션 1s + 정지 4s)마다 반복
+        intervalRef.current = setInterval(runAnim, 5000);
+      } else if (!e.isIntersecting) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = undefined;
+      }
     }, { threshold: 0.3 });
     io.observe(el);
-    return () => io.disconnect();
-  }, [target]);
+    return () => { io.disconnect(); clearInterval(intervalRef.current); };
+  }, [runAnim]);
+
   const display = decimals > 0 ? n.toFixed(decimals) : Math.round(n).toLocaleString("ko-KR");
   return (
     <div ref={ref} className="text-center py-4 px-2 md:py-6">
@@ -325,6 +338,64 @@ function LawyerScroll({ lawyers }: { lawyers: Lawyer[] }) {
     <ContinuousMarquee trackClass="marquee-track--lawyers" itemGap="mr-3" fadeBg="#F9FAFB">
       {lawyers.map((lawyer, i) => <div key={i} className="w-[200px]"><LawyerCard lawyer={lawyer} /></div>)}
     </ContinuousMarquee>
+  );
+}
+
+/* ─── 인기 서비스 (수동 스와이프 + 도트) ────────────────── */
+function PopularCarousel({ onSelect }: { onSelect: (seed: string) => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+
+  const scrollToIdx = (idx: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const cards = el.querySelectorAll<HTMLElement>("[data-pc]");
+    if (cards[idx]) el.scrollTo({ left: cards[idx].offsetLeft, behavior: "smooth" });
+  };
+
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const cards = Array.from(el.querySelectorAll<HTMLElement>("[data-pc]"));
+    const cx = el.scrollLeft + el.clientWidth / 2;
+    let best = 0, bestD = Infinity;
+    cards.forEach((c, i) => {
+      const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - cx);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    setActive(best);
+  };
+
+  return (
+    <div>
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        className="flex overflow-x-auto snap-x snap-mandatory gap-3 px-5 md:px-10 pb-2 [&::-webkit-scrollbar]:hidden"
+        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+      >
+        {POPULAR.map((item) => (
+          <button
+            key={item.label}
+            data-pc
+            onClick={() => onSelect(item.seed)}
+            className="flex-none min-w-[148px] md:min-w-[180px] snap-start bg-white rounded-[14px] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-[#F3F4F6] text-left active:scale-[0.97] hover:border-[#C7D2FE] transition-all"
+          >
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[11px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded-[4px] leading-none">인기</span>
+              <span className="text-2xl leading-none">{item.emoji}</span>
+            </div>
+            <p className="text-[13px] font-semibold text-[#111827] leading-snug">{item.label}</p>
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center justify-center gap-1.5 mt-3">
+        {POPULAR.map((_, i) => (
+          <button key={i} onClick={() => scrollToIdx(i)} aria-label={`${i + 1}번째`}
+            className={`rounded-full transition-all duration-300 ${i === active ? "w-5 h-2 bg-[#4338CA]" : "w-2 h-2 bg-[#D1D5DB] hover:bg-[#A5B4FC]"}`} />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -480,18 +551,7 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* ══ ③ 신뢰 지표 ══════════════════════════════════ */}
-          <section className="px-5 md:px-10 pb-4 md:pb-8 bg-white">
-            <div className="bg-[#F8F7FF] rounded-2xl grid grid-cols-4 divide-x divide-[#E8E5FF]">
-              {TRUST_STATS.map((s, i) => (
-                <div key={i} className={i % 2 === 0 && i < 2 ? "" : ""}>
-                  <StatCell {...s} />
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* ══ ④ 퀵 액션 카드 ════════════════════════════════ */}
+          {/* ══ ③ 퀵 액션 카드 ════════════════════════════════ */}
           <section className="px-5 md:px-10 pb-5 md:pb-10 bg-white">
             <div className="grid grid-cols-2 gap-3 md:gap-6">
               <Link href="/ai-consultation"
@@ -513,36 +573,20 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* ══ ⑤ 인기 서비스 ════════════════════════════════ */}
-          <section className="bg-[#F9FAFB] pt-5 pb-5 md:pt-10 md:pb-10">
-            {/* 모바일: 연속 스크롤 */}
-            <div className="md:hidden">
-              <ContinuousMarquee trackClass="marquee-track--left" itemGap="mr-3" fadeBg="#F9FAFB">
-                {POPULAR.map((item) => (
-                  <button key={item.label} onClick={() => go(item.seed)}
-                    className="min-w-[148px] bg-white rounded-[14px] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-[#F3F4F6] text-left active:scale-[0.97] hover:border-[#C7D2FE] transition-all">
-                    <div className="flex items-center justify-between mb-2.5">
-                      <span className="text-[11px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded-[4px] leading-none">인기</span>
-                      <span className="text-2xl leading-none">{item.emoji}</span>
-                    </div>
-                    <p className="text-[13px] font-semibold text-[#111827] leading-snug">{item.label}</p>
-                  </button>
-                ))}
-              </ContinuousMarquee>
-            </div>
-            {/* PC: 5개 한 줄 */}
-            <div className="hidden md:flex px-10 gap-4">
-              {POPULAR.map((item) => (
-                <button key={item.label} onClick={() => go(item.seed)}
-                  className="flex-1 bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-[#F3F4F6] text-left hover:border-[#C7D2FE] hover:shadow-[0_4px_16px_rgba(67,56,202,0.1)] transition-all">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[11px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded leading-none">인기</span>
-                    <span className="text-3xl leading-none">{item.emoji}</span>
-                  </div>
-                  <p className="text-[14px] font-semibold text-[#111827] leading-snug">{item.label}</p>
-                </button>
+          {/* ══ ④ 신뢰 지표 ══════════════════════════════════ */}
+          <section className="px-5 md:px-10 pb-4 md:pb-8 bg-white">
+            <div className="bg-[#F8F7FF] rounded-2xl grid grid-cols-4 divide-x divide-[#E8E5FF]">
+              {TRUST_STATS.map((s, i) => (
+                <div key={i}>
+                  <StatCell {...s} />
+                </div>
               ))}
             </div>
+          </section>
+
+          {/* ══ ⑤ 인기 서비스 (수동 스와이프 + 도트) ════════ */}
+          <section className="bg-[#F9FAFB] pt-5 pb-5 md:pt-10 md:pb-10">
+            <PopularCarousel onSelect={go} />
           </section>
 
           {/* ══ ⑥ 상담 분야 ══════════════════════════════════ */}
@@ -551,8 +595,8 @@ export default function HomePage() {
               <h2 className="text-[20px] md:text-[28px] font-extrabold text-[#111827]">상담 분야</h2>
               <p className="mt-1 text-[13px] md:text-[15px] text-[#6B7280]">어떤 고민이든 시작해보세요</p>
             </ScrollReveal>
-            {/* 모바일: 연속 스크롤 2행 */}
-            <div className="md:hidden space-y-3">
+            {/* PC + 모바일 모두 연속 마퀴 */}
+            <div className="space-y-3">
               <ContinuousMarquee trackClass="marquee-track--left" itemGap="mr-4" fadeBg="#F9FAFB">
                 {MAIN_CATEGORIES.map((cat) => (
                   <button key={cat.title} type="button" onClick={() => goQuick(cat.quickSlug)}
@@ -574,16 +618,6 @@ export default function HomePage() {
                   </button>
                 ))}
               </ContinuousMarquee>
-            </div>
-            {/* PC: 4열 그리드 */}
-            <div className="hidden md:grid md:grid-cols-4 md:gap-3 md:px-10">
-              {DESKTOP_CATEGORIES.map((cat) => (
-                <button key={cat.title} onClick={() => go(cat.seed)}
-                  className="flex items-center gap-3 bg-white rounded-xl px-5 py-4 border border-[#F0F0F0] hover:border-[#4338CA] hover:shadow-[0_2px_12px_rgba(67,56,202,0.1)] active:scale-[0.98] transition-all text-left">
-                  <span className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0" style={{ backgroundColor: cat.bg }}>{cat.emoji}</span>
-                  <span className="text-[15px] font-bold text-[#111827]">{cat.title}</span>
-                </button>
-              ))}
             </div>
           </section>
 
@@ -714,18 +748,8 @@ export default function HomePage() {
                 </Link>
               </div>
             </ScrollReveal>
-            {/* 모바일: 연속 스크롤 */}
-            <div className="md:hidden">
-              <LawyerScroll lawyers={DEMO_LAWYERS} />
-            </div>
-            {/* PC: 5열 그리드 */}
-            <div className="hidden md:flex md:px-10 md:gap-4">
-              {DEMO_LAWYERS.map((lawyer, i) => (
-                <div key={i} className="flex-1">
-                  <LawyerCard lawyer={lawyer} />
-                </div>
-              ))}
-            </div>
+            {/* PC + 모바일 모두 연속 마퀴 */}
+            <LawyerScroll lawyers={DEMO_LAWYERS} />
           </section>
 
           {/* ══ ⑪ 하단 CTA 배너 ══════════════════════════════ */}
