@@ -205,8 +205,7 @@ function StatCell({ target, decimals, suffix, label }: (typeof TRUST_STATS)[0]) 
   const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   const runAnim = useCallback(() => {
-    setN(0);
-    setDone(false);
+    setN(0); setDone(false);
     const dur = 1000, t0 = performance.now();
     const tick = (now: number) => {
       const p = Math.min((now - t0) / dur, 1);
@@ -223,7 +222,6 @@ function StatCell({ target, decimals, suffix, label }: (typeof TRUST_STATS)[0]) 
     const io = new IntersectionObserver(([e]) => {
       if (e.isIntersecting && !intervalRef.current) {
         runAnim();
-        // 5초(애니메이션 1s + 정지 4s)마다 반복
         intervalRef.current = setInterval(runAnim, 5000);
       } else if (!e.isIntersecting) {
         clearInterval(intervalRef.current);
@@ -243,16 +241,20 @@ function StatCell({ target, decimals, suffix, label }: (typeof TRUST_STATS)[0]) 
     label === "만족도"     ? Ic.star  : null;
 
   return (
-    <div ref={ref} className="text-center py-4 px-2 md:py-6 flex flex-col items-center gap-1">
+    <div ref={ref} className="flex flex-col items-center justify-center text-center py-4 md:py-5 px-1">
+      {/* 아이콘: SVG 크기 강제 통일 (모바일 20px / PC 24px) */}
       {iconEl && (
-        <span className="text-[#4338CA] opacity-60 mb-0.5">
+        <span className="text-[#4338CA]/60 flex items-center justify-center mb-1.5
+                         [&>svg]:w-5 [&>svg]:h-5 md:[&>svg]:w-6 md:[&>svg]:h-6">
           {iconEl}
         </span>
       )}
-      <p className="text-[22px] md:text-[40px] font-extrabold text-[#4338CA] leading-none tabular-nums">
-        {display}{done ? suffix : ""}
+      {/* 숫자: 접미어 invisible placeholder로 너비 고정 (레이아웃 흔들림 방지) */}
+      <p className="text-[24px] md:text-[32px] font-extrabold text-[#4338CA] leading-none tabular-nums whitespace-nowrap">
+        {display}<span className={done ? "" : "invisible"}>{suffix}</span>
       </p>
-      <p className="mt-0.5 text-[11px] md:text-[13px] text-[#6B7280] font-medium">{label}</p>
+      {/* 라벨 */}
+      <p className="mt-1 text-[11px] md:text-[13px] text-[#6B7280] font-medium whitespace-nowrap">{label}</p>
     </div>
   );
 }
@@ -640,9 +642,12 @@ export default function HomePage() {
 
           {/* ══ ④ 신뢰 지표 ══════════════════════════════════ */}
           <section className="px-5 md:px-10 pb-4 md:pb-8 bg-white">
-            <div className="bg-[#F0F0FF] rounded-2xl grid grid-cols-4 divide-x divide-[#E0E0FF]">
+            <div
+              className="bg-[#F0F0FF] rounded-2xl grid divide-x divide-[#E0E0FF]"
+              style={{ gridTemplateColumns: "repeat(4, 1fr)" }}
+            >
               {TRUST_STATS.map((s, i) => (
-                <div key={i}>
+                <div key={i} className="min-w-0">
                   <StatCell {...s} />
                 </div>
               ))}
