@@ -10,6 +10,7 @@ import LawselLogo from "@/components/LawselLogo";
 import { useAuth } from "@/components/AuthProvider";
 import { BLOG_POSTS, CATEGORY_COLOR } from "@/lib/blog-data";
 import Footer from "@/components/Footer";
+import LoginPromptModal from "@/components/LoginPromptModal";
 import type { Lawyer } from "@/lib/types";
 
 /* ─── 인라인 아이콘 ──────────────────────────────────────── */
@@ -517,6 +518,7 @@ function BlogCarousel() {
 export default function HomePage() {
   const router = useRouter();
   const { account, loading } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   function go(seed?: string) {
     const id = generateId();
@@ -524,6 +526,15 @@ export default function HomePage() {
   }
   function goQuick(slug: string) {
     router.push(`/chat/${generateId()}?quick=${slug}`);
+  }
+
+  /** 비로그인 시 모달, 로그인 시 AI 상담으로 이동 */
+  function handleAIConsult() {
+    if (account) {
+      router.push("/ai-consultation");
+    } else if (!loading) {
+      setShowLoginModal(true);
+    }
   }
 
   return (
@@ -609,11 +620,14 @@ export default function HomePage() {
               <p className="text-white/65 text-[15px] md:text-[17px] mb-7">
                 AI가 분석하고, 변호사가 해결합니다
               </p>
-              <Link href="/ai-consultation"
-                className="flex items-center gap-3 h-[54px] md:h-[62px] px-5 md:px-6 rounded-[27px] bg-white text-[#9CA3AF] shadow-[0_4px_24px_rgba(0,0,0,0.22)] hover:shadow-[0_6px_32px_rgba(0,0,0,0.28)] transition-all">
+              <button
+                type="button"
+                onClick={handleAIConsult}
+                className="w-full text-left flex items-center gap-3 h-[54px] md:h-[62px] px-5 md:px-6 rounded-[27px] bg-white text-[#9CA3AF] shadow-[0_4px_24px_rgba(0,0,0,0.22)] hover:shadow-[0_6px_32px_rgba(0,0,0,0.28)] transition-all"
+              >
                 <span className="text-[#4338CA] shrink-0">{Ic.search}</span>
                 <span className="text-[15px] md:text-[17px] truncate">어떤 법률 문제가 있으신가요?</span>
-              </Link>
+              </button>
             </div>
           </section>
 
@@ -621,14 +635,17 @@ export default function HomePage() {
           <section className="px-5 md:px-10 -mt-10 relative z-10 pb-5 md:pb-10">
             {/* grid: 정확히 1fr 1fr, gap 12px → 양 카드 동일 너비·높이 보장 */}
             <div className="grid gap-3 md:gap-6" style={{ gridTemplateColumns: "1fr 1fr" }}>
-              <Link href="/ai-consultation"
-                className="group flex flex-col bg-white rounded-2xl p-5 md:p-7 shadow-[0_8px_32px_rgba(67,56,202,0.15)] hover:shadow-[0_12px_40px_rgba(67,56,202,0.22)] border border-[#F3F4F6] hover:border-[#C7D2FE] active:scale-[0.97] transition-all">
+              <button
+                type="button"
+                onClick={handleAIConsult}
+                className="group flex flex-col bg-white rounded-2xl p-5 md:p-7 shadow-[0_8px_32px_rgba(67,56,202,0.15)] hover:shadow-[0_12px_40px_rgba(67,56,202,0.22)] border border-[#F3F4F6] hover:border-[#C7D2FE] active:scale-[0.97] transition-all text-left"
+              >
                 <div className="w-11 h-11 md:w-16 md:h-16 rounded-full bg-[#EEF2FF] flex items-center justify-center text-[#4338CA] mb-3 md:mb-5 group-hover:bg-[#E0E7FF] transition-colors shrink-0">
                   {Ic.chat}
                 </div>
                 <p className="text-[16px] md:text-[20px] font-bold text-[#111827] leading-snug">AI 법률 상담</p>
                 <p className="mt-1 text-[13px] md:text-[15px] text-[#6B7280] leading-snug">무료로 AI에게 물어보세요</p>
-              </Link>
+              </button>
               <Link href="/lawyers"
                 className="group flex flex-col bg-white rounded-2xl p-5 md:p-7 shadow-[0_8px_32px_rgba(67,56,202,0.15)] hover:shadow-[0_12px_40px_rgba(67,56,202,0.22)] border border-[#F3F4F6] hover:border-[#A7F3D0] active:scale-[0.97] transition-all">
                 <div className="w-11 h-11 md:w-16 md:h-16 rounded-full bg-[#D1FAE5] flex items-center justify-center text-[#059669] mb-3 md:mb-5 group-hover:bg-[#A7F3D0] transition-colors shrink-0">
@@ -844,6 +861,12 @@ export default function HomePage() {
         </div>
 
       </div>
+
+      {/* 비로그인 AI 상담 유도 모달 */}
+      <LoginPromptModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+      />
     </div>
   );
 }
