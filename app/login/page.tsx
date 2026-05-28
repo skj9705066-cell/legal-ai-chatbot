@@ -21,10 +21,21 @@ export default function LoginPageWrapper() {
   );
 }
 
+function safeRedirect(raw: string | null): string {
+  if (!raw) return "/";
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (decoded.startsWith("/") && !decoded.startsWith("//")) return decoded;
+  } catch {
+    // ignore malformed encoding
+  }
+  return "/";
+}
+
 function LoginPage() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") || "/";
+  const next = safeRedirect(params.get("next"));
   const { signInEmail, signInWithKakao } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -53,7 +64,7 @@ function LoginPage() {
       if (acc.type === "lawyer") {
         router.replace("/lawyer/dashboard");
       } else {
-        router.replace(decodeURIComponent(next));
+        router.replace(next);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "로그인에 실패했습니다.");

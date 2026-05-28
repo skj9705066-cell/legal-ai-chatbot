@@ -1,10 +1,12 @@
 /** @type {import('next').NextConfig} */
 
 const PROD_ORIGIN = "https://legal-ai-chatbot-five.vercel.app";
+const isProd = process.env.NODE_ENV === "production";
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+  // unsafe-eval is only needed by Next.js dev server (fast-refresh); remove in production
+  `script-src 'self'${isProd ? "" : " 'unsafe-eval'"} 'unsafe-inline'`,
   "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
   "font-src 'self' https://cdn.jsdelivr.net",
   "img-src 'self' data: blob: https:",
@@ -23,6 +25,10 @@ const SECURITY_HEADERS = [
     value: "camera=(), microphone=(), geolocation=()",
   },
   { key: "Content-Security-Policy", value: CSP },
+  // HSTS: only meaningful over HTTPS (production)
+  ...(isProd
+    ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }]
+    : []),
 ];
 
 const allowedOrigin =
