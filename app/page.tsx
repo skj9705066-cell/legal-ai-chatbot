@@ -617,22 +617,23 @@ export default function HomePage() {
 
           {/* ══ ③ 퀵 액션 카드 (히어로 위에 떠있게) ════════ */}
           <section className="px-5 md:px-10 -mt-10 relative z-10 pb-5 md:pb-10">
-            <div className="grid grid-cols-2 gap-3 md:gap-6">
+            {/* grid: 정확히 1fr 1fr, gap 12px → 양 카드 동일 너비·높이 보장 */}
+            <div className="grid gap-3 md:gap-6" style={{ gridTemplateColumns: "1fr 1fr" }}>
               <Link href="/ai-consultation"
-                className="group bg-white rounded-2xl p-5 md:p-7 shadow-[0_8px_32px_rgba(67,56,202,0.15)] hover:shadow-[0_12px_40px_rgba(67,56,202,0.22)] border border-[#F3F4F6] hover:border-[#C7D2FE] active:scale-[0.97] transition-all">
-                <div className="w-11 h-11 md:w-16 md:h-16 rounded-full bg-[#EEF2FF] flex items-center justify-center text-[#4338CA] mb-3 md:mb-5 group-hover:bg-[#E0E7FF] transition-colors">
+                className="group flex flex-col bg-white rounded-2xl p-5 md:p-7 shadow-[0_8px_32px_rgba(67,56,202,0.15)] hover:shadow-[0_12px_40px_rgba(67,56,202,0.22)] border border-[#F3F4F6] hover:border-[#C7D2FE] active:scale-[0.97] transition-all">
+                <div className="w-11 h-11 md:w-16 md:h-16 rounded-full bg-[#EEF2FF] flex items-center justify-center text-[#4338CA] mb-3 md:mb-5 group-hover:bg-[#E0E7FF] transition-colors shrink-0">
                   {Ic.chat}
                 </div>
-                <p className="text-[16px] md:text-[20px] font-bold text-[#111827]">AI 법률 상담</p>
-                <p className="mt-1 text-[13px] md:text-[15px] text-[#6B7280]">무료로 AI에게 물어보세요</p>
+                <p className="text-[16px] md:text-[20px] font-bold text-[#111827] leading-snug">AI 법률 상담</p>
+                <p className="mt-1 text-[13px] md:text-[15px] text-[#6B7280] leading-snug">무료로 AI에게 물어보세요</p>
               </Link>
               <Link href="/lawyers"
-                className="group bg-white rounded-2xl p-5 md:p-7 shadow-[0_8px_32px_rgba(67,56,202,0.15)] hover:shadow-[0_12px_40px_rgba(67,56,202,0.22)] border border-[#F3F4F6] hover:border-[#A7F3D0] active:scale-[0.97] transition-all">
-                <div className="w-11 h-11 md:w-16 md:h-16 rounded-full bg-[#D1FAE5] flex items-center justify-center text-[#059669] mb-3 md:mb-5 group-hover:bg-[#A7F3D0] transition-colors">
+                className="group flex flex-col bg-white rounded-2xl p-5 md:p-7 shadow-[0_8px_32px_rgba(67,56,202,0.15)] hover:shadow-[0_12px_40px_rgba(67,56,202,0.22)] border border-[#F3F4F6] hover:border-[#A7F3D0] active:scale-[0.97] transition-all">
+                <div className="w-11 h-11 md:w-16 md:h-16 rounded-full bg-[#D1FAE5] flex items-center justify-center text-[#059669] mb-3 md:mb-5 group-hover:bg-[#A7F3D0] transition-colors shrink-0">
                   {Ic.users}
                 </div>
-                <p className="text-[16px] md:text-[20px] font-bold text-[#111827]">변호사 찾기</p>
-                <p className="mt-1 text-[13px] md:text-[15px] text-[#6B7280]">전문 변호사 매칭</p>
+                <p className="text-[16px] md:text-[20px] font-bold text-[#111827] leading-snug">변호사 찾기</p>
+                <p className="mt-1 text-[13px] md:text-[15px] text-[#6B7280] leading-snug">전문 변호사 매칭</p>
               </Link>
             </div>
           </section>
