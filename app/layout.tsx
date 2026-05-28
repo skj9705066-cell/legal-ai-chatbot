@@ -3,12 +3,13 @@ import AppShell from "@/components/AppShell";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
-const SITE_URL = "https://legal-ai-chatbot-five.vercel.app";
+const SITE_URL = "https://lawsel.kr";
 const SITE_NAME = "로셀";
 const DEFAULT_TITLE = "로셀 — AI 법률 상담 플랫폼";
 const DEFAULT_DESC =
   "로셀 — 딱 맞는 변호사를 골라드립니다. AI가 한국 법령·판례를 분석하고, 전문 변호사를 매칭합니다.";
-const OG_IMAGE = `${SITE_URL}/icon-512.png`;
+const OG_IMAGE = `${SITE_URL}/og-image.png`;
+const OG_DESC = "딱 맞는 변호사를 골라드립니다. 24시간 무료 AI 법률 상담.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -43,21 +44,21 @@ export const metadata: Metadata = {
     url: SITE_URL,
     siteName: SITE_NAME,
     title: DEFAULT_TITLE,
-    description: DEFAULT_DESC,
+    description: OG_DESC,
     images: [
       {
         url: OG_IMAGE,
-        width: 512,
-        height: 512,
-        alt: `${SITE_NAME} - AI 법률 상담 플랫폼 로고`,
+        width: 1200,
+        height: 630,
+        alt: `${SITE_NAME} - AI 법률 상담 플랫폼`,
       },
     ],
   },
 
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: DEFAULT_TITLE,
-    description: DEFAULT_DESC,
+    description: OG_DESC,
     images: [OG_IMAGE],
     site: "@legalai_kr",
     creator: "@legalai_kr",
