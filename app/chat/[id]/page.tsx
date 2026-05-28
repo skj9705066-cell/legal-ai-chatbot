@@ -451,6 +451,18 @@ export default function ChatPage({
           {/* Chat scroll area */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto">
             <div className="max-w-md mx-auto px-5 py-8 space-y-6 lg:max-w-2xl lg:px-8 lg:py-12 lg:space-y-7">
+              {/* 인공지능기본법 제31조 — AI 서비스 사전 고지 */}
+              <div className="flex items-start gap-2.5 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-[12px] text-brand-800 leading-[1.6]">
+                <svg className="shrink-0 mt-0.5 w-3.5 h-3.5 text-brand-600" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+                </svg>
+                <span>
+                  <strong className="font-semibold">본 서비스는 생성형 AI를 기반으로 운영됩니다.</strong>{" "}
+                  법률AI는 일반적인 법령·판례 정보를 안내하며, 변호사법 제109조에 따라 구체적인 법률 사무를 수행하지 않습니다.
+                  AI가 제공하는 정보는 법적 조언이 아니므로 중요한 사안은 반드시 변호사와 상담하시기 바랍니다.
+                </span>
+              </div>
+
               {/* Static AI greeting */}
               <AssistantBubble content={AI_GREETING} streaming={false} />
 
@@ -749,7 +761,7 @@ function ChatSidebar({
             : "AI 분석 진행 중..."}
         </button>
         <p className="text-[12px] text-text-muted leading-[1.7] mt-4 font-medium">
-          본 서비스는 일반적인 법률 정보를 제공합니다. 구체적인 사건의 법률 자문은 변호사와의 상담을 권해드립니다.
+          법률AI는 법률상담의 수행 주체가 아닙니다. 본 서비스는 생성형 AI 기반으로 일반적인 법령·판례 정보를 제공하며, 변호사법 제109조에 따라 구체적인 법률 사무를 수행하지 않습니다.
         </p>
       </section>
     </div>
@@ -784,12 +796,19 @@ function AssistantBubble({
           }}
         >
           {content ? (
-            <div
-              className={`assistant-content text-primary-900 ${
-                streaming && !searching ? "typing-cursor" : ""
-              }`}
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
-            />
+            <>
+              <div
+                className={`assistant-content text-primary-900 ${
+                  streaming && !searching ? "typing-cursor" : ""
+                }`}
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+              />
+              {!streaming && (
+                <p className="mt-3 pt-2.5 border-t border-ink-3 text-[11px] text-primary-400 font-medium">
+                  AI 생성물 | 인공지능에 의해 생성된 콘텐츠입니다
+                </p>
+              )}
+            </>
           ) : (
             !searching && (
               <div className="flex items-center gap-1.5 py-1 px-1">

@@ -3,11 +3,11 @@
 import Link from "next/link";
 
 const LINKS = [
-  { label: "이용약관", href: "#terms" },
-  { label: "개인정보처리방침", href: "#privacy", strong: true },
-  { label: "운영정책", href: "#policy" },
-  { label: "면책조항", href: "#disclaimer" },
-  { label: "고객센터", href: "#support" },
+  { label: "이용약관", href: "/terms" },
+  { label: "개인정보처리방침", href: "/privacy", strong: true },
+  { label: "운영정책", href: "/terms#policy" },
+  { label: "면책조항", href: "/terms#disclaimer" },
+  { label: "고객센터", href: "mailto:contact@legal-ai.kr" },
 ];
 
 const COMPANY = {
