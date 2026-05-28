@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "변호사 대시보드 | 법률AI",
+  title: "변호사 대시보드",
   robots: { index: false, follow: false },
 };
 

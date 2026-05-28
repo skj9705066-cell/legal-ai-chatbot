@@ -2,10 +2,10 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "개인정보처리방침 | 법률AI",
+  title: "개인정보처리방침",
   description: "법률AI 개인정보처리방침. 수집 항목, 이용 목적, 보유 기간, 제3자 제공, 이용자 권리를 확인하세요.",
   openGraph: {
-    title: "개인정보처리방침 | 법률AI",
+    title: "개인정보처리방침",
     description: "법률AI 개인정보 수집·이용·보호 방침을 확인하세요.",
     url: "https://legal-ai-chatbot-five.vercel.app/privacy",
   },

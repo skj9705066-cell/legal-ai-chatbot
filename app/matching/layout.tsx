@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "변호사 매칭 | 법률AI",
+  title: "변호사 매칭",
   description: "AI 분석 결과를 바탕으로 적합한 전문 변호사와 연결됩니다.",
   robots: { index: false, follow: false },
 };
