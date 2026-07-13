@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { formatDate } from "@/lib/admin-data";
-import type { ConsultationRow } from "@/lib/supabase-types";
+import type { ConsultationRow, ProfileRow } from "@/lib/supabase-types";
 
 const CATEGORIES = ["전체", "형사", "이혼", "부동산", "노동", "계약", "손해배상"];
 
@@ -14,6 +14,7 @@ interface ChatMsg {
 
 export default function AdminConsultationsPage() {
   const [rows, setRows] = useState<ConsultationRow[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, ProfileRow>>({});
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState("전체");
   const [analyzedOnly, setAnalyzedOnly] = useState(false);
@@ -21,19 +22,41 @@ export default function AdminConsultationsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("consultations")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(100);
-    if (error) {
-      console.warn("[admin/consultations] load error", error.message);
+    // 상담 목록과 회원(profiles)을 함께 조회해 user_id → 이름 매핑을 만든다.
+    const [consRes, profRes] = await Promise.all([
+      supabase
+        .from("consultations")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100),
+      supabase.from("profiles").select("*"),
+    ]);
+    if (consRes.error) {
+      console.warn("[admin/consultations] load error", consRes.error.message);
       setRows([]);
     } else {
-      setRows((data ?? []) as ConsultationRow[]);
+      setRows((consRes.data ?? []) as ConsultationRow[]);
+    }
+    if (profRes.error) {
+      console.warn(
+        "[admin/consultations] profiles load error",
+        profRes.error.message,
+      );
+    } else {
+      const map: Record<string, ProfileRow> = {};
+      for (const p of (profRes.data ?? []) as ProfileRow[]) {
+        map[p.id] = p;
+      }
+      setProfiles(map);
     }
     setLoading(false);
   }, []);
+
+  function userLabel(userId: string | null): string {
+    if (!userId) return "—";
+    const p = profiles[userId];
+    return p?.name || p?.email || `${userId.slice(0, 8)}`;
+  }
 
   useEffect(() => {
     void load();
@@ -143,8 +166,8 @@ export default function AdminConsultationsPage() {
                       <td className="px-4 py-3 text-[#8B95A1] font-mono text-[12px]">
                         {c.id.slice(0, 8)}
                       </td>
-                      <td className="px-4 py-3 text-[#4E5968] font-mono text-[12px]">
-                        {c.user_id?.slice(0, 8) ?? "—"}
+                      <td className="px-4 py-3 text-[#191F28] font-medium">
+                        {userLabel(c.user_id)}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-[11px] font-bold px-2 h-6 leading-6 rounded-full bg-[#EEF2FF] text-[#4338CA]">
@@ -192,6 +215,9 @@ export default function AdminConsultationsPage() {
                   </span>
                   <span className="text-[12px] text-[#8B95A1] font-medium">
                     {formatDate(selected.created_at)}
+                  </span>
+                  <span className="text-[12px] text-[#4E5968] font-semibold">
+                    · {userLabel(selected.user_id)}
                   </span>
                 </div>
                 <h3 className="text-[15px] font-bold text-[#191F28] leading-snug">

@@ -56,6 +56,47 @@ function extractCitationsFromMessages(messages: ChatMessage[]): Citation[] {
   return extractCitations(texts);
 }
 
+// 화면에는 남기지만 API로는 보내지 말아야 할 메시지 판별.
+function isErrorMessage(m: ChatMessage): boolean {
+  return m.role === "assistant" && m.content.trimStart().startsWith("[오류]");
+}
+
+// 텍스트가 있거나, 아직 base64 data가 살아있는 첨부가 있어야 API에 의미가 있다.
+function hasUsableContent(m: ChatMessage): boolean {
+  if (m.content.trim().length > 0) return true;
+  return !!m.attachments?.some((a) => a.data);
+}
+
+// 대화 히스토리를 API 전송용으로 정제한다.
+// 1) [오류] 자리표시자와 빈 메시지를 제거하고
+// 2) 그 결과 같은 role이 연달아 붙으면 병합해 user/assistant 교대 구조를 지키며
+// 3) 선두의 assistant 메시지를 떨어내(첫 메시지는 반드시 user) 400을 예방한다.
+function sanitizeForApi(messages: ChatMessage[]): ChatMessage[] {
+  const kept = messages.filter(
+    (m) => !isErrorMessage(m) && hasUsableContent(m),
+  );
+
+  const merged: ChatMessage[] = [];
+  for (const m of kept) {
+    const last = merged[merged.length - 1];
+    if (last && last.role === m.role) {
+      last.content = [last.content, m.content]
+        .filter((t) => t.trim().length > 0)
+        .join("\n\n");
+      if (m.attachments?.length) {
+        last.attachments = [...(last.attachments ?? []), ...m.attachments];
+      }
+    } else {
+      merged.push({ ...m });
+    }
+  }
+
+  while (merged.length > 0 && merged[0].role === "assistant") {
+    merged.shift();
+  }
+  return merged;
+}
+
 function readAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -266,7 +307,8 @@ export default function ChatPage({
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMessages }),
+        // 화면(nextMessages)과 달리 API에는 오류·빈 메시지를 걸러낸 정제본을 보낸다.
+        body: JSON.stringify({ messages: sanitizeForApi(nextMessages) }),
       });
 
       if (!res.ok || !res.body) {

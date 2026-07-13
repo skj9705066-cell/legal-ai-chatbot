@@ -142,13 +142,29 @@ function toMessageParam(m: IncomingMessage): MessageParam {
     }
   }
 
+  const text = m.content?.trim() ?? "";
+
   if (blocks.length === 0) {
-    return { role: m.role, content: m.content };
+    // 사용 가능한 첨부 블록이 없는 경우.
+    // 본문이 비어 있으면 Anthropic API가 400(user/assistant messages must have
+    // non-empty content)으로 전체 요청을 거부하므로, 턴 구조를 유지하기 위해
+    // 대체 텍스트를 넣는다. (localStorage 저장 시 첨부 data가 strip되어
+    // 재전송 시 빈 메시지가 되는 문제 방어 — CLAUDE.md 첨부 처리 주의사항 참고)
+    if (text) {
+      return { role: m.role, content: text };
+    }
+    const hadAttachment = !!(m.attachments && m.attachments.length > 0);
+    return {
+      role: m.role,
+      content: hadAttachment
+        ? "(이전에 첨부한 파일이 있었으나 내용이 저장되지 않았습니다.)"
+        : "(내용 없음)",
+    };
   }
 
   blocks.push({
     type: "text",
-    text: m.content || "첨부된 파일을 분석해주세요.",
+    text: text || "첨부된 파일을 분석해주세요.",
   });
   return { role: m.role, content: blocks };
 }
@@ -185,7 +201,9 @@ export async function POST(req: NextRequest) {
       try {
         const apiStream = client.messages.stream({
           model: "claude-opus-4-7",
-          max_tokens: 1536,
+          // 종합 분석(법령 조문 + 판례 설명)과 web_search 호출이 같은 한도를 공유하므로
+          // 넉넉히 확보한다. 1536은 분석 도중 max_tokens로 잘리는 원인이었음.
+          max_tokens: 8192,
           system: [
             {
               type: "text",
