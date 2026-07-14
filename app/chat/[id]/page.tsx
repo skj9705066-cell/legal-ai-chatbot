@@ -133,10 +133,12 @@ export default function ChatPage({
   const [searching, setSearching] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const autoSentRef = useRef(false);
+  const suggestAbortRef = useRef<AbortController | null>(null);
 
   const bannerStorageKey = `legaladvisor.banner-dismissed.${id}`;
 
@@ -254,6 +256,33 @@ export default function ChatPage({
     setAttachmentError(null);
   }
 
+  // 답변이 끝나면 대화 맥락 기반 "예시 답변"을 가져와 입력창 위에 칩으로 띄운다.
+  async function fetchSuggestions(convo: ChatMessage[]) {
+    suggestAbortRef.current?.abort();
+    const ac = new AbortController();
+    suggestAbortRef.current = ac;
+    try {
+      const res = await fetch("/api/suggest-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: convo.map((m) => ({ role: m.role, content: m.content })),
+        }),
+        signal: ac.signal,
+      });
+      if (!res.ok) {
+        setSuggestions([]);
+        return;
+      }
+      const data = (await res.json()) as { questions?: string[] };
+      setSuggestions(
+        Array.isArray(data.questions) ? data.questions.slice(0, 3) : [],
+      );
+    } catch {
+      // 취소·실패는 조용히 무시 (부가 기능).
+    }
+  }
+
   async function sendMessage(
     content: string,
     files: Attachment[],
@@ -301,6 +330,7 @@ export default function ChatPage({
     setInput("");
     setAttachments([]);
     setAttachmentError(null);
+    setSuggestions([]);
     setIsStreaming(true);
 
     try {
@@ -353,6 +383,18 @@ export default function ChatPage({
         upsertConsultation(prev);
         return prev;
       });
+
+      // 답변이 정상적으로 끝났을 때만 추천(예시 답변)을 요청한다.
+      const finalText = rawText
+        .replaceAll(SEARCH_START_MARKER, "")
+        .replaceAll(SEARCH_END_MARKER, "")
+        .trim();
+      if (finalText && !finalText.startsWith("[오류]")) {
+        void fetchSuggestions([
+          ...nextMessages,
+          { role: "assistant", content: finalText },
+        ]);
+      }
     } catch (err) {
       const msg =
         err instanceof Error
@@ -540,6 +582,39 @@ export default function ChatPage({
               onStart={() => router.push(`/matching/${id}`)}
               onDismiss={dismissBanner}
             />
+          )}
+
+          {/* Suggested reply chips (YouTube-style) */}
+          {!isStreaming && suggestions.length > 0 && (
+            <div className="bg-ink-2 border-t border-ink-3">
+              <div className="max-w-md mx-auto px-5 pt-3 lg:max-w-2xl lg:px-8">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <svg
+                    className="w-3.5 h-3.5 text-gold"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M12 2l1.9 5.6L19.5 9l-4.8 3.5 1.8 5.6L12 14.9 7.5 18l1.8-5.6L4.5 9l5.6-1.4L12 2z" />
+                  </svg>
+                  <span className="text-[11px] font-semibold text-primary-500 tracking-wide">
+                    이렇게 답해보기
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.map((q, i) => (
+                    <button
+                      key={`${i}-${q}`}
+                      type="button"
+                      onClick={() => sendMessage(q, [])}
+                      disabled={isStreaming}
+                      className="text-left text-[13px] font-medium text-primary-800 bg-white border border-ink-3 rounded-full px-3.5 py-2 shadow-sm hover:border-gold hover:text-gold-700 transition-all duration-300 ease-luxe disabled:opacity-50"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Input area */}
