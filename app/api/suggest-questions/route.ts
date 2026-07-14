@@ -75,7 +75,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const response = await client.messages.create({
-      model: "claude-haiku-4-5",
+      // 프로덕션 API 키에서 검증된 모델 사용(haiku-4-5는 이 키로 접근 불가로 확인됨).
+      // 집의 chat/case-summary와 동일. 출력이 짧아(예시 3개) 호출당 비용은 미미.
+      model: "claude-opus-4-7",
       max_tokens: 400,
       system: SYSTEM_PROMPT,
       messages: [
