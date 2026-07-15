@@ -14,6 +14,7 @@ import type { Citation } from "@/lib/markdown";
 import { hasCompletedAnalysis } from "@/lib/analysis-detection";
 import { syncConsultationToSupabase } from "@/lib/consultation-sync";
 import { useAuth } from "@/components/AuthProvider";
+import LoginPromptModal from "@/components/LoginPromptModal";
 import RobotMascot from "@/components/RobotMascot";
 import type {
   Attachment,
@@ -21,6 +22,9 @@ import type {
   ChatMessage,
   Consultation,
 } from "@/lib/types";
+
+// 비로그인 상태에서 무료로 허용하는 상담(=사용자 메시지) 횟수. 초과 시 로그인 유도.
+const FREE_CONSULTATION_LIMIT = 2;
 
 const MAX_ATTACHMENTS = 5;
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -122,7 +126,7 @@ export default function ChatPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { account } = useAuth();
+  const { account, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const quickSlug = searchParams.get("quick");
@@ -137,6 +141,7 @@ export default function ChatPage({
   const [mounted, setMounted] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showLoginGate, setShowLoginGate] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -176,7 +181,8 @@ export default function ChatPage({
     }
   }
 
-  // Auto-send seeded prompt (from home search) or quick category on fresh load
+  // Auto-send seeded prompt (from home search) or quick category on fresh load.
+  // 첫 상담(시드/퀵)은 비로그인도 허용한다. 무료 횟수 초과는 sendMessage에서 처리.
   useEffect(() => {
     if (!mounted || autoSentRef.current) return;
     if (consultation && consultation.messages.length > 0) return;
@@ -307,6 +313,15 @@ export default function ChatPage({
     const trimmed = content.trim();
     if (isStreaming) return;
     if (!trimmed && files.length === 0) return;
+
+    // 비로그인 무료 체험: 무료 상담 횟수를 다 쓰면 로그인 모달을 띄우고 중단한다.
+    const priorUserTurns = (consultation?.messages ?? []).filter(
+      (m) => m.role === "user",
+    ).length;
+    if (!authLoading && !account && priorUserTurns >= FREE_CONSULTATION_LIMIT) {
+      setShowLoginGate(true);
+      return;
+    }
 
     const now = Date.now();
     const userMsg: ChatMessage = {
@@ -450,7 +465,8 @@ export default function ChatPage({
   }
 
   const messages = consultation?.messages ?? [];
-  const canSend = (input.trim().length > 0 || attachments.length > 0) && !isStreaming;
+  const canSend =
+    (input.trim().length > 0 || attachments.length > 0) && !isStreaming;
   const canAttachMore = attachments.length < MAX_ATTACHMENTS;
   const aiResponseCount = messages.filter(
     (m) => m.role === "assistant" && m.content.trim().length > 0,
@@ -763,6 +779,24 @@ export default function ChatPage({
           />
         </aside>
       </div>
+
+      {/* 무료 상담 횟수 초과 시 로그인 유도 (닫으면 이전 대화는 그대로 유지) */}
+      <LoginPromptModal
+        isOpen={showLoginGate}
+        onClose={() => setShowLoginGate(false)}
+        title={
+          <>
+            로그인하고 무료로<br />계속 상담하세요
+          </>
+        }
+        description={
+          <>
+            무료 AI 상담 {FREE_CONSULTATION_LIMIT}회를 모두 이용하셨어요.
+            <br />
+            로그인하면 무료로 계속 상담할 수 있습니다.
+          </>
+        }
+      />
     </main>
   );
 }
