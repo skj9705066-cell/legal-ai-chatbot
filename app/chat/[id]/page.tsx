@@ -25,8 +25,8 @@ import type {
   Consultation,
 } from "@/lib/types";
 
-// 비로그인 상태에서 무료로 허용하는 상담(=사용자 메시지) 횟수. 초과 시 로그인 유도.
-const FREE_CONSULTATION_LIMIT = 2;
+// 비로그인 상태에서 무료로 허용하는 상담(=채팅방) 횟수. 초과 시 로그인 유도.
+const FREE_CONSULTATION_LIMIT = 1;
 
 const MAX_ATTACHMENTS = 5;
 const MAX_BYTES = 10 * 1024 * 1024;
