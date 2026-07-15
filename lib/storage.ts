@@ -89,6 +89,35 @@ export function registerFreeConsultation(id: string): void {
   }
 }
 
+// ── 비로그인 무료 상담 답변 카운트 (브라우저 전역) ────────────────
+// "받은 AI 답변 수" 기준으로 무료 N회를 센다. 방을 나눠도 총합으로 계산하며,
+// 한 방 안의 추가 질문도 각각 1회로 집계된다. (방 개수 기준이던 위 로직 대체)
+const FREE_ANSWERS_KEY = "legaladvisor.free-answers.v1";
+
+export function getGuestAnswerCount(): number {
+  if (typeof window === "undefined") return 0;
+  try {
+    const raw = window.localStorage.getItem(FREE_ANSWERS_KEY);
+    const n = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+// 게스트가 유효한 AI 답변을 1회 받을 때마다 호출한다.
+export function incrementGuestAnswerCount(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      FREE_ANSWERS_KEY,
+      String(getGuestAnswerCount() + 1),
+    );
+  } catch {
+    // 쿼터 초과 등은 조용히 무시.
+  }
+}
+
 export function generateId(): string {
   if (
     typeof crypto !== "undefined" &&

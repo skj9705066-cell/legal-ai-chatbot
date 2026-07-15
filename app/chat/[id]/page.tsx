@@ -6,8 +6,8 @@ import {
   buildTitle,
   generateId,
   getConsultation,
-  getFreeConsultationIds,
-  registerFreeConsultation,
+  getGuestAnswerCount,
+  incrementGuestAnswerCount,
   upsertConsultation,
 } from "@/lib/storage";
 import { getQuickConsultation } from "@/lib/quick-consultations";
@@ -318,19 +318,15 @@ export default function ChatPage({
     if (isStreaming) return;
     if (!trimmed && files.length === 0) return;
 
-    // 비로그인 무료 체험: 브라우저 기준으로 무료 상담 세션 수를 센다.
-    // 이미 시작한 방은 계속 이어갈 수 있고, 새 방을 여는 시점에만 한도를 확인한다.
-    // → "무료 AI 상담 시작하기"로 새 방을 계속 만들어도 우회되지 않는다.
-    if (!authLoading && !account) {
-      const freeIds = getFreeConsultationIds();
-      const isNewSession = !freeIds.includes(id);
-      if (isNewSession && freeIds.length >= FREE_CONSULTATION_LIMIT) {
-        setShowLoginGate(true);
-        return;
-      }
-      if (isNewSession) {
-        registerFreeConsultation(id);
-      }
+    // 비로그인 무료 체험: 받은 AI 답변 수 기준(브라우저 전역, 방 무관)으로 무료 N회.
+    // 이미 N회 답변을 받았다면 다음 질문을 보내기 전에 로그인/가입으로 유도한다.
+    if (
+      !authLoading &&
+      !account &&
+      getGuestAnswerCount() >= FREE_CONSULTATION_LIMIT
+    ) {
+      setShowLoginGate(true);
+      return;
     }
 
     const now = Date.now();
@@ -431,6 +427,8 @@ export default function ChatPage({
         .replaceAll(SEARCH_END_MARKER, "")
         .trim();
       if (finalText && !finalText.startsWith("[오류]")) {
+        // 게스트가 유효한 AI 답변을 1회 받았으므로 무료 카운트를 올린다.
+        if (!account) incrementGuestAnswerCount();
         void fetchSuggestions([
           ...nextMessages,
           { role: "assistant", content: finalText },
