@@ -14,6 +14,7 @@ import type { Citation } from "@/lib/markdown";
 import { hasCompletedAnalysis } from "@/lib/analysis-detection";
 import { syncConsultationToSupabase } from "@/lib/consultation-sync";
 import { useAuth } from "@/components/AuthProvider";
+import LoginPromptModal from "@/components/LoginPromptModal";
 import RobotMascot from "@/components/RobotMascot";
 import type {
   Attachment,
@@ -122,7 +123,7 @@ export default function ChatPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { account } = useAuth();
+  const { account, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const quickSlug = searchParams.get("quick");
@@ -176,9 +177,11 @@ export default function ChatPage({
     }
   }
 
-  // Auto-send seeded prompt (from home search) or quick category on fresh load
+  // Auto-send seeded prompt (from home search) or quick category on fresh load.
+  // 비로그인 상태에서는 자동 전송을 막아 로그인 관문을 우회하지 못하게 한다.
   useEffect(() => {
     if (!mounted || autoSentRef.current) return;
+    if (!account) return;
     if (consultation && consultation.messages.length > 0) return;
 
     if (quickSlug) {
@@ -197,7 +200,7 @@ export default function ChatPage({
         void sendMessage(trimmed, []);
       }
     }
-  }, [mounted, consultation, quickSlug, seedText]);
+  }, [mounted, account, consultation, quickSlug, seedText]);
 
   // Scroll on message update
   useEffect(() => {
@@ -306,6 +309,8 @@ export default function ChatPage({
   ) {
     const trimmed = content.trim();
     if (isStreaming) return;
+    // 로그인하지 않았으면 상담(=API 호출)을 시작하지 않는다.
+    if (!account) return;
     if (!trimmed && files.length === 0) return;
 
     const now = Date.now();
@@ -450,7 +455,12 @@ export default function ChatPage({
   }
 
   const messages = consultation?.messages ?? [];
-  const canSend = (input.trim().length > 0 || attachments.length > 0) && !isStreaming;
+  // 인증 로딩이 끝났는데 계정이 없으면 로그인 관문을 띄운다.
+  const authGated = !authLoading && !account;
+  const canSend =
+    (input.trim().length > 0 || attachments.length > 0) &&
+    !isStreaming &&
+    !authGated;
   const canAttachMore = attachments.length < MAX_ATTACHMENTS;
   const aiResponseCount = messages.filter(
     (m) => m.role === "assistant" && m.content.trim().length > 0,
@@ -692,9 +702,13 @@ export default function ChatPage({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="법률 상황을 자세히 설명해주세요"
+                placeholder={
+                  authGated
+                    ? "로그인 후 상담을 시작할 수 있습니다"
+                    : "법률 상황을 자세히 설명해주세요"
+                }
                 rows={1}
-                disabled={isStreaming}
+                disabled={isStreaming || authGated}
                 className="flex-1 bg-transparent pr-4 py-3.5 outline-none resize-none text-primary-900 placeholder:text-primary-300 text-base leading-relaxed disabled:cursor-not-allowed"
                 style={{ maxHeight: "160px" }}
               />
@@ -763,6 +777,9 @@ export default function ChatPage({
           />
         </aside>
       </div>
+
+      {/* 비로그인 상담 차단: 어떤 진입 경로로 들어와도 여기서 로그인 유도 */}
+      <LoginPromptModal isOpen={authGated} onClose={() => router.push("/")} />
     </main>
   );
 }
