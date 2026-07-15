@@ -4,12 +4,44 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { formatDate } from "@/lib/admin-data";
 import type { ConsultationRow, ProfileRow } from "@/lib/supabase-types";
+import type { CaseSummary } from "@/lib/types";
 
 const CATEGORIES = ["전체", "형사", "이혼", "부동산", "노동", "계약", "손해배상"];
 
 interface ChatMsg {
   role: "user" | "assistant";
   content: string;
+}
+
+const URGENCY_LABEL: Record<string, string> = {
+  low: "낮음",
+  medium: "보통",
+  high: "높음",
+};
+
+// 원본 대화가 유실된(localStorage에만 있던) 과거 상담 중 '매칭까지 진행된' 건은
+// matchings.case_summary(사건 요약)만 남아있다. 이를 읽기용 메시지로 복원한다.
+function caseSummaryToMessages(cs: CaseSummary): ChatMsg[] {
+  const lines: string[] = [];
+  if (cs.caseType) lines.push(`사건 유형: ${cs.caseType}`);
+  if (cs.urgency) lines.push(`긴급도: ${URGENCY_LABEL[cs.urgency] ?? cs.urgency}`);
+  if (cs.keyIssues?.length) {
+    lines.push("", "핵심 쟁점:");
+    for (const k of cs.keyIssues) lines.push(`· ${k}`);
+  }
+  if (cs.relevantLaws?.length) {
+    lines.push("", "관련 법령:");
+    for (const l of cs.relevantLaws) lines.push(`· ${l}`);
+  }
+  if (cs.summary) lines.push("", "[사건 요약]", cs.summary);
+  return [
+    {
+      role: "assistant",
+      content:
+        "⚠️ 원본 대화가 없어, 매칭 시 저장된 사건 요약만 복원한 내역입니다.\n\n" +
+        lines.join("\n"),
+    },
+  ];
 }
 
 export default function AdminConsultationsPage() {
@@ -19,24 +51,79 @@ export default function AdminConsultationsPage() {
   const [category, setCategory] = useState("전체");
   const [analyzedOnly, setAnalyzedOnly] = useState(false);
   const [selected, setSelected] = useState<ConsultationRow | null>(null);
+  // 매칭 요약으로 복원한(원본 대화 없는) 행의 id 집합 — 배지 표시에 사용.
+  const [recoveredIds, setRecoveredIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
-    // 상담 목록과 회원(profiles)을 함께 조회해 user_id → 이름 매핑을 만든다.
-    const [consRes, profRes] = await Promise.all([
+    // 상담·회원(profiles)에 더해, 사건 요약이 있는 매칭도 함께 조회한다.
+    const [consRes, profRes, matchRes] = await Promise.all([
       supabase
         .from("consultations")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(100),
       supabase.from("profiles").select("*"),
+      supabase
+        .from("matchings")
+        .select("id, consultation_id, user_id, case_summary, created_at")
+        .not("case_summary", "is", null)
+        .order("created_at", { ascending: false }),
     ]);
+
+    const realRows = consRes.error
+      ? []
+      : ((consRes.data ?? []) as ConsultationRow[]);
     if (consRes.error) {
       console.warn("[admin/consultations] load error", consRes.error.message);
-      setRows([]);
-    } else {
-      setRows((consRes.data ?? []) as ConsultationRow[]);
     }
+
+    // 실제 consultations에 없는 매칭 요약만 합성해 유실 상담을 복원한다.
+    const existingIds = new Set(realRows.map((r) => r.id));
+    const recovered = new Set<string>();
+    const synthesized: ConsultationRow[] = [];
+    if (matchRes.error) {
+      console.warn(
+        "[admin/consultations] matchings load error",
+        matchRes.error.message,
+      );
+    } else {
+      type MatchShort = {
+        id: string;
+        consultation_id: string | null;
+        user_id: string | null;
+        case_summary: CaseSummary | null;
+        created_at: string;
+      };
+      const seen = new Set<string>();
+      for (const m of (matchRes.data ?? []) as MatchShort[]) {
+        const cs = m.case_summary;
+        if (!cs) continue;
+        const rowId = m.consultation_id ?? m.id;
+        if (existingIds.has(rowId) || seen.has(rowId)) continue;
+        seen.add(rowId);
+        recovered.add(rowId);
+        synthesized.push({
+          id: rowId,
+          user_id: m.user_id,
+          category: cs.caseType ?? null,
+          title: cs.summary ? cs.summary.slice(0, 40) : cs.caseType ?? "(요약 복구)",
+          messages: caseSummaryToMessages(cs) as never,
+          analysis_complete: true,
+          analysis_summary: cs as never,
+          created_at: m.created_at,
+          updated_at: m.created_at,
+        });
+      }
+    }
+
+    const merged = [...realRows, ...synthesized].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+    setRows(merged);
+    setRecoveredIds(recovered);
+
     if (profRes.error) {
       console.warn(
         "[admin/consultations] profiles load error",
@@ -174,8 +261,17 @@ export default function AdminConsultationsPage() {
                           {c.category ?? "법률"}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-semibold text-[#191F28] max-w-[260px] truncate">
-                        {c.title ?? "(제목 없음)"}
+                      <td className="px-4 py-3 font-semibold text-[#191F28] max-w-[260px]">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {recoveredIds.has(c.id) && (
+                            <span className="shrink-0 text-[10px] font-bold px-1.5 h-5 leading-5 rounded-full bg-[#FEF3C7] text-[#B45309]">
+                              요약 복구
+                            </span>
+                          )}
+                          <span className="truncate">
+                            {c.title ?? "(제목 없음)"}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-[#4E5968]">
                         {formatDate(c.created_at)}
@@ -219,6 +315,11 @@ export default function AdminConsultationsPage() {
                   <span className="text-[12px] text-[#4E5968] font-semibold">
                     · {userLabel(selected.user_id)}
                   </span>
+                  {recoveredIds.has(selected.id) && (
+                    <span className="text-[10px] font-bold px-1.5 h-5 leading-5 rounded-full bg-[#FEF3C7] text-[#B45309]">
+                      요약 복구
+                    </span>
+                  )}
                 </div>
                 <h3 className="text-[15px] font-bold text-[#191F28] leading-snug">
                   {selected.title ?? "(제목 없음)"}
