@@ -6,7 +6,23 @@ import Link from "next/link";
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
 }
+
+const DEFAULT_TITLE = (
+  <>
+    무료 AI 법률 상담을<br />받아보세요
+  </>
+);
+
+const DEFAULT_DESCRIPTION = (
+  <>
+    회원가입하면 AI 법률 상담을 무료로 이용할 수 있습니다.
+    <br />
+    30초면 가입 완료!
+  </>
+);
 
 function ScaleIcon() {
   return (
@@ -24,7 +40,12 @@ function ScaleIcon() {
   );
 }
 
-export default function LoginPromptModal({ isOpen, onClose }: Props) {
+export default function LoginPromptModal({
+  isOpen,
+  onClose,
+  title,
+  description,
+}: Props) {
   const [shouldRender, setShouldRender] = useState(false);
   const [visible, setVisible]           = useState(false);
 
@@ -104,14 +125,12 @@ export default function LoginPromptModal({ isOpen, onClose }: Props) {
 
           {/* 제목 */}
           <h2 className="text-[20px] font-extrabold text-[#111827] text-center leading-snug mb-2.5">
-            무료 AI 법률 상담을<br />받아보세요
+            {title ?? DEFAULT_TITLE}
           </h2>
 
           {/* 설명 */}
           <p className="text-[14px] text-[#6B7280] text-center leading-relaxed mb-6">
-            회원가입하면 AI 법률 상담을 무료로 이용할 수 있습니다.
-            <br />
-            30초면 가입 완료!
+            {description ?? DEFAULT_DESCRIPTION}
           </p>
 
           {/* 버튼 */}

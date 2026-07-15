@@ -23,6 +23,9 @@ import type {
   Consultation,
 } from "@/lib/types";
 
+// 비로그인 상태에서 무료로 허용하는 상담(=사용자 메시지) 횟수. 초과 시 로그인 유도.
+const FREE_CONSULTATION_LIMIT = 2;
+
 const MAX_ATTACHMENTS = 5;
 const MAX_BYTES = 10 * 1024 * 1024;
 const ACCEPTED: Record<string, AttachmentMediaType> = {
@@ -138,6 +141,7 @@ export default function ChatPage({
   const [mounted, setMounted] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showLoginGate, setShowLoginGate] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -178,10 +182,9 @@ export default function ChatPage({
   }
 
   // Auto-send seeded prompt (from home search) or quick category on fresh load.
-  // 비로그인 상태에서는 자동 전송을 막아 로그인 관문을 우회하지 못하게 한다.
+  // 첫 상담(시드/퀵)은 비로그인도 허용한다. 무료 횟수 초과는 sendMessage에서 처리.
   useEffect(() => {
     if (!mounted || autoSentRef.current) return;
-    if (!account) return;
     if (consultation && consultation.messages.length > 0) return;
 
     if (quickSlug) {
@@ -200,7 +203,7 @@ export default function ChatPage({
         void sendMessage(trimmed, []);
       }
     }
-  }, [mounted, account, consultation, quickSlug, seedText]);
+  }, [mounted, consultation, quickSlug, seedText]);
 
   // Scroll on message update
   useEffect(() => {
@@ -309,9 +312,16 @@ export default function ChatPage({
   ) {
     const trimmed = content.trim();
     if (isStreaming) return;
-    // 로그인하지 않았으면 상담(=API 호출)을 시작하지 않는다.
-    if (!account) return;
     if (!trimmed && files.length === 0) return;
+
+    // 비로그인 무료 체험: 무료 상담 횟수를 다 쓰면 로그인 모달을 띄우고 중단한다.
+    const priorUserTurns = (consultation?.messages ?? []).filter(
+      (m) => m.role === "user",
+    ).length;
+    if (!authLoading && !account && priorUserTurns >= FREE_CONSULTATION_LIMIT) {
+      setShowLoginGate(true);
+      return;
+    }
 
     const now = Date.now();
     const userMsg: ChatMessage = {
@@ -455,12 +465,8 @@ export default function ChatPage({
   }
 
   const messages = consultation?.messages ?? [];
-  // 인증 로딩이 끝났는데 계정이 없으면 로그인 관문을 띄운다.
-  const authGated = !authLoading && !account;
   const canSend =
-    (input.trim().length > 0 || attachments.length > 0) &&
-    !isStreaming &&
-    !authGated;
+    (input.trim().length > 0 || attachments.length > 0) && !isStreaming;
   const canAttachMore = attachments.length < MAX_ATTACHMENTS;
   const aiResponseCount = messages.filter(
     (m) => m.role === "assistant" && m.content.trim().length > 0,
@@ -702,13 +708,9 @@ export default function ChatPage({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={
-                  authGated
-                    ? "로그인 후 상담을 시작할 수 있습니다"
-                    : "법률 상황을 자세히 설명해주세요"
-                }
+                placeholder="법률 상황을 자세히 설명해주세요"
                 rows={1}
-                disabled={isStreaming || authGated}
+                disabled={isStreaming}
                 className="flex-1 bg-transparent pr-4 py-3.5 outline-none resize-none text-primary-900 placeholder:text-primary-300 text-base leading-relaxed disabled:cursor-not-allowed"
                 style={{ maxHeight: "160px" }}
               />
@@ -778,8 +780,23 @@ export default function ChatPage({
         </aside>
       </div>
 
-      {/* 비로그인 상담 차단: 어떤 진입 경로로 들어와도 여기서 로그인 유도 */}
-      <LoginPromptModal isOpen={authGated} onClose={() => router.push("/")} />
+      {/* 무료 상담 횟수 초과 시 로그인 유도 (닫으면 이전 대화는 그대로 유지) */}
+      <LoginPromptModal
+        isOpen={showLoginGate}
+        onClose={() => setShowLoginGate(false)}
+        title={
+          <>
+            로그인하고 무료로<br />계속 상담하세요
+          </>
+        }
+        description={
+          <>
+            무료 AI 상담 {FREE_CONSULTATION_LIMIT}회를 모두 이용하셨어요.
+            <br />
+            로그인하면 무료로 계속 상담할 수 있습니다.
+          </>
+        }
+      />
     </main>
   );
 }
