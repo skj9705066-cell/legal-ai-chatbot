@@ -12,6 +12,8 @@ import { getQuickConsultation } from "@/lib/quick-consultations";
 import { renderMarkdown, extractCitations } from "@/lib/markdown";
 import type { Citation } from "@/lib/markdown";
 import { hasCompletedAnalysis } from "@/lib/analysis-detection";
+import { syncConsultationToSupabase } from "@/lib/consultation-sync";
+import { useAuth } from "@/components/AuthProvider";
 import RobotMascot from "@/components/RobotMascot";
 import type {
   Attachment,
@@ -120,6 +122,7 @@ export default function ChatPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { account } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const quickSlug = searchParams.get("quick");
@@ -157,6 +160,19 @@ export default function ChatPage({
     setBannerDismissed(true);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(bannerStorageKey, "1");
+    }
+  }
+
+  // 상담 저장: localStorage(항상) + 로그인 시 Supabase(관리자·매칭에서 조회 가능).
+  // Supabase 저장은 백그라운드로 흘려보내 채팅 스트리밍을 막지 않는다.
+  function persistConsultation(c: Consultation) {
+    upsertConsultation(c);
+    if (account) {
+      void syncConsultationToSupabase(
+        c,
+        account.id,
+        hasCompletedAnalysis(c.messages),
+      );
     }
   }
 
@@ -326,7 +342,7 @@ export default function ChatPage({
       updatedAt: now,
     };
     setConsultation(optimistic);
-    upsertConsultation(optimistic);
+    persistConsultation(optimistic);
     setInput("");
     setAttachments([]);
     setAttachmentError(null);
@@ -380,7 +396,7 @@ export default function ChatPage({
 
       setConsultation((prev) => {
         if (!prev) return prev;
-        upsertConsultation(prev);
+        persistConsultation(prev);
         return prev;
       });
 
@@ -412,7 +428,7 @@ export default function ChatPage({
           messages: copy,
           updatedAt: Date.now(),
         };
-        upsertConsultation(updated);
+        persistConsultation(updated);
         return updated;
       });
     } finally {
