@@ -59,6 +59,36 @@ export function deleteConsultation(id: string): void {
   write(read().filter((c) => c.id !== id));
 }
 
+// ── 비로그인 무료 상담 카운트 (브라우저 전역) ────────────────────
+// 채팅방(consultation id) 단위로 "무료로 시작한 상담 세션"을 누적 기록한다.
+// 채팅방마다 카운터가 리셋되던 문제를 막고, 브라우저 기준으로 총 N회만 허용.
+const FREE_CHATS_KEY = "legaladvisor.free-chats.v1";
+
+export function getFreeConsultationIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(FREE_CHATS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+// 이미 기록된 방이면 무시. 새 방이면 무료 세션으로 등록한다.
+export function registerFreeConsultation(id: string): void {
+  if (typeof window === "undefined") return;
+  const ids = getFreeConsultationIds();
+  if (ids.includes(id)) return;
+  ids.push(id);
+  try {
+    window.localStorage.setItem(FREE_CHATS_KEY, JSON.stringify(ids));
+  } catch {
+    // 쿼터 초과 등은 조용히 무시 (부가 기능).
+  }
+}
+
 export function generateId(): string {
   if (
     typeof crypto !== "undefined" &&

@@ -6,6 +6,8 @@ import {
   buildTitle,
   generateId,
   getConsultation,
+  getFreeConsultationIds,
+  registerFreeConsultation,
   upsertConsultation,
 } from "@/lib/storage";
 import { getQuickConsultation } from "@/lib/quick-consultations";
@@ -314,13 +316,19 @@ export default function ChatPage({
     if (isStreaming) return;
     if (!trimmed && files.length === 0) return;
 
-    // 비로그인 무료 체험: 무료 상담 횟수를 다 쓰면 로그인 모달을 띄우고 중단한다.
-    const priorUserTurns = (consultation?.messages ?? []).filter(
-      (m) => m.role === "user",
-    ).length;
-    if (!authLoading && !account && priorUserTurns >= FREE_CONSULTATION_LIMIT) {
-      setShowLoginGate(true);
-      return;
+    // 비로그인 무료 체험: 브라우저 기준으로 무료 상담 세션 수를 센다.
+    // 이미 시작한 방은 계속 이어갈 수 있고, 새 방을 여는 시점에만 한도를 확인한다.
+    // → "무료 AI 상담 시작하기"로 새 방을 계속 만들어도 우회되지 않는다.
+    if (!authLoading && !account) {
+      const freeIds = getFreeConsultationIds();
+      const isNewSession = !freeIds.includes(id);
+      if (isNewSession && freeIds.length >= FREE_CONSULTATION_LIMIT) {
+        setShowLoginGate(true);
+        return;
+      }
+      if (isNewSession) {
+        registerFreeConsultation(id);
+      }
     }
 
     const now = Date.now();
