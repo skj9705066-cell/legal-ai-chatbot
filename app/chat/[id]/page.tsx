@@ -185,8 +185,10 @@ export default function ChatPage({
 
   // Auto-send seeded prompt (from home search) or quick category on fresh load.
   // 첫 상담(시드/퀵)은 비로그인도 허용한다. 무료 횟수 초과는 sendMessage에서 처리.
+  // ⚠️ authLoading이 끝난 뒤에 보낸다: 로딩 중에는 sendMessage의 무료 게이트가
+  //    통째로 스킵돼(등록·차단 모두 안 됨) 시드 진입이 카운트를 우회하기 때문.
   useEffect(() => {
-    if (!mounted || autoSentRef.current) return;
+    if (!mounted || authLoading || autoSentRef.current) return;
     if (consultation && consultation.messages.length > 0) return;
 
     if (quickSlug) {
@@ -205,7 +207,7 @@ export default function ChatPage({
         void sendMessage(trimmed, []);
       }
     }
-  }, [mounted, consultation, quickSlug, seedText]);
+  }, [mounted, authLoading, consultation, quickSlug, seedText]);
 
   // Scroll on message update
   useEffect(() => {
