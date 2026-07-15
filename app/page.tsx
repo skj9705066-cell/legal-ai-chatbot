@@ -10,7 +10,6 @@ import LawselLogo from "@/components/LawselLogo";
 import { useAuth } from "@/components/AuthProvider";
 import { BLOG_POSTS, CATEGORY_COLOR } from "@/lib/blog-data";
 import Footer from "@/components/Footer";
-import LoginPromptModal from "@/components/LoginPromptModal";
 import type { Lawyer } from "@/lib/types";
 
 /* ─── 인라인 아이콘 ──────────────────────────────────────── */
@@ -518,7 +517,6 @@ function BlogCarousel() {
 export default function HomePage() {
   const router = useRouter();
   const { account, loading } = useAuth();
-  const [showLoginModal, setShowLoginModal] = useState(false);
 
   function go(seed?: string) {
     const id = generateId();
@@ -528,13 +526,12 @@ export default function HomePage() {
     router.push(`/chat/${generateId()}?quick=${slug}`);
   }
 
-  /** 비로그인 시 모달, 로그인 시 AI 상담으로 이동 */
+  /** 세 진입점(검색창·인기카드·CTA)을 하나의 흐름으로 통일한다.
+   *  게스트도 곧바로 /chat으로 보내 무료 2회를 사용하게 하고, 한도 초과는
+   *  채팅 내부의 단일 게이트(FREE_CONSULTATION_LIMIT)가 로그인으로 유도한다.
+   *  → 진입점마다 게스트 처리가 달라 검색창만 무료 체험을 못 쓰던 문제 해소. */
   function handleAIConsult() {
-    if (account) {
-      router.push("/ai-consultation");
-    } else if (!loading) {
-      setShowLoginModal(true);
-    }
+    go();
   }
 
   return (
@@ -861,12 +858,6 @@ export default function HomePage() {
         </div>
 
       </div>
-
-      {/* 비로그인 AI 상담 유도 모달 */}
-      <LoginPromptModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-      />
     </div>
   );
 }
