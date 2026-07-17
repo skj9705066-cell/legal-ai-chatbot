@@ -236,10 +236,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn("[auth] profile insert error", profileErr.message);
       }
 
-      const acc = await loadAccount(user.id);
-      if (!acc || acc.type !== "user") {
-        throw new Error("프로필 조회에 실패했습니다.");
+      // 이메일 인증(Confirm email)이 켜져 있으면 가입 직후 세션이 없다.
+      // 이 상태에서는 RLS(auth.uid()=id) 때문에 profiles SELECT가 막히므로,
+      // 잘못된 "프로필 조회 실패" 대신 다음 단계(메일 인증)를 안내한다.
+      if (!data.session) {
+        throw new Error(
+          "가입 확인 메일을 보냈어요. 메일의 인증 링크를 누른 뒤 로그인해주세요.",
+        );
       }
+
+      // 세션이 있으면 프로필 재조회(SELECT)가 실패하더라도 입력값으로 계정을
+      // 구성해 로그인 상태를 유지한다. (RLS/전파 지연에 발목잡히지 않도록)
+      const acc: UserAccount =
+        ((await loadAccount(user.id)) as UserAccount | null) ?? {
+          id: user.id,
+          type: "user",
+          name: input.name.trim(),
+          email: input.email.trim(),
+          phone: input.phone?.trim() || undefined,
+          provider: "email",
+          createdAt: Date.now(),
+        };
       setAccount(acc);
       return acc;
     },
@@ -319,6 +336,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (lawyerErr) {
         console.warn("[auth] lawyer insert error", lawyerErr.message);
+      }
+
+      // 이메일 인증이 켜져 있으면 가입 직후 세션이 없다 → 로그인 불가.
+      if (!data.session) {
+        throw new Error(
+          "가입 확인 메일을 보냈어요. 메일 인증 후 로그인하면 승인 심사가 진행됩니다.",
+        );
       }
 
       const acc = await loadAccount(user.id);
