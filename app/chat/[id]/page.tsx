@@ -64,6 +64,46 @@ function extractCitationsFromMessages(messages: ChatMessage[]): Citation[] {
   return extractCitations(texts);
 }
 
+// 시효·기한 등 "빨리 움직여야 하는" 신호를 AI 답변에서 가볍게 감지한다.
+// case-summary API의 urgency를 기다리지 않고 채팅 화면에서 즉시 긴급 넛지를 띄우기 위함.
+// 오탐을 줄이려 2개 이상 매칭될 때만 긴급으로 본다.
+const URGENCY_TERMS = [
+  "시효",
+  "제소기간",
+  "제척기간",
+  "기한",
+  "즉시",
+  "신속",
+  "서둘",
+  "구속",
+  "긴급",
+  "고소",
+  "고발",
+  "기소",
+  "압류",
+  "가압류",
+  "경매",
+  "선고",
+  "출석",
+  "송달",
+  "항소",
+  "상고",
+  "체포",
+];
+
+function detectUrgency(messages: ChatMessage[]): boolean {
+  const text = messages
+    .filter((m) => m.role === "assistant")
+    .map((m) => m.content)
+    .join(" ");
+  let hits = 0;
+  for (const t of URGENCY_TERMS) {
+    if (text.includes(t)) hits++;
+    if (hits >= 2) return true;
+  }
+  return false;
+}
+
 // 화면에는 남기지만 API로는 보내지 말아야 할 메시지 판별.
 function isErrorMessage(m: ChatMessage): boolean {
   return m.role === "assistant" && m.content.trimStart().startsWith("[오류]");
@@ -141,7 +181,7 @@ export default function ChatPage({
   const [isStreaming, setIsStreaming] = useState(false);
   const [searching, setSearching] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [ctaDismissed, setCtaDismissed] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showLoginGate, setShowLoginGate] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -150,23 +190,23 @@ export default function ChatPage({
   const autoSentRef = useRef(false);
   const suggestAbortRef = useRef<AbortController | null>(null);
 
-  const bannerStorageKey = `legaladvisor.banner-dismissed.${id}`;
+  const ctaDismissKey = `legaladvisor.match-cta-dismissed.${id}`;
 
   useEffect(() => {
     const existing = getConsultation(id);
     setConsultation(existing);
     if (typeof window !== "undefined") {
-      setBannerDismissed(
-        window.localStorage.getItem(bannerStorageKey) === "1",
+      setCtaDismissed(
+        window.localStorage.getItem(ctaDismissKey) === "1",
       );
     }
     setMounted(true);
-  }, [id, bannerStorageKey]);
+  }, [id, ctaDismissKey]);
 
-  function dismissBanner() {
-    setBannerDismissed(true);
+  function dismissCta() {
+    setCtaDismissed(true);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(bannerStorageKey, "1");
+      window.localStorage.setItem(ctaDismissKey, "1");
     }
   }
 
@@ -481,7 +521,12 @@ export default function ChatPage({
   ).length;
   const analysisComplete = !isStreaming && hasCompletedAnalysis(messages);
   const hasAssistantReply = !isStreaming && aiResponseCount >= 1;
-  const showBanner = analysisComplete && !bannerDismissed;
+  // 매칭 유도 카드: AI가 판례·법령을 "종합 분석"해 답변을 완성한 시점에만 노출한다.
+  // 첫 문답 직후 바로 띄우면 성급하게 느껴질 수 있어, 종합 분석 완료를 트리거로 삼는다.
+  // (analysisComplete = hasCompletedAnalysis — 사건유형·핵심쟁점·변호사 권유 markers 기반)
+  // 사용자가 닫으면 이 상담에서는 다시 띄우지 않는다.
+  const urgent = detectUrgency(messages);
+  const showInlineCta = analysisComplete && !ctaDismissed;
 
   const extractedLaws = extractCitationsFromMessages(messages);
   const firstUserMessage =
@@ -613,16 +658,17 @@ export default function ChatPage({
                   />
                 );
               })}
+
+              {/* 상담 흐름 안 매칭 유도 카드 (AI 답변 뒤 자연스럽게 노출) */}
+              {showInlineCta && (
+                <InlineMatchCta
+                  urgent={urgent}
+                  onStart={() => router.push(`/matching/${id}`)}
+                  onDismiss={dismissCta}
+                />
+              )}
             </div>
           </div>
-
-          {/* Floating banner */}
-          {showBanner && (
-            <FloatingBanner
-              onStart={() => router.push(`/matching/${id}`)}
-              onDismiss={dismissBanner}
-            />
-          )}
 
           {/* Suggested reply chips (YouTube-style) */}
           {!isStreaming && suggestions.length > 0 && (
@@ -932,7 +978,7 @@ function ChatSidebar({
           }`}
         >
           {analysisComplete
-            ? "변호사 상담 연결하기"
+            ? "변호사 제안 무료로 받기"
             : "AI 분석 진행 중..."}
         </button>
         <p className="text-[12px] text-text-muted leading-[1.7] mt-4 font-medium">
@@ -1050,31 +1096,87 @@ function UserBubble({
   );
 }
 
-function FloatingBanner({
+// 상담 대화 흐름 안에 노출되는 변호사 매칭 유도 카드.
+// 기능명("변호사 연결")이 아니라 사용자가 얻는 결과(무료 제안 비교)로 프레이밍하고,
+// 시효·기한 신호가 감지되면 긴급 배너를 위에 덧붙여 전환 동기를 높인다.
+function InlineMatchCta({
+  urgent,
   onStart,
   onDismiss,
 }: {
+  urgent: boolean;
   onStart: () => void;
   onDismiss: () => void;
 }) {
   return (
-    <div className="bg-white border-t border-surface-line px-5 py-3 banner-slide-up">
-      <div className="max-w-md mx-auto lg:max-w-2xl rounded-2xl bg-surface-subtle border border-surface-line px-5 py-4 flex items-start gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] text-navy-900 leading-[1.7] font-medium">
-            본 서비스는 일반적인 법률 정보를 제공하며, 구체적인 사건의 법률 자문은 변호사 상담을 통해 받으실 수 있습니다.
-          </p>
-          <button
-            onClick={onStart}
-            className="mt-3 inline-flex items-center gap-1.5 text-[14px] font-semibold text-cta-600 hover:text-cta-700 transition-colors duration-500 ease-luxe"
-          >
-            변호사 상담 연결하기
+    <div className="flex justify-start animate-fade-up">
+      <div className="w-full max-w-[92%] rounded-2xl border border-brand-200 bg-white shadow-card overflow-hidden">
+        {urgent && (
+          <div className="flex items-center gap-2 bg-red-50 border-b border-red-100 px-5 py-2.5 text-[12.5px] font-semibold text-red-700">
             <svg
-              className="w-3.5 h-3.5"
+              className="w-3.5 h-3.5 shrink-0"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2.2"
+            >
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            이 사안은 대응 기한(시효 등)이 있을 수 있어요. 늦기 전에 확인하세요.
+          </div>
+        )}
+        <div className="p-5">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-gradient text-white flex items-center justify-center shrink-0">
+              <svg
+                className="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle cx="9" cy="7" r="4" />
+                <path
+                  d="M22 11l-3-3m0 0l-3 3m3-3v8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-serif font-bold text-primary-900 text-[16px] leading-snug">
+                이 사건, 변호사에게 직접 물어보세요
+              </h3>
+              <p className="text-[13px] text-primary-600 leading-relaxed mt-1">
+                방금 AI가 분석한 내용을 <strong className="font-semibold text-primary-800">사건 요약서</strong>로 만들어 변호사에게 전달합니다. 여러 변호사의 상담비·의견 제안을 <strong className="font-semibold text-primary-800">무료로</strong> 비교해보세요.
+              </p>
+            </div>
+            <button
+              onClick={onDismiss}
+              className="shrink-0 -mt-1 -mr-1 w-7 h-7 rounded-full text-primary-300 hover:text-primary-700 hover:bg-ink-2 flex items-center justify-center text-lg transition"
+              aria-label="닫기"
+            >
+              ×
+            </button>
+          </div>
+          <button
+            onClick={onStart}
+            style={{ backgroundColor: "#16a34a" }}
+            className="cta-pulse mt-4 w-full text-white font-semibold rounded-xl h-12 text-[15px] flex items-center justify-center gap-1.5 shadow-sm hover:brightness-110 transition active:scale-[0.98]"
+          >
+            변호사 제안 받기 · 무료
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
             >
               <path
                 d="M5 12h14M13 5l7 7-7 7"
@@ -1083,14 +1185,10 @@ function FloatingBanner({
               />
             </svg>
           </button>
+          <p className="text-[11px] text-primary-400 mt-2.5 text-center">
+            사건 요약을 먼저 확인한 뒤 진행 여부를 선택할 수 있어요
+          </p>
         </div>
-        <button
-          onClick={onDismiss}
-          className="shrink-0 w-7 h-7 rounded-full text-text-muted hover:text-navy-900 hover:bg-white flex items-center justify-center text-lg transition-all duration-500 ease-luxe"
-          aria-label="배너 닫기"
-        >
-          ×
-        </button>
       </div>
     </div>
   );
