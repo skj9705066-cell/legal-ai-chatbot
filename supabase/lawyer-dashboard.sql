@@ -24,9 +24,10 @@ using (
   )
 );
 
--- 2) 승인된 변호사는 매칭 검토를 위해 상담 내용을 조회할 수 있다.
---    (기존 "Service role full access consultations" using(true) 구멍을 나중에
---     제거하더라도 변호사 대시보드가 계속 동작하도록 명시적 정책을 추가한다.)
+-- 2) 승인된 변호사는 매칭 검토를 위해 "매칭에 연결된" 상담만 조회할 수 있다.
+--    (전체 상담 열람은 개인정보 과다 노출이므로, (a) 대기 중 매칭이거나
+--     (b) 본인이 제안을 넣은 매칭에 연결된 상담으로 범위를 한정한다.
+--     fix-rls-exposure.sql 와 동일한 정의.)
 drop policy if exists "Approved lawyers can view consultations" on consultations;
 create policy "Approved lawyers can view consultations"
 on consultations for select
@@ -34,6 +35,20 @@ using (
   exists (
     select 1 from lawyers l
     where l.user_id = auth.uid() and l.status = 'approved'
+  )
+  and exists (
+    select 1 from matchings m
+    where m.consultation_id = consultations.id
+      and (
+        m.status = 'matching'
+        or exists (
+          select 1 from proposals p
+          where p.matching_id = m.id
+            and p.lawyer_id in (
+              select id from lawyers where user_id = auth.uid()
+            )
+        )
+      )
   )
 );
 

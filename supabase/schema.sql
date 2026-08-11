@@ -88,10 +88,10 @@ create policy "Users can view own consultations" on consultations for select usi
 create policy "Users can insert consultations" on consultations for insert with check (true);
 create policy "Users can update own consultations" on consultations for update using (user_id = auth.uid());
 
--- 전체 공개 읽기가 필요한 경우 (관리자용)
-create policy "Service role full access profiles" on profiles for all using (true);
-create policy "Service role full access lawyers" on lawyers for all using (true);
-create policy "Service role full access consultations" on consultations for all using (true);
+-- ⚠️ 제거됨: "Service role full access ..." (for all using (true))
+-- `using (true)` 는 역할 제한이 없어 anon/authenticated 전체에 적용된다.
+-- anon 키가 공개 배포되므로 아무나 상담 원문·프로필을 읽을 수 있는 구멍이었다.
+-- 관리자 접근은 아래 is_admin() 정책으로 커버한다. (fix-rls-exposure.sql 참고)
 
 
 -- ============================================================
