@@ -5,6 +5,8 @@ import { supabase } from "@/lib/supabase";
 import { formatDate } from "@/lib/admin-data";
 import type { ConsultationRow, ProfileRow } from "@/lib/supabase-types";
 import type { CaseSummary } from "@/lib/types";
+import { getAdminSession } from "@/lib/admin-auth";
+import { logConsultationAccess } from "@/lib/access-log";
 
 const CATEGORIES = ["전체", "형사", "이혼", "부동산", "노동", "계약", "손해배상"];
 
@@ -53,6 +55,10 @@ export default function AdminConsultationsPage() {
   const [selected, setSelected] = useState<ConsultationRow | null>(null);
   // 매칭 요약으로 복원한(원본 대화 없는) 행의 id 집합 — 배지 표시에 사용.
   const [recoveredIds, setRecoveredIds] = useState<Set<string>>(new Set());
+  // 상담 원문 열람 시 접근 기록을 남기기 위해 현재 관리자 세션을 보관한다.
+  const [admin, setAdmin] = useState<{ userId: string; email: string } | null>(
+    null,
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -148,6 +154,32 @@ export default function AdminConsultationsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void getAdminSession().then((s) => {
+      if (s) setAdmin({ userId: s.userId, email: s.email });
+    });
+  }, []);
+
+  // 상담 원문 열람 = 개인정보 접근. 모달을 열면서 접근 기록을 남긴다.
+  // (감사 로그이므로 실패해도 열람 자체는 진행된다.)
+  async function openConsultation(row: ConsultationRow) {
+    setSelected(row);
+    const who =
+      admin ??
+      (await getAdminSession().then((s) =>
+        s ? { userId: s.userId, email: s.email } : null,
+      ));
+    if (who) {
+      void logConsultationAccess({
+        adminId: who.userId,
+        adminEmail: who.email,
+        consultationId: row.id,
+        consultationTitle: row.title,
+        category: row.category,
+      });
+    }
+  }
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
@@ -286,7 +318,7 @@ export default function AdminConsultationsPage() {
                       <td className="px-4 py-3 text-right">
                         <button
                           type="button"
-                          onClick={() => setSelected(c)}
+                          onClick={() => void openConsultation(c)}
                           className="h-8 px-3 rounded-lg bg-white border border-[#E5E8EB] hover:border-[#4338CA] hover:text-[#4338CA] text-[#4E5968] text-[12px] font-semibold transition-colors duration-200"
                         >
                           대화 보기

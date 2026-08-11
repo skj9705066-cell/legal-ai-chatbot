@@ -184,6 +184,26 @@ export interface ProposalInsert {
   created_at?: string;
 }
 
+export interface ConsultationAccessLogRow {
+  id: string;
+  admin_id: string | null;
+  admin_email: string | null;
+  consultation_id: string | null;
+  consultation_title: string | null;
+  category: string | null;
+  viewed_at: string;
+}
+
+export interface ConsultationAccessLogInsert {
+  id?: string;
+  admin_id?: string | null;
+  admin_email?: string | null;
+  consultation_id?: string | null;
+  consultation_title?: string | null;
+  category?: string | null;
+  viewed_at?: string;
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -227,6 +247,12 @@ export type Database = {
         Row: MessageRow;
         Insert: MessageInsert;
         Update: Partial<MessageRow>;
+        Relationships: [];
+      };
+      consultation_access_logs: {
+        Row: ConsultationAccessLogRow;
+        Insert: ConsultationAccessLogInsert;
+        Update: Partial<ConsultationAccessLogRow>;
         Relationships: [];
       };
     };

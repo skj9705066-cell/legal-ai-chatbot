@@ -15,6 +15,7 @@ const ITEMS: NavItem[] = [
   { href: "/admin", label: "대시보드", icon: "📊", exact: true },
   { href: "/admin/lawyers", label: "변호사 관리", icon: "👨‍⚖️" },
   { href: "/admin/consultations", label: "상담 관리", icon: "💬" },
+  { href: "/admin/access-logs", label: "열람 기록", icon: "📑" },
   { href: "/admin/matchings", label: "매칭 관리", icon: "🤝" },
   { href: "/admin/users", label: "회원 관리", icon: "👥" },
   { href: "/admin/settings", label: "설정", icon: "⚙️" },
