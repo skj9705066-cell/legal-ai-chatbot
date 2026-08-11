@@ -816,6 +816,10 @@ export default function ChatPage({
               {attachmentError && (
                 <p className="text-[11px] text-red-600 mt-2">{attachmentError}</p>
               )}
+              <p className="mt-2.5 text-[11px] leading-relaxed text-primary-400 text-center">
+                본 서비스는 AI 법률 <b className="font-semibold">정보</b> 서비스로 변호사의 법률 자문을 대체하지 않습니다.
+                인용된 법령·판례·행정해석은 참고용이며, 개별 사건 적용·정확성은 변호사·공인노무사 상담으로 확인하세요.
+              </p>
             </div>
           </div>
         </div>
