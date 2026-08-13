@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { generateId } from "@/lib/storage";
 import { useAuth } from "./AuthProvider";
+import { useStartConsult } from "./StartConsultModal";
 
 interface NavTab {
   key: string;
@@ -126,6 +126,7 @@ export default function BottomNav() {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const { account, loading } = useAuth();
+  const { start, modal } = useStartConsult();
 
   const isLawyer = account?.type === "lawyer";
   const TABS = isLawyer ? LAWYER_TABS : USER_TABS;
@@ -140,9 +141,10 @@ export default function BottomNav() {
   function handleClick(e: React.MouseEvent, tab: NavTab) {
     if (tab.action === "newChat") {
       e.preventDefault();
+      // 진행 중인 상담이 있으면 "이어하기/새로 시작" 시트를 띄우고, 없으면 새 상담방으로.
       // 게스트도 새 상담방으로 보낸다(무료 2회). 한도 초과는 채팅 내부 게이트가 처리 →
       // 다른 진입점(홈 검색창·인기카드·CTA)과 게스트 동작을 일치시킨다.
-      router.push(`/chat/${generateId()}`);
+      start();
       return;
     }
     if (tab.action === "mypage") {
@@ -153,6 +155,7 @@ export default function BottomNav() {
   }
 
   return (
+    <>
     <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-surface-line" aria-label="주요 메뉴">
       <ul className="max-w-md mx-auto px-2 grid grid-cols-5">
         {TABS.map((tab) => {
@@ -184,5 +187,7 @@ export default function BottomNav() {
       </ul>
       <div className="h-safe-bottom bg-white" />
     </nav>
+    {modal}
+    </>
   );
 }

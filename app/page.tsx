@@ -3,11 +3,11 @@
 import { Children, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { generateId } from "@/lib/storage";
 import { DEMO_LAWYERS } from "@/lib/lawyers";
 import ScrollReveal from "@/components/ScrollReveal";
 import LawselLogo from "@/components/LawselLogo";
 import { useAuth } from "@/components/AuthProvider";
+import { useStartConsult } from "@/components/StartConsultModal";
 import { BLOG_POSTS, CATEGORY_COLOR } from "@/lib/blog-data";
 import Footer from "@/components/Footer";
 import type { Lawyer } from "@/lib/types";
@@ -517,21 +517,26 @@ function BlogCarousel() {
 export default function HomePage() {
   const router = useRouter();
   const { account, loading } = useAuth();
+  const { start, modal } = useStartConsult();
 
+  /** 주제를 고른 진입(인기 카드·분야 칩)은 항상 새 상담. */
   function go(seed?: string) {
-    const id = generateId();
-    router.push(seed ? `/chat/${id}?seed=${encodeURIComponent(seed)}` : `/chat/${id}`);
+    if (seed) {
+      start({ seed });
+      return;
+    }
+    start();
   }
   function goQuick(slug: string) {
-    router.push(`/chat/${generateId()}?quick=${slug}`);
+    start({ quick: slug });
   }
 
-  /** 세 진입점(검색창·인기카드·CTA)을 하나의 흐름으로 통일한다.
+  /** 일반 상담 진입(검색창·AI 상담 카드·하단 CTA).
+   *  진행 중인 상담이 있으면 "이어하기/새로 시작" 시트를 띄우고, 없으면 새 상담으로.
    *  게스트도 곧바로 /chat으로 보내 무료 2회를 사용하게 하고, 한도 초과는
-   *  채팅 내부의 단일 게이트(FREE_CONSULTATION_LIMIT)가 로그인으로 유도한다.
-   *  → 진입점마다 게스트 처리가 달라 검색창만 무료 체험을 못 쓰던 문제 해소. */
+   *  채팅 내부의 단일 게이트(FREE_CONSULTATION_LIMIT)가 로그인으로 유도한다. */
   function handleAIConsult() {
-    go();
+    start();
   }
 
   return (
@@ -858,6 +863,9 @@ export default function HomePage() {
         </div>
 
       </div>
+
+      {/* 진행 중인 상담 이어하기 / 새로 시작 선택 시트 */}
+      {modal}
     </div>
   );
 }
