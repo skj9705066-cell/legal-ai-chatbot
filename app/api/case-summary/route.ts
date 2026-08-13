@@ -87,7 +87,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const response = await client.messages.create({
-      model: "claude-opus-4-7",
+      // 변호사 매칭용 내부 JSON 요약 → 최저가 Haiku 4.5로 충분(이 키로 접근 확인됨).
+      // 이용자에게 노출되지 않는 추출 작업이라 Opus가 불필요.
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 1500,
       system: SYSTEM_PROMPT,
       messages: [

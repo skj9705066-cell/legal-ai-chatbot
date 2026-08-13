@@ -75,9 +75,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const response = await client.messages.create({
-      // 프로덕션 API 키에서 검증된 모델 사용(haiku-4-5는 이 키로 접근 불가로 확인됨).
-      // 집의 chat/case-summary와 동일. 출력이 짧아(예시 3개) 호출당 비용은 미미.
-      model: "claude-opus-4-7",
+      // 예시 답변 3개 생성은 단순 잡무 → 최저가 Haiku 4.5 사용(이 키로 접근 확인됨).
+      // 답변마다 매번 호출되는 부가 기능이라 Opus를 쓰면 비용이 크게 새어, 저가화가 핵심.
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 400,
       system: SYSTEM_PROMPT,
       messages: [
