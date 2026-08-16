@@ -1,6 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
+import {
+  AUX_LIMITS,
+  clientIp,
+  isTrustedOrigin,
+  normalizeMessages,
+} from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,18 +54,30 @@ function extractQuestions(text: string): string[] {
 }
 
 export async function POST(req: NextRequest) {
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "unknown";
-  // 답변당 1회 부가 호출. 실패해도 부가 기능이라 조용히 빈 배열로 처리한다.
-  const rl = rateLimit(`suggest:${ip}`, 30, 60_000);
+  // 부가 기능이라 실패는 조용히 빈 배열로 처리한다(칩이 안 뜰 뿐 상담은 정상 진행).
+  if (!isTrustedOrigin(req)) {
+    return NextResponse.json({ questions: [] }, { status: 403 });
+  }
+
+  const ip = clientIp(req);
+  // 답변당 1회 부가 호출.
+  const rl = rateLimit(`suggest:${ip}`, 15, 60_000);
   if (!rl.ok) {
     return NextResponse.json({ questions: [] });
   }
 
-  const { messages } = (await req.json()) as { messages: ChatMessageInput[] };
-  if (!Array.isArray(messages) || messages.length === 0) {
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ questions: [] });
+  }
+
+  const messages = normalizeMessages(
+    (body as { messages?: unknown })?.messages,
+    AUX_LIMITS,
+  ) as ChatMessageInput[];
+  if (messages.length === 0) {
     return NextResponse.json({ questions: [] });
   }
 

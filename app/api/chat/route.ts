@@ -6,6 +6,13 @@ import type {
   ToolUnion,
 } from "@anthropic-ai/sdk/resources/messages";
 import { rateLimit } from "@/lib/rate-limit";
+import {
+  CHAT_LIMITS,
+  clientIp,
+  forbiddenResponse,
+  isTrustedOrigin,
+  normalizeMessages,
+} from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -109,7 +116,9 @@ interface IncomingMessage {
 const WEB_SEARCH_TOOL: ToolUnion = {
   type: "web_search_20250305",
   name: "web_search",
-  max_uses: 6,
+  // 검색 결과는 매 턴 Opus 입력으로 다시 들어가므로 호출 수가 곧 비용이다.
+  // 6 → 3: 법령 1~2건 + 판례 1건 확인에는 충분하고, 턴당 비용은 크게 줄어든다.
+  max_uses: 3,
   user_location: {
     type: "approximate",
     country: "KR",
@@ -179,16 +188,42 @@ function toMessageParam(m: IncomingMessage): MessageParam {
   return { role: m.role, content: blocks };
 }
 
+/**
+ * 마지막 메시지에 캐시 breakpoint를 찍는다.
+ *
+ * 채팅은 턴마다 대화 전문을 다시 보내므로, 캐시가 없으면 같은 히스토리를 매번
+ * 풀 가격으로 재처리한다. 끝에 breakpoint를 두면 다음 턴에서 그 앞부분 전체가
+ * 캐시 히트가 되어 입력 비용이 크게 줄어든다. (응답 품질에는 영향 없음)
+ */
+function withCacheBreakpoint(params: MessageParam[]): MessageParam[] {
+  if (params.length === 0) return params;
+  const last = params[params.length - 1];
+  const blocks: ContentBlockParam[] =
+    typeof last.content === "string"
+      ? [{ type: "text", text: last.content }]
+      : [...last.content];
+  const tail = blocks[blocks.length - 1];
+  if (!tail) return params;
+  blocks[blocks.length - 1] = {
+    ...tail,
+    cache_control: { type: "ephemeral" },
+  } as ContentBlockParam;
+  return [...params.slice(0, -1), { ...last, content: blocks }];
+}
+
 // Control-char markers — kept invisible to humans, never appears in natural Korean text.
 const SEARCH_START_MARKER = "WS_START";
 const SEARCH_END_MARKER = "WS_END";
 
 export async function POST(req: NextRequest) {
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "unknown";
-  const rl = rateLimit(`chat:${ip}`, 20, 60_000);
+  // 우리 사이트에서 온 요청만 받는다. 이 라우트는 인증이 없어(게스트 무료 상담)
+  // 외부에서 그대로 호출하면 우리 계정으로 Opus를 무한히 쓸 수 있었다.
+  if (!isTrustedOrigin(req)) {
+    return forbiddenResponse();
+  }
+
+  const ip = clientIp(req);
+  const rl = rateLimit(`chat:${ip}`, 12, 60_000);
   if (!rl.ok) {
     return new Response(
       JSON.stringify({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." }),
@@ -202,7 +237,28 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { messages } = (await req.json()) as { messages: IncomingMessage[] };
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "잘못된 요청입니다." }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  // 턴 수·글자수·첨부 개수를 잘라 요청 1건이 태울 수 있는 토큰 상한을 못 박는다.
+  const messages = normalizeMessages(
+    (body as { messages?: unknown })?.messages,
+    CHAT_LIMITS,
+  ) as IncomingMessage[];
+
+  if (messages.length === 0) {
+    return new Response(JSON.stringify({ error: "잘못된 요청입니다." }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   const encoder = new TextEncoder();
 
@@ -222,7 +278,7 @@ export async function POST(req: NextRequest) {
             },
           ],
           tools: [WEB_SEARCH_TOOL],
-          messages: messages.map(toMessageParam),
+          messages: withCacheBreakpoint(messages.map(toMessageParam)),
         });
 
         for await (const event of apiStream) {
