@@ -10,6 +10,7 @@ import {
   CHAT_LIMITS,
   clientIp,
   forbiddenResponse,
+  isBotRequest,
   isTrustedOrigin,
   normalizeMessages,
 } from "@/lib/api-guard";
@@ -219,6 +220,11 @@ export async function POST(req: NextRequest) {
   // 우리 사이트에서 온 요청만 받는다. 이 라우트는 인증이 없어(게스트 무료 상담)
   // 외부에서 그대로 호출하면 우리 계정으로 Opus를 무한히 쓸 수 있었다.
   if (!isTrustedOrigin(req)) {
+    return forbiddenResponse();
+  }
+
+  // Origin은 위조 가능하므로 실제 브라우저 세션인지 한 번 더 본다.
+  if (await isBotRequest()) {
     return forbiddenResponse();
   }
 

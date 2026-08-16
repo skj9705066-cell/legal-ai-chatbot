@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 
+const { withBotId } = require("botid/next/config");
+
 const PROD_ORIGIN = "https://legal-ai-chatbot-five.vercel.app";
 const isProd = process.env.NODE_ENV === "production";
 
@@ -55,4 +57,7 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+// withBotId는 BotID 챌린지용 same-origin 리라이트 2개와, 해당 경로 전용
+// 헤더(X-Frame-Options/frame-ancestors)를 기존 설정 뒤에 덧붙인다.
+// 기존 rewrites가 없고 headers는 append라 위 보안 헤더 설정과 충돌하지 않는다.
+module.exports = withBotId(nextConfig);

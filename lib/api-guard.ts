@@ -1,3 +1,4 @@
+import { checkBotId } from "botid/server";
 import type { NextRequest } from "next/server";
 
 /**
@@ -178,6 +179,24 @@ export function normalizeMessages(
   }
 
   return cleaned;
+}
+
+/**
+ * BotID 봇 판정.
+ *
+ * Origin 검사는 헤더만 맞추면 통과하므로, 실제 브라우저 세션인지까지 보는
+ * 레이어를 하나 더 둔다. (Hobby 플랜은 Basic 검증까지 무료)
+ *
+ * ⚠️ **실패 시 통과(fail-open)** 시킨다. BotID 장애나 설정 문제로 판정이 터졌을 때
+ * 정상 상담까지 막히는 게 훨씬 큰 손해라서, 차단은 "봇이라고 확신할 때"만 한다.
+ */
+export async function isBotRequest(): Promise<boolean> {
+  try {
+    const { isBot } = await checkBotId();
+    return isBot;
+  } catch {
+    return false;
+  }
 }
 
 /** 외부 직접 호출 차단 응답. */

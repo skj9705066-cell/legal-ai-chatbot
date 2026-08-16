@@ -6,6 +6,7 @@ import {
   AUX_LIMITS,
   clientIp,
   forbiddenResponse,
+  isBotRequest,
   isTrustedOrigin,
   normalizeMessages,
 } from "@/lib/api-guard";
@@ -66,7 +67,7 @@ function extractJson(text: string): CaseSummary | null {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isTrustedOrigin(req)) {
+  if (!isTrustedOrigin(req) || (await isBotRequest())) {
     return forbiddenResponse();
   }
 
