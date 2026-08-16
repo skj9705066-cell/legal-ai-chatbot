@@ -73,12 +73,16 @@ lib/
   matching-storage.ts       # 매칭 세션 localStorage 캐시
   analysis-detection.ts     # assistant 메시지가 "종합 분석 완료"인지 키워드로 감지
   admin-auth.ts · admin-data.ts  # 관리자 세션/포맷 유틸
-  rate-limit.ts             # API 라우트 IP 기반 레이트리밋
+  rate-limit.ts             # API 라우트 IP 기반 레이트리밋(인메모리·인스턴스별)
+  api-guard.ts              # 🔴 AI 라우트 공용 방어막 (Origin 바인딩·BotID·IP·입력 상한)
   lawyers.ts                # DEMO_LAWYERS(홈 캐러셀 표시용) + generateProposals 더미
   quick-consultations.ts · markdown.ts · blog-data.ts
   auth-storage.ts           # ⚠️ 레거시(미사용). Supabase Auth로 대체됨 — 임포트 없음
 
 middleware.ts               # /admin/* 접근을 Supabase 세션 + role='admin'으로 게이트
+
+vercel/
+  firewall.md               # WAF 레이트리밋 룰 기록 (CLI로 수동 적용 — 자동 반영 안 됨)
 
 supabase/                   # SQL은 Supabase 대시보드 SQL Editor에서 수동 실행
   schema.sql                # 기본 5테이블(profiles/lawyers/consultations/matchings/proposals) + RLS
@@ -151,7 +155,20 @@ scripts/
 - `POST /api/suggest-questions` — 최근 대화 기반, 의뢰인이 탭 한 번으로 보낼 **예시 답변 3개**(질문 아님).
 - `POST /api/auth/kakao` — 카카오 OAuth 보조.
 
-AI 라우트 모두 `runtime="nodejs"`, `dynamic="force-dynamic"`, 모델 `claude-opus-4-7`, `lib/rate-limit.ts`로 IP 레이트리밋. `ANTHROPIC_API_KEY` 필요.
+AI 라우트 모두 `runtime="nodejs"`, `dynamic="force-dynamic"`, 모델 `claude-opus-4-7`. `ANTHROPIC_API_KEY` 필요.
+
+### 🔴 AI 라우트 방어막 (`lib/api-guard.ts`) — 비용 유출 방지
+
+세 AI 라우트는 **게스트 무료 상담 때문에 인증이 없다.** 과거 이 상태로 방치되어 외부에서 curl
+한 번이면 우리 계정의 Opus를 무한히 쓸 수 있는 **공개 LLM 프록시**였고, 실제로 과금이 샜다.
+그래서 인증 대신 아래 4겹으로 막는다. **새 AI 라우트를 추가하면 반드시 같은 순서로 적용할 것.**
+
+1. `isTrustedOrigin(req)` — Origin/Referer가 우리 호스트일 때만 통과 (외부 curl 403)
+2. `isBotRequest()` — Vercel BotID로 실제 브라우저 세션 검증 (Origin 위조까지 차단). **의도적 fail-open**
+3. `clientIp(req)` — 레이트리밋 키. ⚠️ `x-forwarded-for`의 **첫** 항목은 클라이언트가 위조 가능하니 쓰지 말 것
+4. `normalizeMessages(body, LIMITS)` — 턴·글자수·첨부 상한. 거절이 아니라 **잘라내기**라 정상 상담은 안 깨진다
+
+비용 절감 장치: `/api/chat`은 `web_search max_uses: 3` + 마지막 메시지 캐시 breakpoint.
 
 ## RLS (Row Level Security) — 중요
 
@@ -195,6 +212,8 @@ AI 라우트 모두 `runtime="nodejs"`, `dynamic="force-dynamic"`, 모델 `claud
 - **RLS가 접근제어의 전부**다. 새 테이블/정책 추가 시 anon 전체 노출 구멍(`using(true)`)을 만들지 말 것. (위 RLS 섹션 참고)
 - **첨부 base64 쿼터**: localStorage(~5MB)와 Supabase row 용량 보호를 위해 저장 시 첨부 `data`를 떼낸다. `lib/storage.ts`(localStorage)와 `lib/consultation-sync.ts`(Supabase) **둘 다** strip한다. 새 필드/저장 경로 추가 시 동일 패턴 유지. `messages.file_data`(상담방 첨부)도 base64라 남용 주의.
 - **`supabase-types.ts` ↔ `schema.sql` 동기화**: DB 스키마 바꾸면 두 파일을 함께 갱신.
+- **BotID 보호 목록 동기화**: `instrumentation-client.ts`의 `protect` 목록에 **없는** 경로에서 `checkBotId()`를 부르면 **정상 이용자도 봇으로 분류**되어 서비스가 막힌다. 보호 라우트를 추가·변경할 때 `instrumentation-client.ts`와 라우트 코드를 **반드시 함께** 갱신할 것.
+- **CSP ↔ BotID**: `next.config.js`는 프로덕션에서 `'unsafe-eval'`을 제거한다. BotID 챌린지는 이 CSP에서 정상 동작함을 검증했지만(위반 0건), CSP를 손대면 **로컬 프로덕션 빌드(`npm run build && npm start`)로 재확인**할 것. dev는 `unsafe-eval`이 있어 통과하므로 dev 테스트만으로는 못 잡는다.
 - **SQL은 수동 적용**: `supabase/*.sql`은 대시보드 SQL Editor에서 직접 실행해야 반영된다(자동 마이그레이션 없음).
 - **AI 응답의 변호사법 경계**: `/api/chat` 시스템 프롬프트는 개별 사건 단정("판단")을 금지하고 일반화·정보제공형으로만 답하도록 강제한다. 이 톤/포맷을 바꿀 때 `analysis-detection.ts`의 감지 키워드(`적용 법령`·`관련 판례`·`핵심 쟁점`)를 깨뜨리면 매칭 CTA가 안 뜬다.
 - `lib/auth-storage.ts`는 **레거시(미사용)**. 인증은 전부 Supabase Auth. 참고하지 말 것.
