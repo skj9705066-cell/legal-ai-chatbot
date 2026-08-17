@@ -27,7 +27,8 @@ WAF에서 막힌 요청은 **함수 실행 자체가 일어나지 않아** Anthr
 
 - **조건**: `path` starts with `/api/` **AND** `method` equals `POST`
 - **동작**: Rate Limit — 60초 창 / 30 요청 / 키 `ip` / fixed_window
-- **초과 시**: `log` (⚠️ 아직 **차단 아님** — 관측 단계)
+- **초과 시**: `log` (⚠️ **차단 아님** — 관측 단계)
+- **상태**: ✅ **published (라이브)** — 2026-08-17 적용. 단, `log`라 아직 아무것도 막지 않는다.
 
 재생성이 필요할 때:
 
@@ -55,7 +56,7 @@ vercel firewall publish --yes
 방화벽은 모든 요청 앞단에 있어서, 잘못 걸면 실이용자·검색봇을 통째로 막는다.
 **절대 처음부터 `deny`로 올리지 말 것.**
 
-1. **`log`로 관측** ← 현재 여기
+1. **`log`로 관측** ← 현재 여기 (published 완료, 차단은 아직 안 함)
 2. 대시보드에서 실제로 뭐가 걸리는지 확인
    `https://vercel.com/<team>/legal-ai-chatbot/firewall/traffic?filter=rule_ai_api_rate_limit_IbxAx1`
    정상 이용자·크롤러가 안 잡히는지 확인
