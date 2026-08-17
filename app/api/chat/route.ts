@@ -9,9 +9,9 @@ import { rateLimit } from "@/lib/rate-limit";
 import {
   CHAT_LIMITS,
   clientIp,
+  findBlockReason,
   forbiddenResponse,
-  isBotRequest,
-  isTrustedOrigin,
+  logBlock,
   normalizeMessages,
 } from "@/lib/api-guard";
 
@@ -219,12 +219,11 @@ const SEARCH_END_MARKER = "WS_END";
 export async function POST(req: NextRequest) {
   // 우리 사이트에서 온 요청만 받는다. 이 라우트는 인증이 없어(게스트 무료 상담)
   // 외부에서 그대로 호출하면 우리 계정으로 Opus를 무한히 쓸 수 있었다.
-  if (!isTrustedOrigin(req)) {
-    return forbiddenResponse();
-  }
-
-  // Origin은 위조 가능하므로 실제 브라우저 세션인지 한 번 더 본다.
-  if (await isBotRequest()) {
+  // Origin 검사 → BotID 순. 차단 시 사유를 남겨야 "봇을 막은 것"과
+  // "정상 이용자가 깨진 것"을 사후에 구분할 수 있다.
+  const blocked = await findBlockReason(req);
+  if (blocked) {
+    logBlock(req, blocked, "/api/chat");
     return forbiddenResponse();
   }
 

@@ -4,8 +4,8 @@ import { rateLimit } from "@/lib/rate-limit";
 import {
   AUX_LIMITS,
   clientIp,
-  isBotRequest,
-  isTrustedOrigin,
+  findBlockReason,
+  logBlock,
   normalizeMessages,
 } from "@/lib/api-guard";
 
@@ -56,7 +56,9 @@ function extractQuestions(text: string): string[] {
 
 export async function POST(req: NextRequest) {
   // 부가 기능이라 실패는 조용히 빈 배열로 처리한다(칩이 안 뜰 뿐 상담은 정상 진행).
-  if (!isTrustedOrigin(req) || (await isBotRequest())) {
+  const blocked = await findBlockReason(req);
+  if (blocked) {
+    logBlock(req, blocked, "/api/suggest-questions");
     return NextResponse.json({ questions: [] }, { status: 403 });
   }
 

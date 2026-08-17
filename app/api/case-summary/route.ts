@@ -5,9 +5,9 @@ import { rateLimit } from "@/lib/rate-limit";
 import {
   AUX_LIMITS,
   clientIp,
+  findBlockReason,
   forbiddenResponse,
-  isBotRequest,
-  isTrustedOrigin,
+  logBlock,
   normalizeMessages,
 } from "@/lib/api-guard";
 
@@ -67,7 +67,9 @@ function extractJson(text: string): CaseSummary | null {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isTrustedOrigin(req) || (await isBotRequest())) {
+  const blocked = await findBlockReason(req);
+  if (blocked) {
+    logBlock(req, blocked, "/api/case-summary");
     return forbiddenResponse();
   }
 

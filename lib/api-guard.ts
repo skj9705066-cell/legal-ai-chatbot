@@ -199,6 +199,44 @@ export async function isBotRequest(): Promise<boolean> {
   }
 }
 
+export type BlockReason = "origin" | "bot";
+
+/**
+ * 차단 사유 판정 (Origin → BotID 순).
+ * 통과면 null.
+ */
+export async function findBlockReason(
+  req: NextRequest,
+): Promise<BlockReason | null> {
+  if (!isTrustedOrigin(req)) return "origin";
+  if (await isBotRequest()) return "bot";
+  return null;
+}
+
+/**
+ * 차단을 로그로 남긴다.
+ *
+ * 이게 없으면 403이 "봇을 막은 것"인지 "정상 이용자가 깨진 것"인지 구분할 수 없다.
+ * 판정 근거가 되는 건 결국 **User-Agent**다 — 브라우저 UA가 찍히면 실이용자가
+ * 막히고 있다는 뜻이므로 즉시 되돌려야 한다.
+ *
+ * ⚠️ **Referer는 호스트만 남긴다.** 전체 URL에는 `/chat/xxx?seed=<이용자가 입력한
+ * 법률 문제>`처럼 민감한 개인정보가 그대로 들어있어서 로그에 남기면 안 된다.
+ * 같은 이유로 IP도 남기지 않는다(레이트리밋 키로만 쓰고 버린다).
+ */
+export function logBlock(
+  req: NextRequest,
+  reason: BlockReason,
+  path: string,
+): void {
+  const ua = (req.headers.get("user-agent") ?? "(none)").slice(0, 120);
+  const origin = req.headers.get("origin") ?? "(none)";
+  const refererHost = hostOf(req.headers.get("referer")) ?? "(none)";
+  console.warn(
+    `[api-guard] blocked reason=${reason} path=${path} origin=${origin} refererHost=${refererHost} ua="${ua}"`,
+  );
+}
+
 /** 외부 직접 호출 차단 응답. */
 export function forbiddenResponse(): Response {
   return new Response(

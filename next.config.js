@@ -2,7 +2,7 @@
 
 const { withBotId } = require("botid/next/config");
 
-const PROD_ORIGIN = "https://legal-ai-chatbot-five.vercel.app";
+const PROD_ORIGIN = "https://lawsel.kr";
 const isProd = process.env.NODE_ENV === "production";
 
 const CSP = [
