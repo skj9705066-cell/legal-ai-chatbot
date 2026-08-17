@@ -164,7 +164,7 @@ AI 라우트 모두 `runtime="nodejs"`, `dynamic="force-dynamic"`, 모델 `claud
 그래서 인증 대신 아래 4겹으로 막는다. **새 AI 라우트를 추가하면 반드시 같은 순서로 적용할 것.**
 
 1. `isTrustedOrigin(req)` — Origin/Referer가 우리 호스트일 때만 통과 (외부 curl 403)
-2. `isBotRequest()` — Vercel BotID로 실제 브라우저 세션 검증 (Origin 위조까지 차단). **의도적 fail-open**
+2. `isBotRequest()` — Vercel BotID로 실제 브라우저 세션 검증. **의도적 fail-open** + **기본 관측 전용(log-only)**. 오차단 리스크(느린 회선에서 챌린지 미완료 → 정상 이용자를 봇으로 판정) 때문에 차단하지 않고 `reason=bot-observed`로 기록만 한다. 켜려면 Vercel에 `BOTID_ENFORCE=1` 추가 후 재배포 — 로그에 브라우저 UA가 안 찍히는 걸 확인한 뒤에 켤 것
 3. `clientIp(req)` — 레이트리밋 키. ⚠️ `x-forwarded-for`의 **첫** 항목은 클라이언트가 위조 가능하니 쓰지 말 것
 4. `normalizeMessages(body, LIMITS)` — 턴·글자수·첨부 상한. 거절이 아니라 **잘라내기**라 정상 상담은 안 깨진다
 

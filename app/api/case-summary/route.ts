@@ -67,7 +67,7 @@ function extractJson(text: string): CaseSummary | null {
 }
 
 export async function POST(req: NextRequest) {
-  const blocked = await findBlockReason(req);
+  const blocked = await findBlockReason(req, "/api/case-summary");
   if (blocked) {
     logBlock(req, blocked, "/api/case-summary");
     return forbiddenResponse();

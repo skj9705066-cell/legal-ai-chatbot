@@ -202,14 +202,40 @@ export async function isBotRequest(): Promise<boolean> {
 export type BlockReason = "origin" | "bot";
 
 /**
+ * BotID 차단 여부. **기본값은 관측 전용(log-only)**.
+ *
+ * BotID는 실이용자를 오차단할 수 있는 실질 리스크가 있다 — 시드 자동전송은 페이지
+ * 마운트 즉시 API를 호출하는데, 느린 회선에서 챌린지가 아직 준비되지 않았다면
+ * 정상 이용자가 봇으로 판정될 수 있다. 상담이 막히는 손해가 봇 몇 개 통과보다 크므로
+ * 근거 데이터가 쌓이기 전까지는 기록만 한다.
+ *
+ * 켜려면 Vercel에 `BOTID_ENFORCE=1`을 추가하고 재배포하면 된다(코드 수정 불필요).
+ * 판단 근거: 로그의 `reason=bot-observed`에 **브라우저 UA가 안 찍히는 것**을 확인한 뒤 켤 것.
+ */
+const BOTID_ENFORCE = process.env.BOTID_ENFORCE === "1";
+
+/**
  * 차단 사유 판정 (Origin → BotID 순).
  * 통과면 null.
+ *
+ * Origin 검사는 항상 차단한다 — 공개 LLM 프록시 구멍을 실제로 막은 게 이 레이어다.
+ * BotID는 위 플래그에 따라 차단/관측이 갈린다.
  */
 export async function findBlockReason(
   req: NextRequest,
+  path: string,
 ): Promise<BlockReason | null> {
   if (!isTrustedOrigin(req)) return "origin";
-  if (await isBotRequest()) return "bot";
+
+  if (await isBotRequest()) {
+    if (BOTID_ENFORCE) return "bot";
+    // 관측 모드: 차단하지 않고 "막았을 뻔한" 요청만 기록한다.
+    const ua = (req.headers.get("user-agent") ?? "(none)").slice(0, 120);
+    console.warn(
+      `[api-guard] reason=bot-observed (not blocked) path=${path} ua="${ua}"`,
+    );
+  }
+
   return null;
 }
 

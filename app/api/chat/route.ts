@@ -221,7 +221,7 @@ export async function POST(req: NextRequest) {
   // 외부에서 그대로 호출하면 우리 계정으로 Opus를 무한히 쓸 수 있었다.
   // Origin 검사 → BotID 순. 차단 시 사유를 남겨야 "봇을 막은 것"과
   // "정상 이용자가 깨진 것"을 사후에 구분할 수 있다.
-  const blocked = await findBlockReason(req);
+  const blocked = await findBlockReason(req, "/api/chat");
   if (blocked) {
     logBlock(req, blocked, "/api/chat");
     return forbiddenResponse();
