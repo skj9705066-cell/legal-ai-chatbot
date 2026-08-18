@@ -1,13 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { safeInternalPath } from "@/lib/safe-redirect";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
+  // 로그인 후 돌아갈 곳. 검증 없이 쓰면 외부로 튕길 수 있으므로 내부 경로만 허용.
+  const next = safeInternalPath(searchParams.get("next"));
   const errorParam = searchParams.get("error");
 
   if (errorParam) {

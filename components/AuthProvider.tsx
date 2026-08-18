@@ -54,8 +54,8 @@ interface AuthContextValue {
   loading: boolean;
   signUpEmail: (input: EmailSignUpInput) => Promise<UserAccount>;
   signInEmail: (input: EmailSignInInput) => Promise<UserAccount | LawyerAccount>;
-  signInWithKakao: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithKakao: (next?: string) => Promise<void>;
+  signInWithGoogle: (next?: string) => Promise<void>;
   registerLawyer: (input: LawyerRegistrationInput) => Promise<LawyerAccount>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -157,11 +157,14 @@ async function loadAccount(userId: string): Promise<Account | null> {
   return mapUserAccount(profile);
 }
 
-function getOAuthRedirectTo(): string {
+function getOAuthRedirectTo(next?: string): string {
   const base =
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
     (typeof window !== "undefined" ? window.location.origin : "");
-  return `${base}/auth/callback`;
+  // OAuth는 외부 공급자를 왕복하므로 돌아올 위치를 콜백 URL에 실어 보내야 한다.
+  // (app/auth/callback/route.ts가 이 next를 읽어 최종 이동지로 쓴다)
+  const suffix = next ? `?next=${encodeURIComponent(next)}` : "";
+  return `${base}/auth/callback${suffix}`;
 }
 
 function describeAuthError(message: string): string {
@@ -267,18 +270,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const signInWithKakao = useCallback(async (): Promise<void> => {
+  const signInWithKakao = useCallback(async (next?: string): Promise<void> => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "kakao",
-      options: { redirectTo: getOAuthRedirectTo() },
+      options: { redirectTo: getOAuthRedirectTo(next) },
     });
     if (error) throw new Error(error.message);
   }, []);
 
-  const signInWithGoogle = useCallback(async (): Promise<void> => {
+  const signInWithGoogle = useCallback(async (next?: string): Promise<void> => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: getOAuthRedirectTo() },
+      options: { redirectTo: getOAuthRedirectTo(next) },
     });
     if (error) throw new Error(error.message);
   }, []);

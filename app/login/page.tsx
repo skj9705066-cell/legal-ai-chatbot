@@ -96,7 +96,7 @@ function LoginPage() {
               type="button"
               onClick={async () => {
                 try {
-                  await signInWithKakao();
+                  await signInWithKakao(next);
                 } catch (err) {
                   setError(err instanceof Error ? err.message : "카카오 로그인에 실패했습니다.");
                 }

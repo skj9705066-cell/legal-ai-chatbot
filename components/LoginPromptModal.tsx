@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { returnPathFrom } from "@/lib/safe-redirect";
 
 interface Props {
   isOpen: boolean;
@@ -46,6 +48,12 @@ export default function LoginPromptModal({
   title,
   description,
 }: Props) {
+  // 로그인 후 원래 보던 화면(주로 상담방)으로 돌려보낸다.
+  // 이게 없으면 로그인 성공 후 홈으로 떨어져 하던 상담이 끊긴다.
+  const pathname = usePathname();
+  const loginHref = `/login?next=${encodeURIComponent(returnPathFrom(pathname))}`;
+  const signupHref = `/signup?next=${encodeURIComponent(returnPathFrom(pathname))}`;
+
   const [shouldRender, setShouldRender] = useState(false);
   const [visible, setVisible]           = useState(false);
 
@@ -136,14 +144,14 @@ export default function LoginPromptModal({
           {/* 버튼 */}
           <div className="flex flex-col gap-3">
             <Link
-              href="/login"
+              href={signupHref}
               onClick={onClose}
               className="btn-indigo flex items-center justify-center w-full h-12 rounded-xl text-[15px] font-bold"
             >
               회원가입하고 무료 상담받기
             </Link>
             <Link
-              href="/login"
+              href={loginHref}
               onClick={onClose}
               className="flex items-center justify-center w-full h-12 rounded-xl
                          border-2 border-[#4338CA] text-[#4338CA]

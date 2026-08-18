@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { safeInternalPath } from "@/lib/safe-redirect";
 import { useAuth } from "@/components/AuthProvider";
 import type { LawyerSpecialty } from "@/lib/types";
 
@@ -31,8 +32,19 @@ function KakaoIcon() {
   );
 }
 
-export default function SignupPage() {
+export default function SignupPageWrapper() {
+  return (
+    <Suspense fallback={null}>
+      <SignupPage />
+    </Suspense>
+  );
+}
+
+function SignupPage() {
   const router = useRouter();
+  const params = useSearchParams();
+  // 로그인 후 돌아갈 곳(없으면 홈). 이메일 가입과 카카오 모두 같은 값을 쓴다.
+  const next = safeInternalPath(params.get("next"));
   const { signUpEmail, registerLawyer, signInWithKakao } = useAuth();
 
   const [tab, setTab] = useState<Tab>("user");
@@ -76,7 +88,7 @@ export default function SignupPage() {
           password,
           phone: phone || undefined,
         });
-        router.replace("/");
+        router.replace(next);
       } else {
         if (!firm.trim() || !barNumber.trim() || specialties.length === 0) {
           setError("소속·전문분야·등록번호를 모두 입력해주세요.");
@@ -170,7 +182,7 @@ export default function SignupPage() {
                 type="button"
                 onClick={async () => {
                   try {
-                    await signInWithKakao();
+                    await signInWithKakao(next);
                   } catch (err) {
                     setError(err instanceof Error ? err.message : "카카오 로그인에 실패했습니다.");
                   }

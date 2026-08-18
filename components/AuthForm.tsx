@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { returnPathFrom } from "@/lib/safe-redirect";
 import { useAuth } from "./AuthProvider";
 import type { Account } from "@/lib/types";
 
@@ -22,6 +24,10 @@ export default function AuthForm({
     signInEmail,
     signUpEmail,
   } = useAuth();
+
+  // OAuth는 페이지를 떠났다 돌아오므로, 모달에서 시작해도 제자리로 복귀시킨다.
+  const pathname = usePathname();
+  const oauthNext = returnPathFrom(pathname);
 
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [email, setEmail] = useState("");
@@ -77,7 +83,7 @@ export default function AuthForm({
 
       <button
         type="button"
-        onClick={() => void handle(signInWithKakao)}
+        onClick={() => void handle(() => signInWithKakao(oauthNext))}
         disabled={submitting}
         className="w-full h-14 rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2.5 transition-all duration-500 ease-luxe hover:brightness-95 active:scale-[0.97] disabled:opacity-50"
         style={{ backgroundColor: "#FEE500", color: "#191919" }}
@@ -88,7 +94,7 @@ export default function AuthForm({
 
       <button
         type="button"
-        onClick={() => void handle(signInWithGoogle)}
+        onClick={() => void handle(() => signInWithGoogle(oauthNext))}
         disabled={submitting}
         className="w-full h-12 rounded-2xl bg-surface-subtle hover:bg-surface-soft text-navy-900 font-semibold text-[15px] flex items-center justify-center gap-2.5 transition-all duration-500 ease-luxe active:scale-[0.97] disabled:opacity-50"
       >
