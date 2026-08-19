@@ -8,7 +8,7 @@ AI 법률 상담 + 변호사 매칭 PWA. Heydealer 톤의 모바일 우선 UI. *
 
 - Next.js 15 (App Router, RSC + "use client") · React 19 · TypeScript 5.7
 - Tailwind CSS 3.4 (커스텀 팔레트: `primary` 네이비 / `brand` 틸 / `accent` 골드 / `cta` 그린)
-- **Supabase** — `@supabase/supabase-js` + `@supabase/ssr`. 이메일/비밀번호 + 카카오·구글 **실제 OAuth**, Postgres, Row Level Security
+- **Supabase** — `@supabase/supabase-js` + `@supabase/ssr`. 이메일/비밀번호 + 카카오 **실제 OAuth**, Postgres, Row Level Security
 - Anthropic SDK 0.65 (`@anthropic-ai/sdk`) — 모델 **`claude-opus-4-7`**, 일부 라우트에서 `web_search` 도구 활용
 - puppeteer-core + playwright (devDependencies — 아이콘 PNG 생성 + 스크린샷 스크립트)
 - 별도 상태 라이브러리 없음 — React state + Supabase + localStorage 캐시
@@ -56,8 +56,10 @@ app/
 
 components/
   AppShell.tsx              # AuthProvider + (조건부)TopNav/BottomNav + ConsultationBackfill
-  AuthProvider.tsx          # Supabase Auth 컨텍스트(세션/계정). 이메일·카카오·구글·변호사가입
+  AuthProvider.tsx          # Supabase Auth 컨텍스트(세션/계정). 이메일·카카오·변호사가입
   ConsultationBackfill.tsx  # 로그인 시 localStorage 상담을 Supabase로 백필 업로드
+  GoogleAnalytics.tsx       # GA4 태그. NEXT_PUBLIC_GA_MEASUREMENT_ID 없으면 렌더 안 함
+  SignupTracker.tsx         # OAuth 가입 집계(?signup= 표식 소비 후 쿼리 제거)
   AuthButtons/AuthForm/AuthModal/LoginPromptModal.tsx  # 로그인·가입 UI
   TopNav.tsx · BottomNav.tsx # 데스크톱 상단 / 모바일 하단 네비
   admin/AdminSidebar.tsx · admin/Toast.tsx             # 관리자 UI
@@ -69,6 +71,7 @@ lib/
   supabase.ts               # 브라우저 Supabase 클라이언트 (anon 키)
   supabase-types.ts         # DB Row/Insert 타입 (schema.sql과 함께 갱신)
   consultation-sync.ts      # Consultation → Supabase upsert (첨부 base64 strip)
+  analytics.ts              # GA4 이벤트 헬퍼(trackEvent) + 퍼널 이벤트명 상수
   storage.ts                # 상담 localStorage 캐시 CRUD + generateId/buildTitle
   matching-storage.ts       # 매칭 세션 localStorage 캐시
   analysis-detection.ts     # assistant 메시지가 "종합 분석 완료"인지 키워드로 감지
@@ -120,8 +123,9 @@ scripts/
 - **모든 인증은 Supabase Auth로 처리**된다 (`components/AuthProvider.tsx`). 세션은 Supabase가 쿠키/스토리지로 관리.
 - 계정 타입: `profiles.role` = `user` | `lawyer` | `admin` (+ `lib/types.ts`의 `Account` 유니온)
 - **이메일/비밀번호**: `supabase.auth.signUp` / `signInWithPassword` → 성공 시 `profiles` insert
-- **카카오·구글**: `supabase.auth.signInWithOAuth` (실제 연동). `redirectTo`는 `NEXT_PUBLIC_SITE_URL/auth/callback`
+- **카카오**: `supabase.auth.signInWithOAuth` (실제 연동). `redirectTo`는 `NEXT_PUBLIC_SITE_URL/auth/callback`
   - `app/auth/callback/route.ts`가 `exchangeCodeForSession` 후 신규 사용자 `profiles` 자동 생성
+  - ⚠️ **구글 로그인은 제거됨.** Supabase에 google provider가 꺼져 있어(`provider is not enabled`) 최초 커밋부터 버튼이 동작한 적이 없었다. 되살리려면 Google Cloud OAuth 클라이언트 발급(리디렉션 URI = Supabase 콜백) → Supabase Providers에서 활성화 → **동의 화면을 "프로덕션"으로 게시**(테스트 상태면 등록된 테스트 사용자만 로그인됨)
 - **변호사 가입**(`registerLawyer`): `profiles(role=lawyer)` + `lawyers(status=pending)` 동시 insert → 관리자 승인 대기
 - **관리자**: `middleware.ts`가 `/admin/*`를 세션 + `role='admin'`으로 게이트. 최초 admin은 `schema.sql` 하단 안내대로 `update profiles set role='admin'`으로 승격.
 
@@ -176,6 +180,23 @@ AI 라우트 모두 `runtime="nodejs"`, `dynamic="force-dynamic"`, 모델 `claud
 - 정책은 `supabase/*.sql`을 대시보드 SQL Editor에서 수동 실행해 관리(마이그레이션 자동화 없음).
 - 🔴 **함정**: `for all using (true)` 처럼 역할(TO) 제한 없는 정책은 anon 전체에 적용되어 **누구나 공개 키로 전 데이터를 읽을 수 있는 구멍**이 된다. (과거 `Service role full access` 정책이 상담 원문을 노출 → `fix-rls-exposure.sql`로 제거·검증 완료.) **새 정책 추가 시 소유자/`is_admin()`/명시 조건으로 반드시 스코프를 좁힐 것.**
 
+## 계측 (Analytics)
+
+**GA4**(`components/GoogleAnalytics.tsx`) + **Vercel Web Analytics**(`app/layout.tsx`의 `<Analytics />`) 병행.
+
+- GA4는 `NEXT_PUBLIC_GA_MEASUREMENT_ID`가 있을 때만 렌더된다. **Vercel Production에만 주입**해 프리뷰·로컬 트래픽이 실통계를 오염시키지 않게 한다.
+- 퍼널 이벤트 3종 (`lib/analytics.ts`의 `AnalyticsEvent`):
+
+| 이벤트 | 발화 지점 |
+|---|---|
+| `consultation_start` | 상담방에 첫 질문 전송 (`app/chat/[id]/page.tsx`) |
+| `signup_gate_shown` | 무료 한도 소진 → 로그인 유도 모달 |
+| `sign_up` | 가입 완료 (`method`: email / lawyer / kakao) |
+
+- 🔴 **`trackEvent`는 `window.gtag`를 부르지 않고 `dataLayer`에 직접 push한다.** GA 스크립트는 `afterInteractive`라 하이드레이션 직후 로드되는데, 가입 집계는 페이지 진입 즉시 실행돼 `gtag`가 아직 없을 때 이벤트가 버려진다. 가입은 1인 1회뿐이라 유실되면 **전환율이 통째로 0으로 보인다**(실제 재현됨). gtag.js가 로드 후 큐를 처리하므로 이 방식이면 순서 경합이 없다. **이 구조를 `gtag()` 호출로 되돌리지 말 것.**
+- **OAuth 가입 집계 경로**: 가입 완료가 서버(`auth/callback`)에서 일어나 클라이언트가 알 수 없으므로, 콜백이 `?signup=<provider>`를 달아 돌려보내고 `SignupTracker`가 한 번 집계한 뒤 쿼리를 지운다(새로고침·공유로 인한 중복 집계 방지).
+- **왜 관리자 페이지로 대체할 수 없나**: 비로그인 상담은 localStorage에만 남고 Supabase로 오지 않는다. 즉 "몇 명이 상담을 시작했다가 가입 안 하고 이탈했나"는 우리 DB로 알 수 없다. 유입·이탈은 GA4, 가입 이후는 관리자 페이지가 담당한다.
+
 ## PWA
 
 - `viewportFit:"cover"` + `themeColor:"#0f172a"` (layout.tsx), `appleWebApp.statusBarStyle:"black-translucent"`
@@ -205,7 +226,7 @@ AI 라우트 모두 `runtime="nodejs"`, `dynamic="force-dynamic"`, 모델 `claud
 - 프로덕션: **https://lawsel.kr** (Vercel)
 - 배포: `vercel --prod --yes` (CLI 설치됨). **git push는 자동 배포되지 않음** — 배포는 항상 CLI로.
 - 빌드 검증: `npx tsc --noEmit && npx next build`
-- 환경 변수(`.env.local`): `ANTHROPIC_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`(OAuth 리다이렉트 기준), `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, `NEXT_PUBLIC_NAVER_SITE_VERIFICATION`
+- 환경 변수(`.env.local`): `ANTHROPIC_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`(OAuth 리다이렉트 기준), `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, `NEXT_PUBLIC_NAVER_SITE_VERIFICATION`, `NEXT_PUBLIC_GA_MEASUREMENT_ID`(GA4 측정 ID — Vercel Production에만)
 
 ## 주의 사항
 
