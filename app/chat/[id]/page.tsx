@@ -13,6 +13,7 @@ import {
 import { getQuickConsultation } from "@/lib/quick-consultations";
 import { renderMarkdown, extractCitations } from "@/lib/markdown";
 import type { Citation } from "@/lib/markdown";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import { hasCompletedAnalysis } from "@/lib/analysis-detection";
 import { syncConsultationToSupabase } from "@/lib/consultation-sync";
 import { useAuth } from "@/components/AuthProvider";
@@ -365,6 +366,8 @@ export default function ChatPage({
       !account &&
       getGuestAnswerCount() >= FREE_CONSULTATION_LIMIT
     ) {
+      // 무료 한도 소진 지점. 여기 도달 수 대비 가입 수가 곧 게이트 전환율이다.
+      trackEvent(AnalyticsEvent.SignupGateShown);
       setShowLoginGate(true);
       return;
     }
@@ -390,6 +393,11 @@ export default function ChatPage({
         createdAt: now,
         updatedAt: now,
       };
+
+    // 퍼널 진입 = 방에 첫 질문을 보낸 순간. 유입경로별 전환율의 분모가 된다.
+    if (current.messages.length === 0) {
+      trackEvent(AnalyticsEvent.ConsultationStart, { guest: !account });
+    }
 
     const nextMessages = [...current.messages, userMsg];
     const baseTitle =

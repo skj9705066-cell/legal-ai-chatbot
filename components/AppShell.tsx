@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { AuthProvider } from "./AuthProvider";
 import BottomNav from "./BottomNav";
 import ConsultationBackfill from "./ConsultationBackfill";
+import SignupTracker from "./SignupTracker";
 import TopNav from "./TopNav";
 
 const BOTTOM_NAV_ROUTES = [
@@ -34,6 +35,7 @@ export default function AppShell({
   return (
     <AuthProvider>
       <ConsultationBackfill />
+      <SignupTracker />
       {!isHome && <TopNav />}
       <div className={showBottomNav ? "pb-20 md:pb-0" : undefined}>
         {children}

@@ -20,7 +20,6 @@ export default function AuthForm({
 }: AuthFormProps) {
   const {
     signInWithKakao,
-    signInWithGoogle,
     signInEmail,
     signUpEmail,
   } = useAuth();
@@ -90,16 +89,6 @@ export default function AuthForm({
       >
         <KakaoIcon />
         카카오로 시작하기
-      </button>
-
-      <button
-        type="button"
-        onClick={() => void handle(() => signInWithGoogle(oauthNext))}
-        disabled={submitting}
-        className="w-full h-12 rounded-2xl bg-surface-subtle hover:bg-surface-soft text-navy-900 font-semibold text-[15px] flex items-center justify-center gap-2.5 transition-all duration-500 ease-luxe active:scale-[0.97] disabled:opacity-50"
-      >
-        <GoogleIcon />
-        Google로 시작하기
       </button>
 
       <div className="flex items-center gap-3 pt-1">
@@ -229,29 +218,6 @@ function KakaoIcon() {
   return (
     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
       <path d="M12 3C6.477 3 2 6.477 2 10.762c0 2.793 1.829 5.243 4.578 6.65l-1.157 4.243a.5.5 0 0 0 .766.557l4.95-3.276c.282.026.572.04.863.04 5.523 0 10-3.477 10-7.762S17.523 3 12 3z" />
-    </svg>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg className="w-4 h-4" viewBox="0 0 24 24">
-      <path
-        d="M23.49 12.275c0-.85-.07-1.65-.2-2.42H12v4.57h6.45c-.27 1.5-1.08 2.77-2.31 3.62v3.01h3.74c2.18-2.01 3.61-4.97 3.61-8.78z"
-        fill="#4285F4"
-      />
-      <path
-        d="M12 24c3.13 0 5.75-1.04 7.67-2.82l-3.74-3.01c-1.04.7-2.37 1.11-3.93 1.11-3.02 0-5.57-2.04-6.48-4.78H1.66v3.01C3.55 21.3 7.5 24 12 24z"
-        fill="#34A853"
-      />
-      <path
-        d="M5.52 14.5c-.23-.7-.36-1.45-.36-2.22s.13-1.52.36-2.22V7.05H1.66C.94 8.55.5 10.23.5 12s.44 3.45 1.16 4.95l3.86-2.45z"
-        fill="#FBBC05"
-      />
-      <path
-        d="M12 4.75c1.7 0 3.23.58 4.43 1.73l3.32-3.32C17.74 1.18 15.12 0 12 0 7.5 0 3.55 2.7 1.66 7.05l3.86 3.01c.91-2.74 3.46-4.78 6.48-4.78z"
-        fill="#EA4335"
-      />
     </svg>
   );
 }

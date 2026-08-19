@@ -7,6 +7,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
 import type {
   LawyerRow,
@@ -55,7 +56,6 @@ interface AuthContextValue {
   signUpEmail: (input: EmailSignUpInput) => Promise<UserAccount>;
   signInEmail: (input: EmailSignInInput) => Promise<UserAccount | LawyerAccount>;
   signInWithKakao: (next?: string) => Promise<void>;
-  signInWithGoogle: (next?: string) => Promise<void>;
   registerLawyer: (input: LawyerRegistrationInput) => Promise<LawyerAccount>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -243,6 +243,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!acc || acc.type !== "user") {
         throw new Error("프로필 조회에 실패했습니다.");
       }
+      trackEvent(AnalyticsEvent.SignUp, { method: "email" });
       setAccount(acc);
       return acc;
     },
@@ -273,14 +274,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithKakao = useCallback(async (next?: string): Promise<void> => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "kakao",
-      options: { redirectTo: getOAuthRedirectTo(next) },
-    });
-    if (error) throw new Error(error.message);
-  }, []);
-
-  const signInWithGoogle = useCallback(async (next?: string): Promise<void> => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
       options: { redirectTo: getOAuthRedirectTo(next) },
     });
     if (error) throw new Error(error.message);
@@ -328,6 +321,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!acc || acc.type !== "lawyer") {
         throw new Error("변호사 프로필 조회에 실패했습니다.");
       }
+      trackEvent(AnalyticsEvent.SignUp, { method: "lawyer" });
       setAccount(acc);
       return acc;
     },
@@ -345,7 +339,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUpEmail,
     signInEmail,
     signInWithKakao,
-    signInWithGoogle,
     registerLawyer,
     signOut,
     refresh,

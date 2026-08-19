@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import AppShell from "@/components/AppShell";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
+import { Analytics } from "@vercel/analytics/next";
 import SplashScreen from "@/components/SplashScreen";
 import "./globals.css";
 
@@ -251,6 +253,8 @@ export default function RootLayout({
         <SplashScreen />
         <AppShell>{children}</AppShell>
         <ServiceWorkerRegister />
+        <GoogleAnalytics />
+        <Analytics />
       </body>
     </html>
   );
