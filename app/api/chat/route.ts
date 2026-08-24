@@ -115,10 +115,17 @@ interface IncomingMessage {
 }
 
 const WEB_SEARCH_TOOL: ToolUnion = {
+  // 🔴 20260209(동적 필터링)로 올리지 말 것. 이름과 달리 입력 토큰이 오히려 폭증한다.
+  // 2026-08-24 동일 프롬프트 실측(임금체불 3턴, sonnet-5):
+  //   구버전 20250305 → 입력 35,504 / 검색 2회 / $0.112
+  //   신버전 20260209 → 입력 86,397 / 검색 3회 / $0.237  (2.4배)
+  // 필터링이 결과를 걸러 넣는 게 아니라 더 많은 원문을 컨텍스트로 끌어온다.
+  // 신버전으로 바꾸면 sonnet-5 전환으로 번 절감분(-54%)이 통째로 사라진다.
   type: "web_search_20250305",
   name: "web_search",
-  // 검색 결과는 매 턴 Opus 입력으로 다시 들어가므로 호출 수가 곧 비용이다.
+  // 검색 결과는 매 턴 모델 입력으로 다시 들어가므로 호출 수가 곧 비용이다.
   // 6 → 3: 법령 1~2건 + 판례 1건 확인에는 충분하고, 턴당 비용은 크게 줄어든다.
+  // 검색은 토큰과 별도로 1회당 $0.01이 붙는다(= 턴당 최대 $0.03).
   max_uses: 3,
   user_location: {
     type: "approximate",
@@ -271,7 +278,14 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       try {
         const apiStream = client.messages.stream({
-          model: "claude-opus-4-7",
+          // opus-4-7 → sonnet-5: 입력 $5→$2 / 출력 $25→$10 (약 60% 인하).
+          // 법령·판례는 web_search로 근거를 잡으므로 정확도는 검색이 담보한다.
+          model: "claude-sonnet-5",
+          // 🔴 sonnet-5는 thinking을 생략하면 adaptive(켜짐)로 돌아간다. opus-4-7은
+          // 생략 시 꺼진 상태였으므로, 그냥 모델만 바꾸면 출력 토큰이 늘어 오히려 비싸진다.
+          // effort로 사고 깊이를 눌러 비용을 예측 가능하게 유지한다.
+          // 품질이 떨어지면 "high", 더 줄이려면 "low"로 조정.
+          output_config: { effort: "medium" },
           // 종합 분석(법령 조문 + 판례 설명)과 web_search 호출이 같은 한도를 공유하므로
           // 넉넉히 확보한다. 1536은 분석 도중 max_tokens로 잘리는 원인이었음.
           max_tokens: 8192,
