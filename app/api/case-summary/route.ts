@@ -9,6 +9,7 @@ import {
   forbiddenResponse,
   logBlock,
   normalizeMessages,
+  userFacingError,
 } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
@@ -138,12 +139,11 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ summary });
   } catch (err) {
-    const message =
-      err instanceof Anthropic.APIError
-        ? `API 오류 (${err.status}): ${err.message}`
-        : err instanceof Error
-          ? err.message
-          : "알 수 없는 오류";
-    return NextResponse.json({ error: message }, { status: 500 });
+    // 🔴 err.message를 그대로 내보내지 말 것 — 매칭 화면에 그대로 렌더된다.
+    // 원문은 userFacingError가 서버 로그로만 남긴다.
+    return NextResponse.json(
+      { error: userFacingError(err, "/api/case-summary") },
+      { status: 500 },
+    );
   }
 }

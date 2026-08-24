@@ -13,6 +13,7 @@ import {
   forbiddenResponse,
   logBlock,
   normalizeMessages,
+  userFacingError,
 } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
@@ -322,13 +323,11 @@ export async function POST(req: NextRequest) {
 
         controller.close();
       } catch (err) {
-        const message =
-          err instanceof Anthropic.APIError
-            ? `API 오류 (${err.status}): ${err.message}`
-            : err instanceof Error
-              ? err.message
-              : "알 수 없는 오류가 발생했습니다.";
-        controller.enqueue(encoder.encode(`\n\n[오류] ${message}`));
+        // 🔴 err.message를 그대로 흘리지 말 것. 원문은 userFacingError가 서버 로그로만
+        // 남긴다. (2026-08-23 의뢰인 화면에 Anthropic 크레딧 소진 원문이 노출된 건)
+        controller.enqueue(
+          encoder.encode(`\n\n[오류] ${userFacingError(err, "/api/chat")}`),
+        );
         controller.close();
       }
     },

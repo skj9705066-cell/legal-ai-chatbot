@@ -270,3 +270,36 @@ export function forbiddenResponse(): Response {
     { status: 403, headers: { "Content-Type": "application/json" } },
   );
 }
+
+/**
+ * 🔴 AI 라우트 에러를 이용자에게 보여줄 문구로 변환한다.
+ *
+ * 과거 라우트들이 `err.message`를 그대로 스트림/JSON에 실어 보내서, 의뢰인 화면에
+ * Anthropic 원문이 노출됐다. 실제로 2026-08-23 상담 화면에 이렇게 찍혔다:
+ *   API 오류 (400): {"type":"error","error":{"message":"Your credit balance is
+ *   too low to access the Anthropic API..."},"request_id":"req_011Ce..."}
+ * 법률 상담 서비스에서 "우리 결제가 밀렸다"는 사실과 내부 request_id가 이용자에게
+ * 그대로 읽히는 건 신뢰 문제다. 원문은 서버 로그로만 남기고 화면에는 이 문구만 낸다.
+ *
+ * 로그에는 상담 본문을 절대 넣지 말 것(logBlock 주석의 이유와 동일).
+ */
+export function userFacingError(err: unknown, path: string): string {
+  const status =
+    typeof err === "object" && err !== null && "status" in err
+      ? (err as { status?: unknown }).status
+      : undefined;
+  const detail =
+    err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  console.error(
+    `[ai-route] error path=${path} status=${String(status ?? "(none)")} detail=${detail.slice(0, 300)}`,
+  );
+
+  if (status === 429) {
+    return "지금 이용자가 많아 답변이 지연되고 있습니다. 잠시 후 다시 시도해주세요.";
+  }
+  if (typeof status === "number" && status >= 500) {
+    return "일시적인 오류로 답변을 만들지 못했습니다. 잠시 후 다시 시도해주세요.";
+  }
+  // 400(크레딧 소진·요청 형식 등)을 포함한 나머지. 원인을 이용자에게 드러내지 않는다.
+  return "일시적인 점검으로 답변을 만들지 못했습니다. 잠시 후 다시 시도해주세요.";
+}
