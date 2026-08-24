@@ -9,7 +9,7 @@ AI 법률 상담 + 변호사 매칭 PWA. Heydealer 톤의 모바일 우선 UI. *
 - Next.js 15 (App Router, RSC + "use client") · React 19 · TypeScript 5.7
 - Tailwind CSS 3.4 (커스텀 팔레트: `primary` 네이비 / `brand` 틸 / `accent` 골드 / `cta` 그린)
 - **Supabase** — `@supabase/supabase-js` + `@supabase/ssr`. 이메일/비밀번호 + 카카오 **실제 OAuth**, Postgres, Row Level Security
-- Anthropic SDK 0.65 (`@anthropic-ai/sdk`) — 모델 **`claude-opus-4-7`**, 일부 라우트에서 `web_search` 도구 활용
+- Anthropic SDK 0.120 (`@anthropic-ai/sdk`) — 모델 **`claude-sonnet-5`**(`/api/chat`) / **`claude-haiku-4-5-20251001`**(내부 요약·예시답변), 일부 라우트에서 `web_search` 도구 활용
 - puppeteer-core + playwright (devDependencies — 아이콘 PNG 생성 + 스크린샷 스크립트)
 - 별도 상태 라이브러리 없음 — React state + Supabase + localStorage 캐시
 
@@ -159,7 +159,15 @@ scripts/
 - `POST /api/suggest-questions` — 최근 대화 기반, 의뢰인이 탭 한 번으로 보낼 **예시 답변 3개**(질문 아님).
 - `POST /api/auth/kakao` — 카카오 OAuth 보조.
 
-AI 라우트 모두 `runtime="nodejs"`, `dynamic="force-dynamic"`, 모델 `claude-opus-4-7`. `ANTHROPIC_API_KEY` 필요.
+AI 라우트 모두 `runtime="nodejs"`, `dynamic="force-dynamic"`, `ANTHROPIC_API_KEY` 필요.
+모델은 `/api/chat`이 `claude-sonnet-5`(+`output_config.effort:"medium"`), 나머지 둘은 `claude-haiku-4-5-20251001`.
+
+🔴 **`web_search`는 `web_search_20250305`를 유지할 것.** 신버전 `web_search_20260209`("동적 필터링")는
+이름과 달리 입력 토큰을 2.4배로 늘린다(2026-08-24 동일 프롬프트 실측: 35,504 → 86,397).
+모델 전환으로 번 절감분이 통째로 사라진다. 근거는 `app/api/chat/route.ts`의 `WEB_SEARCH_TOOL` 주석 참고.
+
+🔴 **sonnet-5는 `thinking`을 생략하면 adaptive(켜짐)로 동작한다.** opus-4-7은 생략 시 꺼진 상태였으므로,
+`output_config.effort`를 빼면 출력 토큰이 늘어 오히려 비싸진다. 모델을 바꿀 때 이 항목을 함께 검토할 것.
 
 ### 🔴 AI 라우트 방어막 (`lib/api-guard.ts`) — 비용 유출 방지
 
