@@ -3,7 +3,9 @@ import { HIDDEN_DEFINITION, STATS, STATS_AVERAGE_NOTE, STATS_DISCLAIMER, STATS_M
 import { Odometer } from "@/components/motion/Odometer";
 import { Reveal } from "@/components/motion/Reveal";
 
-const [MAIN, ...SUBS] = STATS;
+const [MAIN, ...REST] = STATS;
+const AVG = REST.find((s) => s.id === "refund-average")!;
+const SUBS = REST.filter((s) => s.id !== "refund-average");
 
 /** 장식용 링 그래픽: 숫자 애니메이션 진행에 맞춰 그려진다. 시점별 추이·데이터를 나타내지 않는다. */
 function DecorativeRing() {
@@ -84,32 +86,55 @@ export function StatsSection() {
           </div>
         </Reveal>
 
-        {/* 보조 통계: 지급 건수 → 지급액 → 건당 평균 */}
-        <div className="mt-4 grid gap-4 lg:mt-5 lg:grid-cols-3 lg:gap-5">
+        {/* 보조 통계: 지급 건수 → 지급액 */}
+        <div className="mt-4 grid gap-4 md:grid-cols-2 lg:mt-5 lg:gap-5">
           {SUBS.map((s, i) => (
             <Reveal key={s.id} delay={120 * (i + 1)}>
-              <div className="flex h-full flex-col rounded-[24px] bg-white/[0.05] p-6 ring-1 ring-inset ring-white/10 sm:p-8">
+              <div className="h-full rounded-[24px] bg-white/[0.05] p-6 ring-1 ring-inset ring-white/10 sm:p-8">
                 <p className="text-[16px] font-semibold text-white/90">
                   {s.basis} {s.label}
                 </p>
-                <p className="mt-3 flex items-baseline gap-1.5 whitespace-nowrap font-extrabold tracking-[-0.03em] text-white [font-size:clamp(30px,8.6vw,40px)]" data-testid={`stat-${s.id}`}>
+                <p className="mt-3 flex items-baseline gap-1.5 whitespace-nowrap font-extrabold tracking-[-0.03em] text-white [font-size:clamp(30px,8.6vw,40px)] lg:text-[48px]" data-testid={`stat-${s.id}`}>
                   <span aria-hidden="true" className="text-[0.5em] font-bold text-white/75">{s.prefix}</span>
                   <Odometer value={s.value} template={s.template} label={`${s.basis} ${s.label} ${s.text}`} duration={2400} delay={150 * (i + 1)} />
                 </p>
-                {s.id === "refund-average" && (
-                  // 개인별 예상액으로 오인되지 않도록 숫자 바로 아래 고정 표기
-                  <div className="mt-3" data-testid="stat-average-note">
-                    <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-300/15 px-3 py-1.5 text-[14px] font-bold text-amber-200 ring-1 ring-inset ring-amber-300/30">
-                      <Info className="h-4 w-4" aria-hidden="true" />
-                      {STATS_AVERAGE_NOTE.badge}
-                    </p>
-                    <p className="mt-2 text-[15px] leading-relaxed text-navy-300">{STATS_AVERAGE_NOTE.text}</p>
-                  </div>
-                )}
               </div>
             </Reveal>
           ))}
         </div>
+
+        {/* 건당 평균: 가장 크게 강조하되, '개인별 예상액 아님' 표기를 같은 카드·숫자 바로 아래에 함께 키운다 */}
+        <Reveal className="mt-4 lg:mt-5" delay={360}>
+          <div className="avg-feature relative overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#0866F5_0%,#0550C4_60%,#0B3E8A_100%)] p-6 shadow-[0_30px_80px_-24px_rgba(8,102,245,0.75)] ring-1 ring-inset ring-white/20 sm:p-10 lg:p-14">
+            <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-white/15 blur-[80px]" />
+            <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-blue-300/25 blur-[90px]" />
+            <div className="relative lg:flex lg:items-end lg:justify-between lg:gap-10">
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-2 text-[17px] font-bold text-white lg:text-[20px]">
+                  {AVG.basis} {AVG.label}
+                </p>
+                <p
+                  className="mt-2 flex items-baseline gap-2 whitespace-nowrap font-black tracking-[-0.045em] text-white [font-size:clamp(56px,17vw,80px)] sm:text-[104px] lg:text-[128px] lg:leading-none"
+                  data-testid={`stat-${AVG.id}`}
+                >
+                  <span aria-hidden="true" className="text-[0.32em] font-bold text-white/80">{AVG.prefix}</span>
+                  <Odometer value={AVG.value} template={AVG.template} label={`${AVG.basis} ${AVG.label} ${AVG.text}`} duration={3000} delay={300} />
+                </p>
+                {/* 개인별 예상액으로 오인되지 않도록 숫자 바로 아래 고정 표기 */}
+                <div className="mt-3 lg:mt-5" data-testid="stat-average-note">
+                  <p className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[16px] font-extrabold text-blue-700 shadow-sm lg:text-[18px]">
+                    <Info className="h-[18px] w-[18px]" aria-hidden="true" />
+                    {STATS_AVERAGE_NOTE.badge}
+                  </p>
+                  <p className="mt-2.5 text-[16px] font-medium leading-relaxed text-white/90 lg:text-[17px]">{STATS_AVERAGE_NOTE.text}</p>
+                </div>
+              </div>
+              <p className="mt-6 max-w-[300px] border-t border-white/20 pt-5 text-[15px] leading-relaxed text-white/85 lg:mt-0 lg:shrink-0 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+                받을 수 있는 금액은 계약 내용과 청구 요건에 따라 사람마다 다르며, 지급 여부는 보험사가 결정합니다.
+              </p>
+            </div>
+          </div>
+        </Reveal>
 
         {/* 출처·유의사항 */}
         <Reveal className="mt-4 lg:mt-5">
