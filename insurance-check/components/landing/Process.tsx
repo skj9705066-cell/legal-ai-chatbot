@@ -6,7 +6,7 @@ import { SERVICE_TYPES, type ServiceType } from "@/lib/types";
 import { REFUND_COMPARISON, SERVICE_CONTENT } from "@/lib/content";
 import { cn } from "@/lib/utils";
 import { Alert } from "@/components/ui/alert";
-import { OfficialLink } from "@/components/site/OfficialLink";
+import { Reveal } from "@/components/motion/Reveal";
 import { useApply } from "./ApplyContext";
 import { ApplyCta } from "./ApplyCta";
 import { Section, SectionHeading } from "./Section";
@@ -41,12 +41,14 @@ export function Process() {
 
   return (
     <Section id="process">
+      <Reveal>
       <SectionHeading
         id="process"
         eyebrow="점검 절차"
-        title="점검은 이렇게 진행돼요"
+        title="점검은 4단계로 진행돼요"
         description="청구와 지급 결정은 고객님과 보험사 사이에서 이뤄집니다. 저희는 확인 방법과 순서를 알기 쉽게 안내해 드려요."
       />
+      </Reveal>
 
       <div
         role="tablist"
@@ -164,9 +166,12 @@ export function Process() {
           </div>
         )}
         {active === "hidden" && (
-          <Alert tone="info" className="mt-5" title="상담 없이도 바로 조회할 수 있어요">
-            숨은보험금 조회는 공식 서비스에서 본인인증만으로 가능합니다.{" "}
-            <OfficialLink className="font-semibold text-blue underline underline-offset-2" />
+          <Alert tone="info" className="mt-5" title="공식 조회 서비스는 직접 무료로 이용할 수 있어요">
+            숨은보험금은 공식 조회 서비스(내보험찾아줌)에서 본인이 직접 조회할 수 있고, 이 사이트의 신청이나 개인정보 입력이 필요하지 않습니다.
+            조회 방법이 어렵거나 결과를 함께 확인하고 싶을 때 상담을 신청해 주세요.{" "}
+            <a href="#faq-official" className="font-semibold text-blue-700 underline underline-offset-2">
+              자세히 보기
+            </a>
           </Alert>
         )}
         {active === "unclaimed" && (
@@ -176,8 +181,8 @@ export function Process() {
         )}
 
         <div className="mt-10">
-          <ApplyCta source="process" type={active} size="lg" className="w-full sm:w-auto">
-            이 절차로 점검 신청하기
+          <ApplyCta source="process" type={active} size="xl" className="w-full sm:w-auto sm:min-w-[320px]">
+            이 절차로 무료 점검 상담 신청하기
           </ApplyCta>
         </div>
       </div>

@@ -3,8 +3,9 @@ import type { Config } from "tailwindcss";
 /**
  * 디자인 시스템
  *  navy  #102B4E  브랜드·제목      ink   #172B45  본문
- *  blue  #1463D9  주요 액션·강조   navy-500 #64748B 보조 글씨(흰 배경 4.8:1)
- *  navy-50 #F4F7FB 보조 배경       mint  #16A085  성공 상태(텍스트는 mint-700)
+ *  blue  #0866F5  주요 액션·강조   navy-500 #64748B 보조 글씨(흰 배경 전용 — 보조 배경 위에서는 navy-600)
+ *  deep  #0B2445  다크 섹션 배경   navy-50 #F3F7FC 보조 배경
+ *  mint  #16A085  포인트·성공 상태(텍스트는 mint-700)
  */
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
@@ -13,6 +14,7 @@ const config: Config = {
     extend: {
       colors: {
         ink: "#172B45",
+        deep: { DEFAULT: "#0B2445", 800: "#0F2C52", 700: "#14365F" },
         navy: {
           DEFAULT: "#102B4E",
           900: "#0B1F3A",
@@ -24,16 +26,17 @@ const config: Config = {
           300: "#CBD5E1",
           200: "#E2E8F0",
           100: "#EDF1F7",
-          50: "#F4F7FB",
+          50: "#F3F7FC",
         },
         blue: {
-          DEFAULT: "#1463D9",
-          700: "#0F4FB3",
-          600: "#1259C7",
-          300: "#93B8F0",
-          200: "#C4D9F8",
-          100: "#DDEAFC",
-          50: "#EEF4FE",
+          DEFAULT: "#0866F5",
+          700: "#0550C4",
+          600: "#065BDB",
+          400: "#4D93FF",
+          300: "#8DB9FF",
+          200: "#C2DAFE",
+          100: "#DCEAFE",
+          50: "#EEF5FF",
         },
         mint: {
           DEFAULT: "#16A085",
@@ -73,7 +76,8 @@ const config: Config = {
       boxShadow: {
         card: "0 1px 2px rgba(16,43,78,0.04), 0 6px 20px -8px rgba(16,43,78,0.08)",
         lift: "0 1px 2px rgba(16,43,78,0.05), 0 20px 48px -20px rgba(16,43,78,0.22)",
-        cta: "0 10px 24px -10px rgba(20,99,217,0.55)",
+        cta: "0 10px 24px -10px rgba(8,102,245,0.55)",
+        glow: "0 0 0 1px rgba(77,147,255,0.18), 0 24px 80px -24px rgba(8,102,245,0.55)",
         ring: "0 0 0 1px rgba(16,43,78,0.06)",
       },
       keyframes: {

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 // shadcn/ui 규칙(cva + cn)을 따른 버튼. Tailwind 3.4 기존 스택에 맞춰 소스로 포함.
 export const buttonVariants = cva(
-  "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-semibold tracking-[-0.01em] transition-[background-color,box-shadow,transform,color,border-color] duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue/25 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-50 [&_svg]:shrink-0",
+  "group inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-semibold tracking-[-0.01em] transition-[background-color,box-shadow,transform,color,border-color] duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue/25 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-50 [&_svg]:shrink-0",
   {
     variants: {
       variant: {

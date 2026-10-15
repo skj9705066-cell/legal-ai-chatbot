@@ -24,13 +24,16 @@ export const STATS_SOURCE = {
  * 평균 환급액(건당 약 404만원)은 개인별 기대 금액으로 오인될 수 있어 의도적으로 노출하지 않는다.
  */
 export const STATS = [
-  { id: "hidden-total", basis: "2025년 말 기준", label: "숨은보험금 잔액", value: "10조 3,000억원", num: "10조 3,000", unit: "억원" },
-  { id: "refund-amount", basis: "2025년 한 해", label: "숨은보험금 환급액", value: "약 3조 2,470억원", num: "3조 2,470", unit: "억원", prefix: "약" },
-  { id: "refund-count", basis: "2025년 한 해", label: "숨은보험금 환급 건수", value: "약 80만 건", num: "80만", unit: "건", prefix: "약" },
+  // value는 애니메이션의 기준 정수, template은 화면 표기(숫자 자리 = value의 자릿수와 일치해야 함)
+  { id: "hidden-total", basis: "2025년 말 기준", label: "숨은보험금 잔액", value: 103000, template: "10조 3,000억원", text: "10조 3,000억원" },
+  { id: "refund-amount", basis: "2025년 중", label: "숨은보험금 환급 금액", value: 32470, template: "3조 2,470억원", text: "3조 2,470억원" },
+  { id: "refund-count", basis: "2025년 중", label: "숨은보험금 환급 건수", value: 80, template: "80만 건", text: "약 80만 건", prefix: "약" },
 ] as const;
 
 export const STATS_DISCLAIMER =
-  "업권 전체의 집계 통계이며, 개인별 환급 가능 여부나 환급 금액을 의미하거나 보장하지 않습니다.";
+  "전국 규모의 공식 집계이며, 개인별 환급 가능 여부나 환급 금액을 의미하거나 보장하지 않습니다.";
+
+export const STATS_MOTION_NOTE = "숫자 애니메이션은 표시 효과이며, 실시간으로 변하는 수치가 아닙니다.";
 
 export const HIDDEN_DEFINITION =
   "숨은보험금은 지급 사유가 생겨 지급 금액이 확정됐지만 아직 청구되지 않은 중도·만기·휴면보험금 등을 말합니다.";
@@ -38,14 +41,17 @@ export const HIDDEN_DEFINITION =
 export const HERO = {
   titleLines: ["혹시 아직 받지 못한", "보험금이 있으신가요?"],
   highlight: "보험금",
-  subLines: ["병원비·수술비 미청구 보험금부터", "숨은 보험금과 환급 관련 사항까지,", "내 보험을 한 번에 점검하세요."],
+  subLines: ["병원비·수술비 미청구 보험금부터", "숨은 보험금과 환급 관련 사항까지,", "내 보험을 한 번에 점검해 드립니다."],
   cta: "내 보험금 점검 시작하기",
+  trust: ["무료 점검 안내", "보험 가입 의무 없음", "필요한 경우 상담으로 확인 가능"],
 } as const;
 
 export interface ServiceTypeContent {
   id: ServiceType;
   /** 큰 선택 카드용 제목·한 줄 설명 */
   cardTitle: string;
+  /** 카드 제목 줄바꿈 위치 */
+  cardTitleLines: [string, string];
   cardDesc: string;
   cardNote?: string;
   /** 절차 탭용 짧은 이름 */
@@ -62,8 +68,9 @@ export const SERVICE_CONTENT: Record<ServiceType, ServiceTypeContent> = {
   unclaimed: {
     id: "unclaimed",
     cardTitle: "병원비·수술비 미청구 보험금",
+    cardTitleLines: ["병원비·수술비", "미청구 보험금"],
     tabLabel: "미청구 보험금",
-    cardDesc: "통원·입원·수술 후 청구하지 않은 보험금이 있는지, 어떤 서류로 청구하는지 알려드려요.",
+    cardDesc: "병원 진료, 수술, 입원 등으로 청구하지 않은 보험금이 있는지 점검 절차를 안내합니다.",
     shortTitle: "미청구 보험금",
     title: "병원비·수술비 등 미청구 보험금 점검 안내",
     summary:
@@ -88,17 +95,18 @@ export const SERVICE_CONTENT: Record<ServiceType, ServiceTypeContent> = {
   hidden: {
     id: "hidden",
     cardTitle: "숨은·만기·휴면보험금",
+    cardTitleLines: ["숨은·만기·휴면", "보험금"],
     tabLabel: "숨은 보험금",
-    cardDesc: "찾아가지 않은 보험금은 공식 조회 서비스에서 직접 확인할 수 있도록 안내해 드려요.",
+    cardDesc: "찾아가지 않은 보험금의 공식 조회 방법과 확인 절차를 안내합니다.",
     shortTitle: "숨은·만기·휴면 보험금",
     title: "숨은·만기·휴면보험금 공식 조회 안내",
     summary:
       "지급 시기가 지났는데 찾아가지 않은 중도·만기·휴면보험금은 공식 조회 서비스 ‘내보험찾아줌’에서 본인이 직접 무료로 조회할 수 있습니다.",
-    documents: ["본인 명의 휴대전화 (본인인증용)", "이 페이지에 개인정보를 입력할 필요는 없습니다"],
+    documents: ["본인 명의 휴대전화 (공식 조회 시 본인인증용)", "상담을 원하시면 이름·연락처·희망 시간만 남기면 됩니다"],
     notices: [
       "조회 결과가 없을 수 있으며, 조회 결과가 지급을 보장하지는 않습니다.",
       "일부 휴면보험금은 서민금융진흥원으로 이관되었을 수 있어 조회처가 다를 수 있습니다.",
-      "공식 조회는 상담 신청 없이도 이용할 수 있습니다.",
+      "공식 조회 서비스(내보험찾아줌)는 상담 신청이나 이 사이트의 개인정보 입력 없이도 본인이 직접 무료로 이용할 수 있습니다.",
     ],
     steps: [
       { actor: "고객", title: "내보험찾아줌 접속", body: "공식 사이트(cont.insure.or.kr)에 접속합니다. 이 페이지를 거치지 않아도 됩니다." },
@@ -110,8 +118,9 @@ export const SERVICE_CONTENT: Record<ServiceType, ServiceTypeContent> = {
   refund: {
     id: "refund",
     cardTitle: "과오납 보험료·해지환급금",
+    cardTitleLines: ["과오납 보험료·", "해지환급금"],
     tabLabel: "과오납·해지",
-    cardDesc: "더 낸 보험료를 돌려받는 방법과 예상 해지환급금 확인 방법을 나눠서 알려드려요.",
+    cardDesc: "과오납 보험료 반환 가능 여부와 기존 보험의 해지환급금 확인 방법을 안내합니다.",
     cardNote: "해지하면 보장이 사라질 수 있어요. 해지를 권유하지 않습니다.",
     shortTitle: "과오납·해지환급금",
     title: "과오납 보험료 및 해지환급금 확인 안내",

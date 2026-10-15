@@ -62,3 +62,18 @@ describe("sanitizeTag (UTM)", () => {
     expect(sanitizeTag("spring_<b>promo</b>")).toBe("spring_bpromo/b");
   });
 });
+
+describe("odometer wheel position", async () => {
+  const { wheelPosition } = await import("@/lib/odometer");
+  const digitsAt = (v: number, places: number) => Array.from({ length: places }, (_, i) => wheelPosition(v, places - 1 - i));
+  it("stops exactly on every digit of the final value", () => {
+    expect(digitsAt(103000, 6)).toEqual([1, 0, 3, 0, 0, 0]);
+    expect(digitsAt(32470, 5)).toEqual([3, 2, 4, 7, 0]);
+    expect(digitsAt(80, 2)).toEqual([8, 0]);
+  });
+  it("higher digits only roll while the lower digit wraps 9→0", () => {
+    expect(wheelPosition(103500, 4)).toBe(0); // 10.35 → 0 정지
+    expect(wheelPosition(109500, 4)).toBeCloseTo(0.5, 5); // 10.95 → 다음 칸으로 반쯤 넘어가는 중
+    expect(wheelPosition(12.5, 0)).toBeCloseTo(2.5, 5); // 일의 자리는 연속
+  });
+});

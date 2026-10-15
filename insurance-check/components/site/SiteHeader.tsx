@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { Logo } from "./Logo";
-import { OfficialLink } from "./OfficialLink";
 import { MobileMenu } from "./MobileMenu";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 
+// 외부 조회 사이트로 바로 나가는 링크는 두지 않는다. 공식 조회 안내는 FAQ 항목(텍스트 링크 포함)으로 연결.
 const NAV = [
   { href: "/#services", label: "서비스 안내" },
   { href: "/#process", label: "점검 절차" },
+  { href: "/#faq-official", label: "공식 조회 안내" },
   { href: "/#faq", label: "자주 묻는 질문" },
 ];
 
@@ -29,15 +30,12 @@ export function SiteHeader({ demo }: { demo: boolean }) {
               {n.label}
             </Link>
           ))}
-          <OfficialLink className="rounded-xl px-3.5 py-2 text-[16px] font-medium text-navy-600 transition-colors hover:bg-navy-50 hover:text-navy">
-            공식 조회 안내
-          </OfficialLink>
-          <Link href="/#apply" className={buttonVariants({ size: "sm", className: "ml-3 shadow-none" })}>
+          <Link href="/#services" className={buttonVariants({ size: "sm", className: "ml-3 shadow-none" })}>
             무료 점검 시작
           </Link>
         </nav>
         <div className="flex items-center gap-1.5 lg:hidden">
-          <Link href="/#apply" className={buttonVariants({ size: "sm", className: "h-9 rounded-xl px-3.5 text-[15px] shadow-none" })}>
+          <Link href="/#services" className={buttonVariants({ size: "sm", className: "h-9 rounded-xl px-3.5 text-[15px] shadow-none" })}>
             무료 점검
           </Link>
           <MobileMenu items={NAV} />
