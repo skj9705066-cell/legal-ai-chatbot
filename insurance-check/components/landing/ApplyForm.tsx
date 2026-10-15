@@ -245,7 +245,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
         {serverError && <Alert tone="error" role="alert" className="mt-6" title={serverError} />}
       </div>
 
-      <fieldset disabled={disabled || busy} className="mt-7">
+      <fieldset key={step} disabled={disabled || busy} className="step-in mt-7">
         <legend className="sr-only">{current.title}</legend>
 
         {step === 0 && (
@@ -379,7 +379,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
               <FieldError id="apply-time-error">{errors.preferredTime}</FieldError>
             </div>
             <div>
-              <Label htmlFor="apply-memo">상담 메모</Label>
+              <Label htmlFor="apply-memo">문의 내용</Label>
               <Textarea
                 id="apply-memo"
                 name="memo"

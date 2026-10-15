@@ -63,10 +63,13 @@ export function CompleteView() {
         <section aria-labelledby="offer-title" className="rounded-[28px] bg-white p-6 shadow-card sm:p-9">
           <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-[14px] font-bold text-blue-700">선택 사항</span>
           <h2 id="offer-title" className="mt-4 text-balance text-[22px] font-bold leading-snug tracking-[-0.025em] text-navy sm:text-[24px]">
-            현재 가입하신 보험, 보장도 함께 확인해 보시겠어요?
+            현재 가입하신 보험, <br />
+            보장도 함께 확인해 보시겠어요?
           </h2>
           <p className="mt-3 text-[16px] leading-[1.7] text-navy-600">
-            기존 보험의 중복 보장, 부족한 보장, 갱신 조건 등을 별도로 점검해 드립니다. 추가 상담은 선택사항이며 보험 가입 의무는 없습니다.
+            기존 보험의 중복 보장, 부족한 보장, 갱신 조건 등을 별도로 점검해 드립니다.
+            <br />
+            <strong className="font-semibold text-navy">보험 가입 의무는 없습니다.</strong>
           </p>
           <ul className="mt-6 grid grid-cols-3 gap-2.5">
             {COVERAGE_POINTS.map(({ icon: Icon, label }) => (

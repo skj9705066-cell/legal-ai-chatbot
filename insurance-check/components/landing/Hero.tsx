@@ -1,10 +1,7 @@
 import { CheckCircle2 } from "lucide-react";
 import { HERO } from "@/lib/content";
-import { OfficialLink } from "@/components/site/OfficialLink";
 import { ApplyCta } from "./ApplyCta";
 import { HeroVisual } from "./HeroVisual";
-
-const TRUST = ["무료 점검 안내", "보험 가입 의무 없음", "공식 조회 서비스 안내"];
 
 function Highlighted({ line }: { line: string }) {
   const i = line.indexOf(HERO.highlight);
@@ -20,16 +17,16 @@ function Highlighted({ line }: { line: string }) {
 
 export function Hero() {
   return (
-    <section aria-labelledby="hero-title" className="overflow-hidden bg-white">
-      <div className="container grid items-center gap-12 pb-16 pt-10 sm:pt-14 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 lg:pb-28 lg:pt-20">
+    <section aria-labelledby="hero-title" className="relative overflow-hidden bg-[linear-gradient(180deg,#FFFFFF_0%,#F3F7FC_100%)]">
+      <div className="container grid items-center gap-10 pb-14 pt-9 sm:pt-14 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12 lg:pb-24 lg:pt-20">
         <div className="animate-fade-up">
-          <p className="inline-flex items-center gap-2 rounded-full bg-navy-50 px-3.5 py-1.5 text-[14px] font-semibold text-navy-600">
-            <span className="h-1.5 w-1.5 rounded-full bg-blue" aria-hidden="true" />
-            보험금 청구 방법 · 공식 조회 안내
+          <p className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1.5 text-[14px] font-semibold text-navy-600 shadow-ring">
+            <span className="h-1.5 w-1.5 rounded-full bg-mint" aria-hidden="true" />
+            내 보험 무료 점검
           </p>
           <h1
             id="hero-title"
-            className="mt-5 text-[34px] font-extrabold leading-[1.26] tracking-[-0.035em] text-navy sm:text-[46px] lg:text-[58px] lg:leading-[1.18]"
+            className="mt-5 text-[34px] font-extrabold leading-[1.25] tracking-[-0.04em] text-navy sm:text-[46px] lg:text-[60px] lg:leading-[1.16]"
           >
             {HERO.titleLines.map((l) => (
               <span key={l} className="block">
@@ -37,7 +34,7 @@ export function Hero() {
               </span>
             ))}
           </h1>
-          <p className="mt-5 text-[17px] leading-[1.7] text-navy-600 sm:text-[19px] lg:mt-6">
+          <p className="mt-5 text-[17px] leading-[1.7] text-navy-600 sm:text-[19px] lg:mt-6 lg:text-[20px]">
             {HERO.subLines.map((l) => (
               <span key={l} className="block">
                 {l}
@@ -45,15 +42,12 @@ export function Hero() {
             ))}
           </p>
 
-          <div id="hero-cta" className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center lg:mt-10">
-            <ApplyCta source="hero" size="xl" className="w-full sm:w-auto sm:min-w-[300px]" />
-            <OfficialLink className="justify-center rounded-2xl px-4 py-3 text-[16px] font-semibold text-navy-600 underline-offset-4 hover:text-navy hover:underline">
-              개인정보 입력 없이 공식 조회하기
-            </OfficialLink>
+          <div id="hero-cta" className="mt-8 lg:mt-10">
+            <ApplyCta source="hero" target="types" size="xl" className="h-[62px] w-full text-[18px] sm:w-auto sm:min-w-[320px]" />
           </div>
 
-          <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2.5" aria-label="서비스 특징">
-            {TRUST.map((t) => (
+          <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2.5" aria-label="서비스 특징">
+            {HERO.trust.map((t) => (
               <li key={t} className="flex items-center gap-1.5 text-[15px] font-semibold text-navy-600">
                 <CheckCircle2 className="h-[18px] w-[18px] text-mint" aria-hidden="true" />
                 {t}
@@ -61,7 +55,9 @@ export function Hero() {
             ))}
           </ul>
         </div>
-        <div className="animate-fade-up [animation-delay:120ms]">
+
+        {/* 모바일: 목업 상단만 보여 주어 카피·CTA가 먼저 보이게 */}
+        <div className="animate-fade-up [animation-delay:140ms] max-lg:max-h-[380px] max-lg:overflow-hidden max-lg:[mask-image:linear-gradient(to_bottom,black_72%,transparent)]">
           <HeroVisual />
         </div>
       </div>

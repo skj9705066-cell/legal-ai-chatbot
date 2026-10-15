@@ -1,0 +1,10 @@
+# Vercel(웹 미리보기) 업로드 제외 목록.
+# 저장소 루트의 .vercelignore는 lawsel.kr 배포에서 이 폴더를 통째로 빼기 위한 것이다.
+# Vercel은 프로젝트 폴더에 .vercelignore가 있으면 루트 것 대신 이것을 쓴다.
+node_modules
+.next
+test-results
+playwright-report
+tsconfig.tsbuildinfo
+.env*.local
+*.log

@@ -9,7 +9,8 @@ async function submitLead(page: Page, phone: string, utm = "") {
     if (req.url().endsWith("/api/events")) events.push(req.postData() ?? "");
   });
   await page.goto(`/${utm}`);
-  await page.locator("#services").getByRole("button", { name: "조회가 어려우면 상담 신청" }).click();
+  await page.locator('#services input[value="hidden"]').check({ force: true });
+  await page.getByRole("button", { name: "선택한 보험금 무료 점검 상담 신청하기" }).click();
   await expect(page.locator("#apply-name")).toBeFocused();
   await page.fill("#apply-name", "테스트");
   await page.fill("#apply-phone", phone);

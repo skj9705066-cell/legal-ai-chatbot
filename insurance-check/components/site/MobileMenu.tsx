@@ -3,7 +3,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
-import { OfficialLink } from "./OfficialLink";
 
 export function MobileMenu({ items }: { items: { href: string; label: string }[] }) {
   const [open, setOpen] = useState(false);
@@ -47,7 +46,6 @@ export function MobileMenu({ items }: { items: { href: string; label: string }[]
               {n.label}
             </Link>
           ))}
-          <OfficialLink className="rounded-xl px-2 py-3.5 text-[17px] font-semibold text-ink hover:bg-navy-50">공식 조회 안내</OfficialLink>
         </nav>
       </div>
     </>

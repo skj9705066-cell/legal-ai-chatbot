@@ -52,6 +52,88 @@
   }
 }
 
+/* ── 오도미터: 자릿수 세로 롤링 ─────────────────────────────── */
+.odo {
+  display: inline-flex;
+  align-items: flex-end;
+  white-space: nowrap;
+  line-height: 1.12;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+.odo-col {
+  position: relative;
+  display: inline-block;
+  height: 1.12em;
+  overflow: hidden;
+}
+.odo-strip {
+  display: block;
+  will-change: transform;
+}
+.odo-strip > span {
+  display: block;
+  height: 1.12em;
+  text-align: center;
+}
+.odo-char {
+  display: inline-block;
+  height: 1.12em;
+}
+.odo[data-state="done"] {
+  animation: odo-settle 1400ms ease-out 1;
+}
+@keyframes odo-settle {
+  0% { text-shadow: 0 0 0 rgba(77, 147, 255, 0); }
+  30% { text-shadow: 0 0 28px rgba(77, 147, 255, 0.55); }
+  100% { text-shadow: 0 0 0 rgba(77, 147, 255, 0); }
+}
+
+/* 장식 링: 오도미터가 대기 중일 땐 비워 두고, 돌기 시작하면 같은 시간 동안 그려진다. (:has 미지원 브라우저는 처음부터 완성 상태) */
+.ring-arc {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 2800ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+.stat-main:has(.odo[data-state="idle"]) .ring-arc {
+  stroke-dashoffset: 100;
+  transition: none;
+}
+
+/* ── 섹션 진입 Fade Up (JS가 화면 밖 요소에만 pending을 건다 → JS 없이도 내용은 항상 보임) ── */
+.reveal-pending {
+  opacity: 0;
+  transform: translateY(18px);
+}
+.reveal-in {
+  transition: opacity 700ms cubic-bezier(0.2, 0.7, 0.2, 1), transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* ── 신청 단계 전환 ── */
+@keyframes step-in {
+  from { opacity: 0; transform: translateX(14px); }
+  to { opacity: 1; transform: none; }
+}
+.step-in {
+  animation: step-in 360ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* ── FAQ 펼침: grid-rows 0fr↔1fr, 닫힌 뒤에는 visibility로 보조기기·탭 순서에서 제외 ── */
+.faq-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 320ms cubic-bezier(0.2, 0.7, 0.2, 1), visibility 0s linear 320ms;
+}
+.faq-panel[data-open="true"] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 320ms cubic-bezier(0.2, 0.7, 0.2, 1), visibility 0s;
+}
+.faq-panel > div {
+  overflow: hidden;
+  min-height: 0;
+}
+
 @layer utilities {
   .pb-safe {
     padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);

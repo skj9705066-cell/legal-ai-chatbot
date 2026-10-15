@@ -17,10 +17,12 @@ export function SectionHeading({
 }) {
   return (
     <div className={cn("max-w-2xl", align === "center" && "mx-auto text-center")}>
-      {eyebrow && <p className={cn("text-[15px] font-bold", tone === "dark" ? "text-blue-300" : "text-blue")}>{eyebrow}</p>}
+      {eyebrow && <p className={cn("text-[15px] font-bold", tone === "dark" ? "text-blue-300" : "text-blue-700")}>{eyebrow}</p>}
       <h2
         id={`${id}-title`}
+        tabIndex={-1}
         className={cn(
+          "focus:outline-none",
           "mt-2.5 text-balance text-[28px] font-extrabold leading-[1.32] tracking-[-0.03em] sm:text-[34px] lg:text-[40px]",
           tone === "dark" ? "text-white" : "text-navy",
         )}
