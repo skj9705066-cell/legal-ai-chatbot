@@ -24,6 +24,10 @@ test("hero, stats with source and compliance copy", async ({ page }) => {
   await expect(note).toContainText("실제로 지급된 청구 건의 평균값");
   const [a, n] = await Promise.all([avg.boundingBox(), note.boundingBox()]);
   expect(n!.y - (a!.y + a!.height)).toBeLessThan(24);
+  // 강조된 평균 숫자에 비해 고지 문구가 너무 작아지지 않게
+  const badgePx = await note.locator("p").first().evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+  expect(badgePx).toBeGreaterThanOrEqual(16);
+  await expect(stats).toContainText("사람마다 다르며, 지급 여부는 보험사가 결정합니다");
   await expect(stats).toContainText("금융위원회");
   await expect(stats).toContainText("2026년 7월 7일");
   await expect(stats).toContainText("실시간으로 변하는 수치가 아닙니다");
