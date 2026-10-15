@@ -117,23 +117,25 @@ test("persuasion flow: stats → proof → cases → real review gallery → typ
   await expect(cases.locator("img")).toHaveCount(0);
   expect(await cases.innerText()).not.toMatch(/\d[\d,]*\s*(만\s*)?원/);
 
-  // 대화 갤러리: 실제 후기가 없으면 '가상 상황을 재구성한 대화 예시' 5개 — 빈 '준비 중' 영역 없음
+  // 대화 갤러리: 실제 후기가 없으면 상황 예시 대화 5개 — 빈 '준비 중' 영역 없음
   const reviews = page.locator("#reviews");
   await expect(reviews.getByRole("heading", { level: 2 })).toHaveText("나도 놓치고 있었을지 모르는 보험금");
   await expect(page.getByTestId("reviews-empty")).toHaveCount(0);
-  await expect(page.getByTestId("example-label")).toContainText("가상 상황을 재구성한 대화 예시");
+  // 예시라는 사실은 작게 유지: 제목 아래 '예시 대화' + 카드마다 '상황 예시'. 실제 후기로 표시하지 않는다
+  await expect(page.getByTestId("reviews-subtitle")).toContainText("예시 대화");
   const examples = page.getByTestId("chat-example");
   if ((await page.getByTestId("real-review").count()) === 0) {
-    await expect(page.getByTestId("reviews-subtitle")).toHaveText("보험금 점검 과정에서 생길 수 있는 다양한 상황을 대화 형식으로 재구성했습니다.");
+    await expect(page.getByTestId("example-label")).toHaveCount(0);
     await expect(examples).toHaveCount(5);
     for (const t of ["수술비 특약 확인", "오래전 가입한 보험", "부모님 보험", "만기보험금", "병원비 청구"]) {
       await expect(examples.filter({ hasText: t })).toHaveCount(1);
     }
-    await expect(examples.filter({ hasText: "보험 약관과 청구권 소멸시효 등을 확인해야 합니다." })).toHaveCount(1);
+    await expect(examples.filter({ hasText: "놓친 걸 찾았네요" })).toHaveCount(1);
   }
-  // 예시 카드: 재구성 표시, 가짜 프로필 사진·금액 없음
+  // 예시 카드: '상황 예시' 표시, 가짜 프로필 사진·금액 없음
   for (const card of await examples.all()) {
-    await expect(card).toContainText("재구성 예시");
+    await expect(card).toContainText("상황 예시");
+    await expect(card).not.toContainText("실제 후기");
     await expect(card.locator("img")).toHaveCount(0);
     expect(await card.innerText()).not.toMatch(/\d[\d,]*\s*(만\s*)?원/);
   }
