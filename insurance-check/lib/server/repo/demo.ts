@@ -12,7 +12,7 @@ import {
 } from "@/lib/types";
 import { encryptPii, hashPhone } from "../crypto";
 import { maskPhone } from "@/lib/validation";
-import { COMPLETED_CLAIM_STATUSES, isRealLead, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
+import { COMPLETED_CLAIM_STATUSES, isRealLead, type ReviewImage, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
 import { applyLeadFilter } from "./filter";
 
 /**
@@ -27,6 +27,7 @@ interface DemoState {
   privacy: PrivacyRequestRow[];
   /** 후기는 시드하지 않는다 — 가짜 후기를 자동 생성하지 않음 */
   reviews: Review[];
+  reviewImages: Map<string, ReviewImage>;
 }
 
 const g = globalThis as unknown as { __icDemo?: DemoState };
@@ -177,6 +178,7 @@ function seed(): DemoState {
     events,
     privacy,
     reviews: [],
+    reviewImages: new Map(),
     audit: [
       {
         id: randomUUID(),
@@ -194,6 +196,7 @@ function seed(): DemoState {
 function state(): DemoState {
   const s = (g.__icDemo ??= seed());
   s.reviews ??= [];
+  s.reviewImages ??= new Map();
   return s;
 }
 
@@ -268,6 +271,18 @@ export const demoRepository: Repository = {
     if (!r) return null;
     Object.assign(r, patch);
     return r;
+  },
+  async deleteReview(id) {
+    const s = state();
+    s.reviews = s.reviews.filter((r) => r.id !== id);
+    s.reviewImages.delete(id);
+  },
+  async setReviewImage(id, image) {
+    if (image) state().reviewImages.set(id, image);
+    else state().reviewImages.delete(id);
+  },
+  async getReviewImage(id) {
+    return state().reviewImages.get(id) ?? null;
   },
   async countRealLeads() {
     // 데모 시드는 전부 isDemo=true라 항상 0이 된다(의도된 동작)

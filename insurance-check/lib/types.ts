@@ -201,6 +201,21 @@ export const REVIEW_KIND_LABEL: Record<ReviewKind, string> = {
   payout_case: "지급 사례",
 };
 
+/** 후기 분류 — 실제 내용에 해당하는 유형 하나만 고른다 */
+export const REVIEW_CATEGORIES = ["medical_claim", "maturity_dormant", "history_lookup", "claim_guidance", "coverage_consult"] as const;
+export type ReviewCategory = (typeof REVIEW_CATEGORIES)[number];
+export const REVIEW_CATEGORY_LABEL: Record<ReviewCategory, string> = {
+  medical_claim: "병원비·수술비 청구",
+  maturity_dormant: "만기·휴면보험금 확인",
+  history_lookup: "과거 보험 가입 내역 확인",
+  claim_guidance: "보험금 청구 절차 안내",
+  coverage_consult: "보장 분석 상담",
+};
+
+/** 후기 이미지 허용 형식·크기 (관리자 화면에서 개인정보를 가린 뒤 JPEG로 다시 저장해 올린다) */
+export const REVIEW_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+export const REVIEW_IMAGE_MAX_BYTES = 1_500_000;
+
 /** pending: 등록됨(비공개) · approved: 공개 · rejected: 반려 · hidden: 공개 중단 */
 export const REVIEW_STATUSES = ["pending", "approved", "rejected", "hidden"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
@@ -219,8 +234,13 @@ export interface Review {
   kind: ReviewKind;
   /** 익명 처리된 표시명 (예: "김○○ 고객", "40대 직장인") */
   displayName: string;
-  claimType: ServiceType;
+  category: ReviewCategory;
+  /** 고객 메시지 원문(줄바꿈 = 말풍선 구분). 캡처 이미지만 있으면 빈 문자열일 수 있다 */
   content: string;
+  /** 고객 동의 캡처 이미지 보유 여부 (이미지 본문은 저장소에서 따로 다룬다) */
+  hasImage: boolean;
+  /** 이미지 속 프로필 사진·전화번호·실명 등을 가렸는지 담당자 확인 */
+  piiMasked: boolean;
   /** 실제 지급이 확인됐는지 (지급 안내 문서·고객 확인 등으로) */
   paymentConfirmed: boolean;
   /** 검증된 지급 금액(원). paymentConfirmed가 아니면 항상 null */
@@ -239,8 +259,10 @@ export interface PublicReview {
   id: string;
   kind: ReviewKind;
   displayName: string;
-  claimType: ServiceType;
+  category: ReviewCategory;
   content: string;
+  /** 공개 이미지 경로 (승인된 후기만 응답) */
+  imageUrl: string | null;
   verifiedAmount: number | null;
   /** "2026년 10월" 형식 */
   monthLabel: string;

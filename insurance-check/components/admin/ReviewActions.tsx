@@ -43,6 +43,22 @@ export function ReviewActions({ id, status, blockedReason }: { id: string; statu
             반려
           </Button>
         )}
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={busy}
+          className="text-danger hover:bg-danger-50 hover:text-danger"
+          onClick={async () => {
+            if (!window.confirm("후기와 캡처 이미지를 완전히 삭제합니다. 고객이 게시 동의를 철회한 경우 사용하세요. 진행할까요?")) return;
+            setBusy(true);
+            const res = await fetch(`/api/admin/reviews/${id}`, { method: "DELETE" }).catch(() => null);
+            setBusy(false);
+            if (!res?.ok) setErr("삭제하지 못했습니다.");
+            else router.refresh();
+          }}
+        >
+          삭제
+        </Button>
       </div>
       {blockedReason && status !== "approved" && <p className="text-[13px] text-caution">{blockedReason}</p>}
       {err && <p role="alert" className="text-[13px] text-danger">{err}</p>}

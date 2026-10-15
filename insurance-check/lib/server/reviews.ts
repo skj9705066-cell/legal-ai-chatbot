@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { getAppMode } from "@/lib/config";
-import { canTransition, publicMetrics, toPublicReviews, validateReviewInput, isPublishable } from "@/lib/reviews";
+import { canTransition, isPublishable, parseImageDataUrl, publicMetrics, toPublicReviews, validateReviewInput } from "@/lib/reviews";
 import { REVIEW_STATUSES, type OperatingMetrics, type PublicReview, type Review, type ReviewStatus } from "@/lib/types";
 import type { StaffSession } from "@/lib/session";
 import { can } from "@/lib/session";
@@ -19,8 +19,15 @@ function refreshLanding() {
   }
 }
 
+function readImage(raw: Record<string, unknown>) {
+  if (raw.image === undefined || raw.image === null || raw.image === "") return null;
+  return parseImageDataUrl(raw.image);
+}
+
 export async function createReview(session: StaffSession, raw: Record<string, unknown>): Promise<Result> {
-  const v = validateReviewInput(raw);
+  const img = readImage(raw);
+  if (img && !img.ok) return { ok: false, status: 400, error: img.error };
+  const v = validateReviewInput(raw, !!img);
   if (!v.ok) return { ok: false, status: 400, error: v.error };
   const now = new Date().toISOString();
   const review: Review = {
@@ -28,6 +35,7 @@ export async function createReview(session: StaffSession, raw: Record<string, un
     createdAt: now,
     createdBy: session.name,
     ...v.value,
+    hasImage: !!img,
     useConsentAt: v.value.useConsent ? now : null,
     status: "pending", // 등록은 항상 승인 대기 — 공개는 관리자 승인으로만
     reviewedBy: null,
@@ -35,12 +43,13 @@ export async function createReview(session: StaffSession, raw: Record<string, un
     isDemo: getAppMode() === "demo",
   };
   await repo().insertReview(review);
+  if (img?.ok) await repo().setReviewImage(review.id, { mime: img.mime, base64: Buffer.from(img.bytes).toString("base64") });
   await repo().addAudit({
     actor: session.name,
     role: session.role,
     action: "review.create",
     target: review.id,
-    detail: `${review.kind} 등록 (동의 ${review.useConsent ? "O" : "X"}, 지급확인 ${review.paymentConfirmed ? "O" : "X"})`,
+    detail: `${review.category} 등록 (${img ? "캡처 이미지" : "메시지 원문"}, 동의 ${review.useConsent ? "O" : "X"}, 지급확인 ${review.paymentConfirmed ? "O" : "X"})`,
   });
   return { ok: true, review };
 }
@@ -53,8 +62,9 @@ export async function updateReviewByStaff(session: StaffSession, id: string, raw
   const changes: string[] = [];
 
   // 내용 수정: 공개 중인 후기는 내용이 바뀌면 다시 승인 대기로 돌린다
-  if (raw.content !== undefined || raw.displayName !== undefined || raw.verifiedAmount !== undefined || raw.paymentConfirmed !== undefined || raw.useConsent !== undefined || raw.kind !== undefined || raw.claimType !== undefined) {
-    const v = validateReviewInput({ ...cur, ...raw });
+  const EDITABLE = ["content", "displayName", "verifiedAmount", "paymentConfirmed", "useConsent", "kind", "category", "piiMasked"];
+  if (EDITABLE.some((k) => raw[k] !== undefined)) {
+    const v = validateReviewInput({ ...cur, ...raw }, cur.hasImage);
     if (!v.ok) return { ok: false, status: 400, error: v.error };
     Object.assign(patch, v.value);
     if (v.value.useConsent && !cur.useConsent) patch.useConsentAt = new Date().toISOString();
@@ -87,6 +97,27 @@ export async function updateReviewByStaff(session: StaffSession, id: string, raw
   await r.addAudit({ actor: session.name, role: session.role, action: "review.update", target: id, detail: changes.join(", ") });
   if (wasPublic || isPublishable(updated)) refreshLanding();
   return { ok: true, review: updated };
+}
+
+/** 후기 삭제(관리자) — 동의 철회 시 이미지까지 즉시 파기 */
+export async function deleteReviewByStaff(session: StaffSession, id: string): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  if (!can(session.role, "approveReviews")) return { ok: false, status: 403, error: "후기 삭제는 관리자만 할 수 있습니다." };
+  const r = repo();
+  const cur = await r.getReview(id);
+  if (!cur) return { ok: false, status: 404, error: "후기를 찾을 수 없습니다." };
+  await r.deleteReview(id);
+  await r.addAudit({ actor: session.name, role: session.role, action: "review.delete", target: id, detail: `${cur.category} 후기 삭제${cur.hasImage ? " (캡처 이미지 포함)" : ""}` });
+  if (isPublishable(cur)) refreshLanding();
+  return { ok: true };
+}
+
+/** 이미지: 공개 경로는 공개 조건을 만족할 때만, 관리자 경로는 권한 확인 후 */
+export async function getReviewImage(id: string, opts: { staff: boolean }) {
+  const r = repo();
+  const review = await r.getReview(id);
+  if (!review?.hasImage) return null;
+  if (!opts.staff && !isPublishable(review)) return null;
+  return r.getReviewImage(id);
 }
 
 /** 랜딩용: 동의 + 승인된 것만. 없으면 빈 배열(섹션 숨김). */

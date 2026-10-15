@@ -77,9 +77,18 @@ export interface Repository {
   listReviews(): Promise<Review[]>;
   getReview(id: string): Promise<Review | null>;
   updateReview(id: string, patch: Partial<Omit<Review, "id" | "createdAt" | "createdBy" | "isDemo">>): Promise<Review | null>;
+  deleteReview(id: string): Promise<void>;
+  /** 후기 캡처 이미지 — 목록 조회와 분리해 필요할 때만 읽는다 */
+  setReviewImage(id: string, image: ReviewImage | null): Promise<void>;
+  getReviewImage(id: string): Promise<ReviewImage | null>;
 
   /** 실제 운영 지표용 신청 집계: 데모·테스트·중복 신청 제외 */
   countRealLeads(): Promise<{ applications: number; completedConsultations: number }>;
+}
+
+export interface ReviewImage {
+  mime: string;
+  base64: string;
 }
 
 /** '상담 완료'로 집계하는 보험금 점검 상태 (청구 방법 안내 이후 단계) */

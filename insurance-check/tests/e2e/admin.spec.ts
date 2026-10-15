@@ -85,7 +85,7 @@ test.describe("admin", () => {
     expect((await page.request.get("/api/admin/export")).status()).toBe(403);
   });
 
-  test("reviews: consent + admin approval required; amount only when payout verified; hidden again", async ({ page }) => {
+  test("reviews: consent + admin approval required; masked capture image; amount only when verified; delete", async ({ page }) => {
     await login(page, "admin");
     await page.goto("/admin/reviews");
     await expect(page.getByRole("heading", { name: "후기 · 지급 사례" })).toBeVisible();
@@ -98,58 +98,78 @@ test.describe("admin", () => {
     const form = page.getByRole("form", { name: "후기 등록" });
     const tag = Math.random().toString(36).slice(2, 8).replace(/\d/g, "x");
     const content = `E2E 후기 ${tag} 부모님 보험까지 확인하는 계기가 됐어요.`;
+    await form.getByLabel(/후기 유형/).selectOption("history_lookup");
     // 실명 그대로는 거절
     await form.getByLabel("고객 표시명 (익명)").fill("홍길동");
-    await form.getByLabel(/후기 내용/).fill(content);
+    await form.getByLabel(/고객 메시지 원문/).fill(content);
     await form.getByRole("button", { name: "승인 대기로 등록" }).click();
     await expect(form.getByText("표시명은 익명 처리해 주세요")).toBeVisible();
-    // 지급 미확인이면 금액 입력 불가
     await expect(form.getByPlaceholder("지급 확인 시에만 금액 입력 가능")).toBeDisabled();
 
-    // 동의 없이 등록 → 승인 버튼 비활성
+    // 동의 없이 등록 → 승인 버튼 비활성, 서버도 거절
     await form.getByLabel("고객 표시명 (익명)").fill("40대 직장인");
     await form.getByRole("button", { name: "승인 대기로 등록" }).click();
     await expect(form.getByText("승인 대기로 등록했습니다")).toBeVisible();
     const row = page.getByTestId("review-row").filter({ hasText: content });
     await expect(row).toContainText("승인 대기");
+    await expect(row).toContainText("과거 보험 가입 내역 확인");
     await expect(row.getByRole("button", { name: "공개 승인" })).toBeDisabled();
-    await expect(row).toContainText("후기 게시 동의가 없는 후기는 공개할 수 없습니다.");
-    // UI를 우회해도 서버가 거절한다
     const id = await row.getAttribute("data-review-id");
-    const forced = await page.request.patch(`/api/admin/reviews/${id}`, {
-      data: { status: "approved" },
-      headers: { Origin: new URL(page.url()).origin },
-    });
+    const forced = await page.request.patch(`/api/admin/reviews/${id}`, { data: { status: "approved" }, headers: { Origin: new URL(page.url()).origin } });
     expect(forced.status()).toBe(409);
 
-    // 동의 + 지급 확인 + 금액으로 등록 → 승인 → 랜딩 공개
-    const content2 = `E2E 동의 후기 ${tag} 만기 보험금을 확인하는 계기가 됐어요.`;
+    // 캡처 이미지: 개인정보 가림 도구 → 가림 확인 체크 → 동의 → 승인 → 랜딩 공개
+    await form.getByLabel(/후기 유형/).selectOption("medical_claim");
     await form.getByLabel("고객 표시명 (익명)").fill("김○○ 고객");
-    await form.getByLabel(/후기 내용/).fill(content2);
-    await form.getByLabel("실제 지급 확인됨").check();
-    await form.getByPlaceholder("검증된 지급 금액(원, 선택)").fill("1230000");
+    await form.getByLabel(/고객 메시지 원문/).fill("");
+    await form.getByTestId("review-image-input").setInputFiles("tests/e2e/fixtures/review-capture.png");
+    const canvas = form.getByTestId("review-image-canvas");
+    await expect(canvas).toBeVisible();
+    const box = (await canvas.boundingBox())!;
+    await page.mouse.move(box.x + 4, box.y + 4);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.55, box.y + box.height * 0.14, { steps: 4 });
+    await page.mouse.up();
+    await expect(form.getByTestId("mask-count")).toHaveText("가린 영역 1곳");
+    // 가림 확인 없이 등록하면 거절
     await form.getByLabel(/게시 동의를 받았습니다/).check();
     await form.getByRole("button", { name: "승인 대기로 등록" }).click();
-    const row2 = page.getByTestId("review-row").filter({ hasText: content2 });
-    await expect(row2).toContainText("1,230,000원");
-    await row2.getByRole("button", { name: "공개 승인" }).click();
-    await expect(row2).toContainText("랜딩 표시 중");
+    await expect(form.getByText(/실명을 가렸는지 확인해 주세요/)).toBeVisible();
+    await form.getByLabel(/개인정보를 모두 가렸음을 확인했습니다/).check();
+    await form.getByLabel("실제 지급 확인됨").check();
+    await form.getByPlaceholder("검증된 지급 금액(원, 선택)").fill("1230000");
+    await form.getByRole("button", { name: "승인 대기로 등록" }).click();
+    await expect(form.getByText("승인 대기로 등록했습니다")).toBeVisible();
+    const imgRow = page.getByTestId("review-row").filter({ hasText: "김○○ 고객" }).first();
+    await expect(imgRow).toContainText("개인정보 가림 확인");
+    await expect(imgRow).toContainText("1,230,000원");
+    const imgId = await imgRow.getAttribute("data-review-id");
+    // 승인 전에는 공개 이미지 경로가 404
+    expect((await page.request.get(`/review-images/${imgId}`)).status()).toBe(404);
+    await imgRow.getByRole("button", { name: "공개 승인" }).click();
+    await expect(imgRow).toContainText("랜딩 표시 중");
+    const pub = await page.request.get(`/review-images/${imgId}`);
+    expect(pub.status()).toBe(200);
+    expect(pub.headers()["content-type"]).toBe("image/jpeg"); // 캔버스로 다시 저장(EXIF 제거)
 
     await page.goto("/");
-    const card = page.getByTestId("real-review").filter({ hasText: content2 });
-    await expect(card).toBeVisible();
+    const card = page.getByTestId("real-review").filter({ has: page.locator(`img[src="/review-images/${imgId}"]`) });
+    await expect(card).toHaveCount(1);
+    await expect(card).toContainText("병원비·수술비 청구");
     await expect(card).toContainText("데모 데이터 · 실제 후기 아님");
     await expect(card).toContainText("확인된 지급액 1,230,000원");
     await expect(page.getByTestId("real-review").filter({ hasText: content })).toHaveCount(0); // 미동의 후기는 미공개
-    // 대화 예시는 실제 후기 영역 밖에 있다
-    await expect(page.locator("#reviews").getByTestId("conversation-example")).toHaveCount(0);
 
-    // 공개 중단 → 랜딩에서 사라짐
+    // 삭제 → 이미지·후기 모두 사라짐
+    page.on("dialog", (d) => d.accept());
     await page.goto("/admin/reviews");
-    await page.getByTestId("review-row").filter({ hasText: content2 }).getByRole("button", { name: "공개 중단" }).click();
-    await expect(page.getByTestId("review-row").filter({ hasText: content2 })).toContainText("공개 중단");
+    await page.locator(`[data-review-id="${imgId}"]`).getByRole("button", { name: "삭제" }).click();
+    await expect(page.locator(`[data-review-id="${imgId}"]`)).toHaveCount(0);
+    expect((await page.request.get(`/review-images/${imgId}`)).status()).toBe(404);
+    await page.locator(`[data-review-id="${id}"]`).getByRole("button", { name: "삭제" }).click();
+    await expect(page.locator(`[data-review-id="${id}"]`)).toHaveCount(0);
     await page.goto("/");
-    await expect(page.getByTestId("real-review").filter({ hasText: content2 })).toHaveCount(0);
+    await expect(page.getByTestId("real-review").filter({ has: page.locator(`img[src="/review-images/${imgId}"]`) })).toHaveCount(0);
   });
 
   test("counselor can register reviews but cannot approve them", async ({ page }) => {

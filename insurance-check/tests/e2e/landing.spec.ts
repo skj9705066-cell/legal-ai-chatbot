@@ -49,7 +49,7 @@ test("hero, stats with source and compliance copy", async ({ page }) => {
 test("no external lookup CTA in the main flow; official link kept in FAQ and footer", async ({ page }) => {
   await page.goto("/");
   const ext = 'a[href*="cont.insure.or.kr"]';
-  for (const sel of ["header", "#hero-cta", "#stats", "#proof", "#cases", "#conversation", "#services", "#process", "#apply", "#final-cta"]) {
+  for (const sel of ["header", "#hero-cta", "#stats", "#proof", "#cases", "#reviews", "#services", "#process", "#apply", "#final-cta"]) {
     await expect(page.locator(`${sel} ${ext}`), `external CTA in ${sel}`).toHaveCount(0);
   }
   await expect(page.locator(`footer ${ext}`)).toBeVisible();
@@ -99,9 +99,9 @@ test("reduced motion shows the final figures without animation", async ({ page }
   await expect(page.locator('[data-testid="stat-main"] .odo')).toHaveAttribute("data-state", "done");
 });
 
-test("persuasion flow: stats → proof → cases → example conversation → types; examples clearly labeled", async ({ page }) => {
+test("persuasion flow: stats → proof → cases → real review gallery → types; examples clearly labeled", async ({ page }) => {
   await page.goto("/");
-  const ids = ["stats", "proof", "cases", "conversation", "services", "process", "apply", "faq"];
+  const ids = ["stats", "proof", "cases", "reviews", "services", "process", "apply", "faq"];
   const order = await page.evaluate((list) => list.map((id) => document.getElementById(id)!.getBoundingClientRect().top + window.scrollY), ids);
   expect([...order].sort((x, y) => x - y)).toEqual(order);
 
@@ -117,21 +117,83 @@ test("persuasion flow: stats → proof → cases → example conversation → ty
   await expect(cases.locator("img")).toHaveCount(0);
   expect(await cases.innerText()).not.toMatch(/\d[\d,]*\s*(만\s*)?원/);
 
-  // 대화 예시: 예시 표시가 항상 붙고, 실제 후기 영역과 분리
-  const conv = page.getByTestId("conversation-example");
-  await expect(conv).toContainText("상담 대화 예시 · 실제 고객 메시지가 아닙니다");
-  await expect(conv).toContainText("부모님 보험도 한번 확인해 봐야겠어요.");
-  await expect(page.getByTestId("conversation-note")).toContainText("실제 고객 후기는 고객 동의와 내부 확인을 거친 경우에만");
-  // 데모 모드: 운영 지표는 절대 공개되지 않고, 후기가 있다면 전부 '데모 데이터' 표시가 붙는다
-  // (초기 상태에는 후기가 0건이라 실제 후기 영역 자체가 없다 — admin.spec이 등록 후 공개 중단까지 되돌린다)
+  // 후기 갤러리: 실제 후기가 없으면 '실제 후기 준비 중' — 가상의 후기를 만들지 않는다
+  const reviews = page.locator("#reviews");
+  await expect(reviews.getByRole("heading", { level: 2 })).toHaveText("고객님들이 직접 전해주신 이야기");
+  if ((await page.getByTestId("real-review").count()) === 0) {
+    await expect(page.getByTestId("reviews-empty")).toContainText("실제 후기 준비 중");
+    await expect(page.getByTestId("reviews-empty")).toContainText("가상의 후기나 지급 금액은 만들어 싣지 않습니다");
+  }
+  await expect(page.getByTestId("real-review").filter({ hasNotText: "데모 데이터 · 실제 후기 아님" })).toHaveCount(0);
   await expect(page.getByTestId("operating-metrics")).toHaveCount(0);
-  const real = page.getByTestId("real-review");
-  await expect(real.filter({ hasNotText: "데모 데이터 · 실제 후기 아님" })).toHaveCount(0);
+  await expect(page.locator("#gallery-cta")).toContainText("혹시 나도 확인하지 못한 보험금이 있을까요?");
+  await page.locator("#gallery-cta").getByRole("button", { name: "나도 무료 점검 시작하기" }).click();
+  await expect(page.locator("#services-title")).toBeInViewport();
+  await page.goto("/");
 
   // 사회적 증거 아래 CTA → 사이트 안의 유형 선택
   await page.locator("#proof-cta").getByRole("button", { name: "나도 무료 점검 시작하기" }).click();
   await expect(page.locator("#services-title")).toBeInViewport();
   await expect(page.locator("#services-title")).toBeFocused();
+});
+
+test("review gallery: only approved real reviews, desktop 3-up carousel / mobile 1-up slider", async ({ page, isMobile }) => {
+  const origin = { Origin: "http://localhost:3100" };
+  const login = await page.request.post("/api/admin/login", {
+    data: { role: "admin", password: process.env.DEMO_ADMIN_PASSWORD || "demo-admin-local" },
+    headers: origin,
+  });
+  expect(login.ok()).toBeTruthy();
+  const tag = Math.random().toString(36).slice(2, 7).replace(/\d/g, "q");
+  const lines = ["잊고 있던 보험이 있는 줄 몰랐어요.", "알려주신 순서대로 확인해 볼게요!\n정말 감사합니다", "부모님 보험도 같이 봐야겠어요.", "청구 서류를 미리 알려주셔서 편했어요.\n친절하게 설명해 주셔서 감사해요.\n다음에 또 문의드릴게요.", "만기된 줄 몰랐던 보험을 찾았어요."];
+  const categories = ["history_lookup", "claim_guidance", "maturity_dormant", "medical_claim", "maturity_dormant"];
+  const ids: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const res = await page.request.post("/api/admin/reviews", {
+      data: { kind: "review", category: categories[i], displayName: `${i + 3}0대 고객`, content: `${lines[i]} ${tag}`, useConsent: true },
+      headers: origin,
+    });
+    const { id } = await res.json();
+    ids.push(id);
+    expect((await page.request.patch(`/api/admin/reviews/${id}`, { data: { status: "approved" }, headers: origin })).ok()).toBeTruthy();
+  }
+  // 동의 없는 후기는 섞여 있어도 공개되지 않는다
+  const hiddenRes = await page.request.post("/api/admin/reviews", {
+    data: { kind: "review", category: "coverage_consult", displayName: "60대 고객", content: `동의 없는 후기입니다 ${tag}`, useConsent: false },
+    headers: origin,
+  });
+  ids.push((await hiddenRes.json()).id);
+
+  try {
+    await page.goto("/");
+    await page.locator("#reviews").scrollIntoViewIfNeeded();
+    const mine = page.getByTestId("real-review").filter({ hasText: tag });
+    await expect(mine).toHaveCount(5);
+    await expect(page.getByTestId("reviews-subtitle")).toHaveText("실제 상담 이후 남겨주신 소중한 후기들을 소개합니다.");
+    await expect(page.getByTestId("reviews-empty")).toHaveCount(0);
+    // 여러 줄 원문 = 말풍선 여러 개
+    await expect(mine.filter({ hasText: "청구 서류를" }).locator("li")).toHaveCount(3);
+
+    const fullyVisible = () =>
+      page.getByTestId("review-track").evaluate((track) => {
+        const t = track.getBoundingClientRect();
+        return Array.from(track.children).filter((c) => {
+          const r = c.getBoundingClientRect();
+          return r.left >= t.left - 1 && r.right <= t.right + 1;
+        }).length;
+      });
+    expect(await fullyVisible()).toBe(isMobile ? 1 : 3);
+    const before = await page.getByTestId("review-track").evaluate((t) => t.scrollLeft);
+    await page.getByRole("button", { name: "다음 후기" }).click();
+    await expect.poll(() => page.getByTestId("review-track").evaluate((t) => t.scrollLeft)).toBeGreaterThan(before + 50);
+    await expect.poll(fullyVisible).toBe(isMobile ? 1 : 3); // 스크롤 스냅이 끝난 뒤에도 한 화면에 1장/3장
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  } finally {
+    for (const id of ids) await page.request.delete(`/api/admin/reviews/${id}`, { headers: origin });
+  }
+  await page.goto("/");
+  await expect(page.getByTestId("real-review").filter({ hasText: tag })).toHaveCount(0);
 });
 
 test("final CTA copy and it stays inside the site", async ({ page }) => {
