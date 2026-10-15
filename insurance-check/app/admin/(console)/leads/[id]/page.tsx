@@ -48,6 +48,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="font-mono text-[26px] font-extrabold tracking-[-0.03em] text-navy">{lead.refNo}</h1>
         {lead.isDemo && <Badge variant="demo">데모</Badge>}
+        {lead.isTest && <Badge>테스트 · 지표 제외</Badge>}
         {lead.duplicateOf && <Badge variant="caution">중복 · 최초 {lead.duplicateOf}</Badge>}
         {lead.privacyStatus !== "none" && <Badge variant="danger">{PRIVACY_STATUS_LABEL[lead.privacyStatus]}</Badge>}
       </div>

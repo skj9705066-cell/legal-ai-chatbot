@@ -81,6 +81,10 @@ export const PERMISSIONS = {
   viewAudit: ["admin"],
   handlePrivacy: ["admin"],
   viewSettings: ["admin"],
+  /** 후기 등록(승인 대기로만) */
+  editReviews: ["admin", "counselor"],
+  /** 후기 공개 승인·중단 */
+  approveReviews: ["admin"],
 } as const satisfies Record<string, readonly StaffRole[]>;
 
 export type Permission = keyof typeof PERMISSIONS;

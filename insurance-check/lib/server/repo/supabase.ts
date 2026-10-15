@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { AuditLog, FunnelEvent } from "@/lib/types";
-import type { LeadFilter, LeadRow, LeadRowPatch, PrivacyRequestRow, Repository } from "./types";
+import type { AuditLog, FunnelEvent, Review } from "@/lib/types";
+import { COMPLETED_CLAIM_STATUSES, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
 
 /**
  * 운영 저장소. service role 키로 서버에서만 접근한다.
@@ -56,6 +56,7 @@ function fromLeadRow(r: Row): LeadRow {
     notes: (r.notes as string) ?? "",
     privacyStatus: r.privacy_status as LeadRow["privacyStatus"],
     duplicateOf: (r.duplicate_of as string) ?? null,
+    isTest: !!r.is_test,
     isDemo: false,
   };
 }
@@ -81,6 +82,7 @@ const LEAD_COLUMNS: Record<string, string> = {
   notes: "notes",
   privacyStatus: "privacy_status",
   duplicateOf: "duplicate_of",
+  isTest: "is_test",
 };
 
 function toLeadColumns(patch: LeadRowPatch): Row {
@@ -118,6 +120,46 @@ function fromPrivacyRow(r: Row): PrivacyRequestRow {
     handledAt: (r.handled_at as string) ?? null,
     note: (r.note as string) ?? "",
   };
+}
+
+function fromReviewRow(r: Row): Review {
+  return {
+    id: r.id as string,
+    createdAt: r.created_at as string,
+    createdBy: r.created_by as string,
+    kind: r.kind as Review["kind"],
+    displayName: r.display_name as string,
+    claimType: r.claim_type as Review["claimType"],
+    content: r.content as string,
+    paymentConfirmed: !!r.payment_confirmed,
+    verifiedAmount: r.verified_amount == null ? null : Number(r.verified_amount),
+    useConsent: !!r.use_consent,
+    useConsentAt: (r.use_consent_at as string) ?? null,
+    status: r.status as Review["status"],
+    reviewedBy: (r.reviewed_by as string) ?? null,
+    reviewedAt: (r.reviewed_at as string) ?? null,
+    isDemo: false,
+  };
+}
+
+const REVIEW_COLUMNS: Record<string, string> = {
+  kind: "kind",
+  displayName: "display_name",
+  claimType: "claim_type",
+  content: "content",
+  paymentConfirmed: "payment_confirmed",
+  verifiedAmount: "verified_amount",
+  useConsent: "use_consent",
+  useConsentAt: "use_consent_at",
+  status: "status",
+  reviewedBy: "reviewed_by",
+  reviewedAt: "reviewed_at",
+};
+
+function toReviewColumns(patch: Partial<Review>): Row {
+  const cols: Row = {};
+  for (const [k, v] of Object.entries(patch)) if (REVIEW_COLUMNS[k]) cols[REVIEW_COLUMNS[k]] = v;
+  return cols;
 }
 
 function must<T>(res: { data: T; error: { message: string } | null }): T {
@@ -295,6 +337,30 @@ export const supabaseRepository: Repository = {
       await db().from("ic_privacy_requests").update(cols).eq("id", id).select("*").maybeSingle(),
     );
     return data ? fromPrivacyRow(data) : null;
+  },
+  async insertReview(r) {
+    must(await db().from("ic_reviews").insert({ id: r.id, created_at: r.createdAt, created_by: r.createdBy, ...toReviewColumns(r) }));
+  },
+  async listReviews() {
+    const data = must(await db().from("ic_reviews").select("*").order("created_at", { ascending: false }).limit(500));
+    return (data ?? []).map(fromReviewRow);
+  },
+  async getReview(id) {
+    const data = must(await db().from("ic_reviews").select("*").eq("id", id).maybeSingle());
+    return data ? fromReviewRow(data) : null;
+  },
+  async updateReview(id, patch) {
+    const data = must(await db().from("ic_reviews").update(toReviewColumns(patch)).eq("id", id).select("*").maybeSingle());
+    return data ? fromReviewRow(data) : null;
+  },
+  async countRealLeads() {
+    // 데모·테스트·중복 신청 제외 (운영 DB에는 데모 데이터가 없다)
+    const base = () =>
+      db().from("ic_leads").select("id", { count: "exact", head: true }).eq("is_test", false).is("duplicate_of", null);
+    const all = await base();
+    const done = await base().in("claim_status", COMPLETED_CLAIM_STATUSES);
+    if (all.error || done.error) throw new Error((all.error ?? done.error)!.message);
+    return { applications: all.count ?? 0, completedConsultations: done.count ?? 0 };
   },
 };
 

@@ -114,6 +114,8 @@ export interface Lead {
   privacyStatus: PrivacyStatus;
   /** 동일 연락처의 이전 신청 번호(30일 이내). null이면 최초 신청. */
   duplicateOf: string | null;
+  /** 내부 테스트 신청 — 실제 운영 지표에서 제외 (관리자가 표시) */
+  isTest: boolean;
   isDemo: boolean;
 }
 
@@ -188,4 +190,67 @@ export interface FunnelEvent {
   utmMedium: string | null;
   utmCampaign: string | null;
   serviceType: ServiceType | null;
+}
+
+/* ───────────── 고객 후기·지급 사례 (실제 동의·승인된 것만 공개) ───────────── */
+
+export const REVIEW_KINDS = ["review", "payout_case"] as const;
+export type ReviewKind = (typeof REVIEW_KINDS)[number];
+export const REVIEW_KIND_LABEL: Record<ReviewKind, string> = {
+  review: "이용 후기",
+  payout_case: "지급 사례",
+};
+
+/** pending: 등록됨(비공개) · approved: 공개 · rejected: 반려 · hidden: 공개 중단 */
+export const REVIEW_STATUSES = ["pending", "approved", "rejected", "hidden"] as const;
+export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
+export const REVIEW_STATUS_LABEL: Record<ReviewStatus, string> = {
+  pending: "승인 대기",
+  approved: "공개 승인",
+  rejected: "반려",
+  hidden: "공개 중단",
+};
+
+/** 관리자 화면용 후기 레코드. 고객 실명·연락처는 저장하지 않는다(표시명은 익명 처리된 값만). */
+export interface Review {
+  id: string;
+  createdAt: string;
+  createdBy: string;
+  kind: ReviewKind;
+  /** 익명 처리된 표시명 (예: "김○○ 고객", "40대 직장인") */
+  displayName: string;
+  claimType: ServiceType;
+  content: string;
+  /** 실제 지급이 확인됐는지 (지급 안내 문서·고객 확인 등으로) */
+  paymentConfirmed: boolean;
+  /** 검증된 지급 금액(원). paymentConfirmed가 아니면 항상 null */
+  verifiedAmount: number | null;
+  /** 후기 게시 동의 */
+  useConsent: boolean;
+  useConsentAt: string | null;
+  status: ReviewStatus;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  isDemo: boolean;
+}
+
+/** 랜딩에 내려가는 공개 후기. 동의 + 승인된 것만, 금액은 지급 확인된 경우에만. */
+export interface PublicReview {
+  id: string;
+  kind: ReviewKind;
+  displayName: string;
+  claimType: ServiceType;
+  content: string;
+  verifiedAmount: number | null;
+  /** "2026년 10월" 형식 */
+  monthLabel: string;
+  isDemo: boolean;
+}
+
+/** 실제 운영 지표. 데모·중복 신청은 집계에서 제외한다. */
+export interface OperatingMetrics {
+  applications: number;
+  completedConsultations: number;
+  approvedReviews: number;
+  verifiedPayoutCases: number;
 }

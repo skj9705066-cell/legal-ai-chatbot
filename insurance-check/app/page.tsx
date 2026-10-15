@@ -5,7 +5,10 @@ import { DemoBanner } from "@/components/site/DemoBanner";
 import { ApplyProvider } from "@/components/landing/ApplyContext";
 import { Hero } from "@/components/landing/Hero";
 import { StatsSection } from "@/components/landing/StatsSection";
-import { StorySection } from "@/components/landing/StorySection";
+import { CasesSection } from "@/components/landing/CasesSection";
+import { ConversationExample } from "@/components/landing/ConversationExample";
+import { RealReviews } from "@/components/landing/RealReviews";
+import { getPublicMetrics, getPublicReviews } from "@/lib/server/reviews";
 import { ServiceTypes } from "@/components/landing/ServiceTypes";
 import { Process } from "@/components/landing/Process";
 import { ApplySection } from "@/components/landing/ApplySection";
@@ -14,8 +17,12 @@ import { Faq } from "@/components/landing/Faq";
 import { FinalCta } from "@/components/landing/FinalCta";
 import { MobileStickyCta } from "@/components/landing/MobileStickyCta";
 
-export default function LandingPage() {
+// 후기 공개 승인 시 revalidatePath("/")로 즉시 갱신, 그 외에는 5분마다 재생성
+export const revalidate = 300;
+
+export default async function LandingPage() {
   const config = getPublicConfig();
+  const [reviews, metrics] = await Promise.all([getPublicReviews(), getPublicMetrics()]);
   const demo = config.mode === "demo";
   return (
     <ApplyProvider>
@@ -23,8 +30,11 @@ export default function LandingPage() {
       <SiteHeader demo={demo} />
       <main id="main">
         <Hero />
+        {/* 설득 흐름: 공식 통계 → 전국 지급 건수 → 상황별 사례 → (예시 대화 | 실제 후기 — 분리) → 유형 선택 → 절차 → 신청 */}
         <StatsSection />
-        <StorySection />
+        <CasesSection />
+        <ConversationExample />
+        <RealReviews reviews={reviews} metrics={metrics} />
         <ServiceTypes />
         <Process />
         <ApplySection config={config} />
