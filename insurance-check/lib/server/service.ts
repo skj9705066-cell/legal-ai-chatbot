@@ -66,6 +66,7 @@ export async function submitLead(input: LeadInput, attribution: Attribution): Pr
     notes: "",
     privacyStatus: "none",
     duplicateOf,
+    isTest: false,
     isDemo: getAppMode() === "demo",
   };
   await r.insertLead(row);
@@ -158,6 +159,7 @@ export interface StaffLeadPatch {
   nextContactAt?: string | null;
   assignee?: string | null;
   notes?: string;
+  isTest?: boolean;
 }
 
 export type PatchResult = { ok: true; lead: Lead } | { ok: false; status: number; error: string };
@@ -209,6 +211,11 @@ export async function updateLeadByStaff(session: StaffSession, id: string, raw: 
     const a = typeof raw.assignee === "string" ? raw.assignee.trim().slice(0, 30) : "";
     patch.assignee = a || null;
     if (patch.assignee !== row.assignee) changes.push(`담당자 ${patch.assignee ?? "없음"}`);
+  }
+  if (raw.isTest !== undefined && raw.isTest !== row.isTest) {
+    if (session.role !== "admin") return { ok: false, status: 403, error: "테스트 신청 표시는 관리자만 변경할 수 있습니다." };
+    patch.isTest = raw.isTest === true;
+    changes.push(patch.isTest ? "테스트 신청으로 표시(운영 지표 제외)" : "테스트 표시 해제");
   }
   if (raw.notes !== undefined) {
     if (typeof raw.notes !== "string" || raw.notes.length > 2000) {

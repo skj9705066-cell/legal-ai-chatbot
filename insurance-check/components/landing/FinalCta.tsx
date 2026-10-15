@@ -1,3 +1,4 @@
+import { FINAL_CTA } from "@/lib/content";
 import { ApplyCta } from "./ApplyCta";
 
 export function FinalCta() {
@@ -10,18 +11,14 @@ export function FinalCta() {
             <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="2" />
           </svg>
           <h2 id="final-cta-title" className="relative text-balance text-[28px] font-extrabold leading-[1.32] tracking-[-0.03em] text-white sm:text-[36px] lg:text-[42px]">
-            놓친 보험금이 있는지
-            <br />
-            지금 무료로 점검해 보세요
+            {FINAL_CTA.title}
           </h2>
-          <p className="relative mx-auto mt-4 max-w-md text-[17px] leading-[1.7] text-navy-300">
-            이름과 연락처만 있으면 신청할 수 있어요. 보험 가입 의무는 없습니다.
-          </p>
+          <p className="relative mx-auto mt-4 max-w-md text-pretty text-[17px] leading-[1.7] text-navy-300">{FINAL_CTA.description}</p>
           <div className="relative mt-9 flex flex-col items-center gap-3">
-            <ApplyCta source="final" variant="white" size="xl" className="h-[62px] w-full text-[18px] shadow-none sm:w-auto sm:min-w-[340px]">
-              무료 점검 상담 신청하기
+            <ApplyCta source="final" target="types" variant="white" size="xl" className="h-[62px] w-full text-[18px] shadow-none sm:w-auto sm:min-w-[340px]">
+              {FINAL_CTA.button}
             </ApplyCta>
-            <p className="text-[15px] text-navy-300">무료 점검 안내 · 보험 가입 의무 없음 · 지급·환급은 보험사가 결정</p>
+            <p className="text-[15px] text-navy-300">{FINAL_CTA.trust}</p>
           </div>
         </div>
       </div>

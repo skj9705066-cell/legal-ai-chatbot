@@ -26,7 +26,7 @@ export function Hero() {
           </p>
           <h1
             id="hero-title"
-            className="mt-5 text-[34px] font-extrabold leading-[1.25] tracking-[-0.04em] text-navy sm:text-[46px] lg:text-[60px] lg:leading-[1.16]"
+            className="mt-5 text-[32px] font-extrabold leading-[1.25] tracking-[-0.04em] text-navy sm:text-[44px] lg:text-[46px] lg:leading-[1.2] xl:text-[54px]"
           >
             {HERO.titleLines.map((l) => (
               <span key={l} className="block">
@@ -34,13 +34,14 @@ export function Hero() {
               </span>
             ))}
           </h1>
-          <p className="mt-5 text-[17px] leading-[1.7] text-navy-600 sm:text-[19px] lg:mt-6 lg:text-[20px]">
+          <p className="mt-5 text-[19px] font-bold leading-[1.55] tracking-[-0.02em] text-ink sm:text-[22px] lg:mt-6 lg:text-[23px]" data-testid="hero-subtitle">
             {HERO.subLines.map((l) => (
               <span key={l} className="block">
                 {l}
               </span>
             ))}
           </p>
+          <p className="mt-3 max-w-[540px] text-pretty text-[16px] leading-[1.7] text-navy-600 sm:text-[17px] lg:text-[18px]">{HERO.description}</p>
 
           <div id="hero-cta" className="mt-8 lg:mt-10">
             <ApplyCta source="hero" target="types" size="xl" className="h-[62px] w-full text-[18px] sm:w-auto sm:min-w-[320px]" />

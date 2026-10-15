@@ -6,6 +6,7 @@ import type {
   Lead,
   PrivacyRequest,
   PrivacyStatus,
+  Review,
   ServiceType,
 } from "@/lib/types";
 
@@ -71,4 +72,19 @@ export interface Repository {
   listPrivacyRequests(): Promise<PrivacyRequestRow[]>;
   getPrivacyRequest(id: string): Promise<PrivacyRequestRow | null>;
   updatePrivacyRequest(id: string, patch: Partial<PrivacyRequestRow>): Promise<PrivacyRequestRow | null>;
+
+  insertReview(r: Review): Promise<void>;
+  listReviews(): Promise<Review[]>;
+  getReview(id: string): Promise<Review | null>;
+  updateReview(id: string, patch: Partial<Omit<Review, "id" | "createdAt" | "createdBy" | "isDemo">>): Promise<Review | null>;
+
+  /** 실제 운영 지표용 신청 집계: 데모·테스트·중복 신청 제외 */
+  countRealLeads(): Promise<{ applications: number; completedConsultations: number }>;
+}
+
+/** '상담 완료'로 집계하는 보험금 점검 상태 (청구 방법 안내 이후 단계) */
+export const COMPLETED_CLAIM_STATUSES: ClaimStatus[] = ["guided", "docs_pending", "closed"];
+
+export function isRealLead(l: Pick<LeadRow, "isDemo" | "isTest" | "duplicateOf">): boolean {
+  return !l.isDemo && !l.isTest && !l.duplicateOf;
 }

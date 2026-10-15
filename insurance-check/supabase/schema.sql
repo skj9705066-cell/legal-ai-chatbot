@@ -47,11 +47,14 @@ create table if not exists public.ic_leads (
   privacy_status            text not null default 'none'
                             check (privacy_status in ('none','withdraw_requested','delete_requested','processing','completed')),
   duplicate_of              text,
+  is_test                   boolean not null default false,  -- 내부 테스트 신청(운영 지표 제외)
   -- 핵심 규칙을 DB에서도 강제: 별도 동의 없이 영업 상태로 갈 수 없다.
   constraint ic_leads_coverage_requires_consent check (
     coverage_status in ('not_consented','withdrawn') or coverage_consent = true
   )
 );
+-- 기존 DB 업그레이드용 (이미 테이블이 있으면 위 create table은 건너뛴다)
+alter table public.ic_leads add column if not exists is_test boolean not null default false;
 create index if not exists ic_leads_created_idx on public.ic_leads (created_at desc);
 create index if not exists ic_leads_phone_hash_idx on public.ic_leads (phone_hash);
 create index if not exists ic_leads_coverage_idx on public.ic_leads (coverage_consent, coverage_status);
@@ -92,14 +95,38 @@ create table if not exists public.ic_privacy_requests (
   note              text not null default ''
 );
 
+-- 고객 후기·지급 사례. 실명·연락처는 저장하지 않는다(표시명은 익명 처리된 값만).
+create table if not exists public.ic_reviews (
+  id                 uuid primary key default gen_random_uuid(),
+  created_at         timestamptz not null default now(),
+  created_by         text not null,
+  kind               text not null check (kind in ('review','payout_case')),
+  display_name       text not null check (char_length(display_name) between 2 and 20),
+  claim_type         text not null check (claim_type in ('unclaimed','hidden','refund')),
+  content            text not null check (char_length(content) between 10 and 500),
+  payment_confirmed  boolean not null default false,
+  verified_amount    bigint check (verified_amount is null or verified_amount > 0),
+  use_consent        boolean not null default false,
+  use_consent_at     timestamptz,
+  status             text not null default 'pending' check (status in ('pending','approved','rejected','hidden')),
+  reviewed_by        text,
+  reviewed_at        timestamptz,
+  -- 공개 규칙을 DB에서도 강제
+  constraint ic_reviews_amount_requires_payment check (verified_amount is null or payment_confirmed),
+  constraint ic_reviews_approved_requires_consent check (status <> 'approved' or use_consent),
+  constraint ic_reviews_payout_requires_payment check (status <> 'approved' or kind <> 'payout_case' or payment_confirmed)
+);
+create index if not exists ic_reviews_status_idx on public.ic_reviews (status, reviewed_at desc);
+
 alter table public.ic_staff            enable row level security;
 alter table public.ic_leads            enable row level security;
 alter table public.ic_audit_logs       enable row level security;
 alter table public.ic_events           enable row level security;
 alter table public.ic_privacy_requests enable row level security;
+alter table public.ic_reviews          enable row level security;
 
 -- 정책 없음 = anon/authenticated 거부. 혹시 남아 있는 공개 권한도 회수.
-revoke all on public.ic_staff, public.ic_leads, public.ic_audit_logs, public.ic_events, public.ic_privacy_requests from anon, authenticated;
+revoke all on public.ic_staff, public.ic_leads, public.ic_audit_logs, public.ic_events, public.ic_privacy_requests, public.ic_reviews from anon, authenticated;
 
 -- 감사로그는 추가만 가능하도록 (service role이라도 실수로 수정·삭제하지 않게)
 create or replace function public.ic_audit_immutable() returns trigger language plpgsql as $$

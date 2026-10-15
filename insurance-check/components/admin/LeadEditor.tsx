@@ -29,6 +29,7 @@ export function LeadEditor({ lead, role, salesEligible, canEdit }: { lead: Lead;
   const [nextContactAt, setNextContactAt] = useState(toLocalInput(lead.nextContactAt));
   const [assignee, setAssignee] = useState(lead.assignee ?? "");
   const [notes, setNotes] = useState(lead.notes);
+  const [isTest, setIsTest] = useState(lead.isTest);
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState("");
 
@@ -42,6 +43,7 @@ export function LeadEditor({ lead, role, salesEligible, canEdit }: { lead: Lead;
       notes,
     };
     if (salesEligible) body.coverageStatus = coverageStatus;
+    if (role === "admin") body.isTest = isTest;
     const res = await fetch(`/api/admin/leads/${lead.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -99,6 +101,12 @@ export function LeadEditor({ lead, role, salesEligible, canEdit }: { lead: Lead;
           처리 메모
           <Textarea value={notes} maxLength={2000} onChange={(e) => setNotes(e.target.value)} placeholder="상담 경과 (건강정보·주민등록번호 기록 금지)" />
         </label>
+        {role === "admin" && (
+          <label className="flex items-center gap-2 text-[14px] font-semibold text-navy sm:col-span-2">
+            <input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} className="h-5 w-5 accent-blue" />
+            내부 테스트 신청 (실제 운영 지표에서 제외)
+          </label>
+        )}
       </fieldset>
       {state === "error" && <Alert tone="error" role="alert" title={error} />}
       {state === "saved" && <Alert tone="success" role="status" title="저장되었습니다." />}

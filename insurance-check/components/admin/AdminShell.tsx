@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, ClipboardList, FileClock, Settings, ShieldCheck, Target } from "lucide-react";
+import { BarChart3, ClipboardList, FileClock, MessageSquareQuote, Settings, ShieldCheck, Target } from "lucide-react";
 import type { StaffSession } from "@/lib/session";
 import { can } from "@/lib/session";
 import { STAFF_ROLE_LABEL } from "@/lib/types";
@@ -12,6 +12,7 @@ export function AdminShell({ session, demo, children }: { session: StaffSession;
     { href: "/admin", label: "상담 DB", icon: ClipboardList, show: true },
     { href: "/admin?view=sales", label: "보장 분석 영업 대상", icon: Target, show: true },
     { href: "/admin/performance", label: "광고 성과", icon: BarChart3, show: true },
+    { href: "/admin/reviews", label: "후기·지급 사례", icon: MessageSquareQuote, show: true },
     { href: "/admin/privacy", label: "철회·삭제 요청", icon: ShieldCheck, show: true },
     { href: "/admin/audit", label: "감사로그", icon: FileClock, show: can(session.role, "viewAudit") },
     { href: "/admin/settings", label: "환경설정·배포 체크", icon: Settings, show: can(session.role, "viewSettings") },

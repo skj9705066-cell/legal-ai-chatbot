@@ -7,11 +7,12 @@ import {
   SERVICE_TYPES,
   type AuditLog,
   type FunnelEvent,
+  type Review,
   type FunnelEventName,
 } from "@/lib/types";
 import { encryptPii, hashPhone } from "../crypto";
 import { maskPhone } from "@/lib/validation";
-import type { LeadFilter, LeadRow, LeadRowPatch, PrivacyRequestRow, Repository } from "./types";
+import { COMPLETED_CLAIM_STATUSES, isRealLead, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
 import { applyLeadFilter } from "./filter";
 
 /**
@@ -24,6 +25,8 @@ interface DemoState {
   audit: AuditLog[];
   events: FunnelEvent[];
   privacy: PrivacyRequestRow[];
+  /** 후기는 시드하지 않는다 — 가짜 후기를 자동 생성하지 않음 */
+  reviews: Review[];
 }
 
 const g = globalThis as unknown as { __icDemo?: DemoState };
@@ -134,6 +137,7 @@ function seed(): DemoState {
       notes: "",
       privacyStatus: "none",
       duplicateOf: null,
+      isTest: false,
       isDemo: true,
     });
   }
@@ -172,6 +176,7 @@ function seed(): DemoState {
     leads,
     events,
     privacy,
+    reviews: [],
     audit: [
       {
         id: randomUUID(),
@@ -187,7 +192,9 @@ function seed(): DemoState {
 }
 
 function state(): DemoState {
-  return (g.__icDemo ??= seed());
+  const s = (g.__icDemo ??= seed());
+  s.reviews ??= [];
+  return s;
 }
 
 export const demoRepository: Repository = {
@@ -246,5 +253,28 @@ export const demoRepository: Repository = {
     if (!p) return null;
     Object.assign(p, patch);
     return p;
+  },
+  async insertReview(r) {
+    state().reviews.unshift(r);
+  },
+  async listReviews() {
+    return [...state().reviews];
+  },
+  async getReview(id) {
+    return state().reviews.find((r) => r.id === id) ?? null;
+  },
+  async updateReview(id, patch) {
+    const r = state().reviews.find((x) => x.id === id);
+    if (!r) return null;
+    Object.assign(r, patch);
+    return r;
+  },
+  async countRealLeads() {
+    // 데모 시드는 전부 isDemo=true라 항상 0이 된다(의도된 동작)
+    const real = state().leads.filter(isRealLead);
+    return {
+      applications: real.length,
+      completedConsultations: real.filter((l) => COMPLETED_CLAIM_STATUSES.includes(l.claimStatus)).length,
+    };
   },
 };

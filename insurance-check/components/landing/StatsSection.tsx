@@ -1,7 +1,8 @@
 import { ArrowUpRight, Info } from "lucide-react";
-import { HIDDEN_DEFINITION, STATS, STATS_AVERAGE_NOTE, STATS_DISCLAIMER, STATS_MOTION_NOTE, STATS_SOURCE } from "@/lib/content";
+import { HERO, HIDDEN_DEFINITION, PROOF, STATS, STATS_AVERAGE_NOTE, STATS_DISCLAIMER, STATS_MOTION_NOTE, STATS_SOURCE } from "@/lib/content";
 import { Odometer } from "@/components/motion/Odometer";
 import { Reveal } from "@/components/motion/Reveal";
+import { ApplyCta } from "./ApplyCta";
 
 const [MAIN, ...REST] = STATS;
 const AVG = REST.find((s) => s.id === "refund-average")!;
@@ -38,13 +39,19 @@ function DecorativeRing() {
   );
 }
 
+/**
+ * 2. 공식 통계(#stats: 아직 남아 있는 규모) → 3. 사회적 증거(#proof: 전국 지급 건수).
+ * 하나의 다크 대시보드처럼 이어지지만 의미 단위로 섹션을 나눈다.
+ */
 export function StatsSection() {
   return (
-    <section id="stats" aria-labelledby="stats-title" className="relative overflow-hidden bg-deep py-20 text-white sm:py-24 lg:py-32">
+    <div className="relative overflow-hidden bg-deep text-white">
       {/* 은은한 블루 글로우 */}
       <div aria-hidden="true" className="pointer-events-none absolute -right-40 -top-40 h-[560px] w-[560px] rounded-full bg-blue/25 blur-[120px]" />
-      <div aria-hidden="true" className="pointer-events-none absolute -bottom-48 -left-40 h-[420px] w-[420px] rounded-full bg-mint/10 blur-[110px]" />
+      <div aria-hidden="true" className="pointer-events-none absolute -left-40 top-1/2 h-[420px] w-[420px] rounded-full bg-mint/10 blur-[110px]" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-40 right-0 h-[460px] w-[460px] rounded-full bg-blue/20 blur-[120px]" />
 
+      <section id="stats" aria-labelledby="stats-title" className="relative pt-20 sm:pt-24 lg:pt-32">
       <div className="container relative">
         <Reveal className="max-w-2xl">
           <p className="flex flex-wrap items-center gap-2 text-[15px] font-bold text-blue-300">
@@ -54,9 +61,9 @@ export function StatsSection() {
             </span>
           </p>
           <h2 id="stats-title" className="mt-3 text-balance text-[28px] font-extrabold leading-[1.3] tracking-[-0.03em] sm:text-[36px] lg:text-[44px]">
-            나도 몰랐던 보험금,{" "}
+            생각보다 많은 보험금이{" "}
             <br />
-            아직 남아 있을 수 있습니다.
+            아직 찾아가지 않은 상태입니다.
           </h2>
           <p className="mt-4 text-[17px] leading-[1.7] text-navy-300 lg:text-[18px]">{HIDDEN_DEFINITION}</p>
         </Reveal>
@@ -86,8 +93,28 @@ export function StatsSection() {
           </div>
         </Reveal>
 
-        {/* 보조 통계: 지급 건수 → 지급액 */}
-        <div className="mt-4 grid gap-4 md:grid-cols-2 lg:mt-5 lg:gap-5">
+      </div>
+      </section>
+
+      <section id="proof" aria-labelledby="proof-title" className="relative pb-20 pt-16 sm:pb-24 sm:pt-20 lg:pb-32 lg:pt-24">
+      <div className="container relative">
+        <Reveal className="max-w-3xl">
+          <p className="text-[15px] font-bold text-blue-300">{PROOF.eyebrow}</p>
+          <h2 id="proof-title" className="mt-3 text-balance text-[26px] font-extrabold leading-[1.35] tracking-[-0.03em] sm:text-[34px] lg:text-[40px]">
+            {PROOF.title}
+          </h2>
+          <ul className="mt-5 flex flex-wrap gap-2" data-testid="proof-notes">
+            {PROOF.notes.map((n) => (
+              <li key={n} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.07] px-3.5 py-2 text-[14px] font-semibold text-white/90 ring-1 ring-inset ring-white/15">
+                <Info className="h-4 w-4 shrink-0 text-blue-300" aria-hidden="true" />
+                {n}
+              </li>
+            ))}
+          </ul>
+        </Reveal>
+
+        {/* 지급 건수 → 지급액 */}
+        <div className="mt-10 grid gap-4 md:grid-cols-2 lg:mt-12 lg:gap-5">
           {SUBS.map((s, i) => (
             <Reveal key={s.id} delay={120 * (i + 1)}>
               <div className="h-full rounded-[24px] bg-white/[0.05] p-6 ring-1 ring-inset ring-white/10 sm:p-8">
@@ -98,6 +125,7 @@ export function StatsSection() {
                   <span aria-hidden="true" className="text-[0.5em] font-bold text-white/75">{s.prefix}</span>
                   <Odometer value={s.value} template={s.template} label={`${s.basis} ${s.label} ${s.text}`} duration={2400} delay={150 * (i + 1)} />
                 </p>
+                {s.id === "refund-count" && <p className="mt-3 text-[15px] font-medium text-navy-300">지급 건수 기준 · 사람 수 아님</p>}
               </div>
             </Reveal>
           ))}
@@ -177,7 +205,21 @@ export function StatsSection() {
             </div>
           </div>
         </Reveal>
+
+        {/* 숫자 → 나도 확인해 보기 */}
+        <Reveal className="mt-16 text-center lg:mt-20">
+          <p className="text-balance text-[24px] font-extrabold leading-[1.4] tracking-[-0.03em] sm:text-[30px] lg:text-[34px]" data-testid="proof-closing">
+            {PROOF.closingLines[0]}
+          </p>
+          <p className="mt-3 text-pretty text-[17px] leading-[1.7] text-navy-300 lg:text-[19px]">{PROOF.closingLines[1]}</p>
+          <div className="mt-8" id="proof-cta">
+            <ApplyCta source="stats" target="types" variant="white" size="xl" className="h-[62px] w-full text-[18px] shadow-none sm:w-auto sm:min-w-[320px]">
+              {HERO.cta}
+            </ApplyCta>
+          </div>
+        </Reveal>
       </div>
-    </section>
+      </section>
+    </div>
   );
 }

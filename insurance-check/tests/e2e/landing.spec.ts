@@ -1,19 +1,26 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-const FORBIDDEN = ["모든 고객", "대상자로 선정", "금융위원회 인증", "100% 환급", "무조건"];
+const FORBIDDEN = ["모든 고객", "대상자로 선정", "금융위원회 인증", "100% 환급", "무조건", "80만 명", "방금 신청", "명이 신청", "님이 신청"];
 
 test("hero, stats with source and compliance copy", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("혹시 아직 받지 못한");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("보험금이 있으신가요?");
-  await expect(page.getByText("내 보험을 한 번에 점검해 드립니다.")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("나도 몰랐던 보험금,아직 남아 있을 수 있습니다.");
+  await expect(page.getByTestId("hero-subtitle")).toHaveText("다른 사람들은 이미 확인하고 있는 보험금,혹시 나도 놓치고 있지는 않을까요?");
+  await expect(page.getByText("지금 내 보험에서 확인할 사항을 알아보세요.")).toBeVisible();
   for (const badge of ["무료 점검 안내", "보험 가입 의무 없음", "필요한 경우 상담으로 확인 가능"]) {
     await expect(page.getByRole("listitem").filter({ hasText: badge }).first()).toBeVisible();
   }
-  const stats = page.locator("#stats");
-  await expect(stats.getByRole("heading", { level: 2 })).toHaveText("나도 몰랐던 보험금, 아직 남아 있을 수 있습니다.");
-  await expect(stats).toContainText("약 10조 3,000억원");
+  await expect(page.locator("#stats").getByRole("heading", { level: 2 })).toHaveText("생각보다 많은 보험금이 아직 찾아가지 않은 상태입니다.");
+  await expect(page.locator("#stats")).toContainText("약 10조 3,000억원");
+  // 사회적 증거: 전국 공식 집계 · 건수(사람 수 아님) · 이 서비스 실적 아님
+  const proof = page.locator("#proof");
+  await expect(proof.getByRole("heading", { level: 2 })).toHaveText("2025년 한 해, 약 80만 건의 숨은보험금이 지급됐습니다.");
+  await expect(page.getByTestId("proof-notes")).toContainText("사람 수가 아닙니다");
+  await expect(page.getByTestId("proof-notes")).toContainText("이 서비스의 상담·지급 실적이 아닌");
+  await expect(page.getByTestId("proof-closing")).toHaveText("보험금 확인, 특별한 사람들만 하는 일이 아닙니다.");
+  await expect(proof).toContainText("혹시 놓친 보험금이 있는지 나도 확인해 보세요.");
+  const stats = proof;
   await expect(stats).toContainText("약 80만 건");
   await expect(stats).toContainText("약 3조 2,470억원");
   await expect(stats).toContainText("약 404만원");
@@ -42,7 +49,7 @@ test("hero, stats with source and compliance copy", async ({ page }) => {
 test("no external lookup CTA in the main flow; official link kept in FAQ and footer", async ({ page }) => {
   await page.goto("/");
   const ext = 'a[href*="cont.insure.or.kr"]';
-  for (const sel of ["header", "#hero-cta", "#stats", "#stories", "#services", "#process", "#apply", "#final-cta"]) {
+  for (const sel of ["header", "#hero-cta", "#stats", "#proof", "#cases", "#conversation", "#services", "#process", "#apply", "#final-cta"]) {
     await expect(page.locator(`${sel} ${ext}`), `external CTA in ${sel}`).toHaveCount(0);
   }
   await expect(page.locator(`footer ${ext}`)).toBeVisible();
@@ -58,7 +65,7 @@ test("odometer counts up once on entry and stops exactly on the official figures
   const main = page.locator('[data-testid="stat-main"] .odo');
   await expect(main).toHaveAttribute("data-state", "idle");
   const widthBefore = await main.evaluate((e) => e.getBoundingClientRect().width);
-  await page.evaluate(() => window.scrollTo(0, document.getElementById("stats")!.offsetTop + 100));
+  await page.evaluate(() => window.scrollTo(0, document.getElementById("stats")!.getBoundingClientRect().top + window.scrollY + 100));
   await expect(main).toHaveAttribute("data-state", "running");
   await expect(main).toHaveAttribute("data-state", "done", { timeout: 6000 });
   const widthAfter = await main.evaluate((e) => e.getBoundingClientRect().width);
@@ -82,7 +89,7 @@ test("odometer counts up once on entry and stops exactly on the official figures
   }
   // 다시 스크롤해도 반복 실행되지 않는다
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.evaluate(() => window.scrollTo(0, document.getElementById("stats")!.offsetTop + 100));
+  await page.evaluate(() => window.scrollTo(0, document.getElementById("stats")!.getBoundingClientRect().top + window.scrollY + 100));
   await expect(main).toHaveAttribute("data-state", "done");
 });
 
@@ -92,34 +99,56 @@ test("reduced motion shows the final figures without animation", async ({ page }
   await expect(page.locator('[data-testid="stat-main"] .odo')).toHaveAttribute("data-state", "done");
 });
 
-test("story: numbers → situational examples → 'me too' CTA into the internal type selection", async ({ page }) => {
+test("persuasion flow: stats → proof → cases → example conversation → types; examples clearly labeled", async ({ page }) => {
   await page.goto("/");
-  const order = await page.evaluate(() =>
-    ["stats", "stories", "story-cta", "services"].map((id) => document.getElementById(id)!.getBoundingClientRect().top + window.scrollY),
-  );
+  const ids = ["stats", "proof", "cases", "conversation", "services", "process", "apply", "faq"];
+  const order = await page.evaluate((list) => list.map((id) => document.getElementById(id)!.getBoundingClientRect().top + window.scrollY), ids);
   expect([...order].sort((x, y) => x - y)).toEqual(order);
-  const stories = page.locator("#stories");
-  await expect(stories.getByRole("heading", { level: 2 })).toHaveText("이런 보험금, 모르고 지나치셨을 수 있어요.");
-  for (const t of ["만기가 됐지만 찾아가지 않은 보험금", "지급 시기를 몰랐던 중도보험금·축하금", "병원비·수술비를 청구하지 않은 경우"]) {
-    await expect(stories.getByRole("heading", { level: 3, name: t })).toBeVisible();
+
+  const cases = page.locator("#cases");
+  await expect(cases.getByRole("heading", { level: 2 })).toHaveText("이런 경우라면, 나도 확인이 필요할 수 있어요.");
+  for (const t of ["예전에 수술을 받은 직장인", "오래전 가입한 보험을 잊은 고객", "부모님 보험을 확인하는 자녀", "보험을 여러 개 가입한 고객"]) {
+    await expect(cases.getByRole("heading", { level: 3, name: t })).toBeVisible();
   }
-  await expect(page.locator('[data-testid="story-footnote"]')).toContainText("실제 지급 사례가 아닌 일반적인 상황 예시입니다");
-  // 병원비 미청구는 숨은보험금 통계에 포함된 것처럼 보이지 않게
-  const medical = page.locator('[data-testid="story-medical"]');
-  await expect(medical).toContainText("숨은보험금 통계에 포함되지 않는");
-  await expect(medical).not.toContainText("숨은보험금 유형");
-  await expect(page.locator("#story-cta")).toContainText("다른 사람들은 찾아간 보험금, 혹시 나도?");
-  await expect(page.locator("#story-cta")).toContainText("가입한 보험이 있어도 미처 확인하지 못한 보험금이 있을 수 있습니다.");
-  await page.locator("#story-cta").getByRole("button", { name: "나도 무료 점검 시작하기" }).click();
+  await expect(cases.getByText("상황 예시", { exact: true })).toHaveCount(4);
+  await expect(page.getByTestId("cases-footnote")).toContainText("실제 지급 성공 사례가 아닌 일반적인 상황 예시");
+  await expect(page.getByTestId("cases-footnote")).toContainText("숨은보험금 통계와 별개");
+  // 인물은 일러스트뿐 — 사진·이름·금액 없음
+  await expect(cases.locator("img")).toHaveCount(0);
+  expect(await cases.innerText()).not.toMatch(/\d[\d,]*\s*(만\s*)?원/);
+
+  // 대화 예시: 예시 표시가 항상 붙고, 실제 후기 영역과 분리
+  const conv = page.getByTestId("conversation-example");
+  await expect(conv).toContainText("상담 대화 예시 · 실제 고객 메시지가 아닙니다");
+  await expect(conv).toContainText("부모님 보험도 한번 확인해 봐야겠어요.");
+  await expect(page.getByTestId("conversation-note")).toContainText("실제 고객 후기는 고객 동의와 내부 확인을 거친 경우에만");
+  // 데모 모드: 운영 지표는 절대 공개되지 않고, 후기가 있다면 전부 '데모 데이터' 표시가 붙는다
+  // (초기 상태에는 후기가 0건이라 실제 후기 영역 자체가 없다 — admin.spec이 등록 후 공개 중단까지 되돌린다)
+  await expect(page.getByTestId("operating-metrics")).toHaveCount(0);
+  const real = page.getByTestId("real-review");
+  await expect(real.filter({ hasNotText: "데모 데이터 · 실제 후기 아님" })).toHaveCount(0);
+
+  // 사회적 증거 아래 CTA → 사이트 안의 유형 선택
+  await page.locator("#proof-cta").getByRole("button", { name: "나도 무료 점검 시작하기" }).click();
   await expect(page.locator("#services-title")).toBeInViewport();
   await expect(page.locator("#services-title")).toBeFocused();
+});
+
+test("final CTA copy and it stays inside the site", async ({ page }) => {
+  await page.goto("/");
+  const final = page.locator("#final-cta");
+  await expect(final.getByRole("heading", { level: 2 })).toHaveText("혹시 나도 놓치고 있는 보험금이 있을까요?");
+  await expect(final).toContainText("가입한 보험을 모두 기억하지 못하더라도, 확인할 수 있는 방법은 있습니다.");
+  await final.getByRole("button", { name: "나도 무료 보험금 점검 시작하기" }).click();
+  await expect(page.locator("#services-title")).toBeInViewport();
+  expect(new URL(page.url()).host).toBe(new URL(page.url()).host);
   expect(page.url()).not.toContain("cont.insure.or.kr");
 });
 
 test("hero CTA scrolls to type selection; picked type flows into the single form", async ({ page }) => {
   await page.goto("/");
   expect(await page.locator("form").count()).toBe(1);
-  await page.locator("#hero-cta").getByRole("button", { name: "내 보험금 점검 시작하기" }).click();
+  await page.locator("#hero-cta").getByRole("button", { name: "나도 무료 점검 시작하기" }).click();
   await expect(page.locator("#services-title")).toBeInViewport();
   await expect(page.locator("#services-title")).toBeFocused();
   await page.locator('#services input[value="refund"]').check({ force: true });

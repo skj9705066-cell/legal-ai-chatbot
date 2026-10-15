@@ -46,6 +46,7 @@ export function LeadPanel({ lead, role, closeHref }: { lead: Lead; role: StaffRo
             <Badge variant="blue">{SERVICE_CONTENT[lead.serviceType].shortTitle}</Badge>
             {lead.duplicateOf && <Badge variant="caution">중복 · {lead.duplicateOf}</Badge>}
             {lead.isDemo && <Badge variant="demo">데모</Badge>}
+            {lead.isTest && <Badge>테스트</Badge>}
           </div>
         </div>
         <Link prefetch={false} href={closeHref} scroll={false} aria-label="패널 닫기" className="rounded-lg p-1.5 text-navy-500 hover:bg-navy-50 hover:text-navy">
