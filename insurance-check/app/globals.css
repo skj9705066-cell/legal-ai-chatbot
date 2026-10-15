@@ -145,3 +145,16 @@
     text-wrap: pretty;
   }
 }
+
+/* 대화 카드: 화면에 들어오면 말풍선이 차례로 떠오른다 (data-anim은 JS가 설정 — JS가 없거나 움직임 줄이기면 그대로 보임) */
+.chat-card[data-anim="pending"] .chat-msg {
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+}
+.chat-card[data-anim="in"] .chat-msg {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 520ms cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0ms),
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0ms);
+}

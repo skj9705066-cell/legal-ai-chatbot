@@ -93,20 +93,75 @@ export const CASES = {
 } as const;
 
 /**
- * 고객 후기 갤러리. 고객 동의 + 관리자 공개 승인된 실제 후기만 보여 준다(lib/reviews.ts).
- * 후기가 없으면 '실제 후기 준비 중'만 표시하고 가상의 후기·금액은 만들지 않는다.
+ * 보험금 점검 대화 갤러리.
+ * - 기본: 가상 상황을 재구성한 대화 예시 5개(실제 고객 대화 아님 — 항상 표시)
+ * - 고객 동의 + 관리자 공개 승인된 실제 후기가 생기면, 같은 유형(category)의 예시 카드 자리를 실제 후기가 대신한다(lib/chat-gallery.ts)
+ * 가짜 프로필 사진·실명처럼 보이는 이름·지급 금액을 쓰지 않는다. 상담사 아바타는 서비스 로고.
  */
-export const REVIEW_GALLERY = {
-  eyebrow: "고객 후기",
-  title: "고객님들이 직접 전해주신 이야기",
-  subtitle: "실제 상담 이후 남겨주신 소중한 후기들을 소개합니다.",
-  emptySubtitle: "실제 상담 이후 고객님이 남겨주신 후기를, 게시 동의를 받아 이곳에 소개합니다.",
-  emptyTitle: "실제 후기 준비 중",
-  emptyText: "고객님의 동의를 받은 실제 메시지만 게시합니다. 가상의 후기나 지급 금액은 만들어 싣지 않습니다.",
-  verifiedBadge: "동의받은 실제 후기",
-  imageCaption: "고객 동의 캡처 · 개인정보 가림",
-  textCaption: "고객 메시지 원문",
-  note: "고객 동의를 받아 게시하며, 프로필 사진·실명·연락처는 가렸습니다. 개별 경험이며 결과는 계약 내용에 따라 사람마다 다릅니다.",
+export const CHAT_GALLERY = {
+  eyebrow: "보험금 점검 상황",
+  title: "나도 놓치고 있었을지 모르는 보험금",
+  subtitle: "보험금 점검 과정에서 생길 수 있는 다양한 상황을 대화 형식으로 재구성했습니다.",
+  allRealSubtitle: "실제 상담 이후 고객님이 남겨주신 메시지를, 게시 동의를 받아 소개합니다.",
+  exampleLabel: "가상 상황을 재구성한 대화 예시",
+  exampleLabelNote: "실제 고객과 나눈 대화가 아닙니다",
+  mixedLabelNote: "'실제 후기' 표시가 있는 카드만 고객 동의를 받은 실제 메시지입니다",
+  exampleChip: "재구성 예시",
+  realChip: "실제 후기 · 게시 동의",
+  counselorName: "점검 상담",
+  scenarios: [
+    {
+      id: "surgery",
+      topic: "수술비 특약 확인",
+      category: "medical_claim",
+      messages: [
+        { from: "customer", text: "저 예전에 수술했던 것도 확인해 볼 수 있나요?" },
+        { from: "counselor", text: "네, 당시 가입하신 보험과 수술비 특약을 확인해 볼 필요가 있습니다." },
+        { from: "customer", text: "실비만 생각했는데 다른 보장도 확인해 봐야겠네요. 감사합니다!" },
+      ],
+    },
+    {
+      id: "old-policy",
+      topic: "오래전 가입한 보험",
+      category: "history_lookup",
+      messages: [
+        { from: "customer", text: "10년 전에 가입한 보험도 확인할 수 있나요?" },
+        { from: "counselor", text: "가입 내역과 계약 상태부터 확인하는 방법을 안내해 드릴게요." },
+        { from: "customer", text: "오래된 보험은 생각도 못 했네요. 알려주셔서 감사해요." },
+      ],
+    },
+    {
+      id: "parents",
+      topic: "부모님 보험",
+      category: "coverage_consult",
+      messages: [
+        { from: "customer", text: "부모님 보험이 여러 개인데 어떤 걸 확인해야 할지 모르겠어요." },
+        { from: "counselor", text: "계약별 보장 내용과 지급 조건을 구분해서 확인하시면 됩니다." },
+        { from: "customer", text: "혼자서는 어려웠는데 확인할 순서를 알겠어요. 감사합니다." },
+      ],
+    },
+    {
+      id: "maturity",
+      topic: "만기보험금",
+      category: "maturity_dormant",
+      messages: [
+        { from: "customer", text: "만기된 보험에 받을 돈이 남아 있을 수도 있나요?" },
+        { from: "counselor", text: "계약에 따라 가능할 수 있습니다. 공식 조회 방법부터 안내해 드릴게요." },
+        { from: "customer", text: "몰랐던 내용이네요. 한번 확인해 보겠습니다!" },
+      ],
+    },
+    {
+      id: "hospital",
+      topic: "병원비 청구",
+      category: "claim_guidance",
+      messages: [
+        { from: "customer", text: "병원 다녀온 지 오래됐는데 청구할 수 있을까요?" },
+        { from: "counselor", text: "보험 약관과 청구권 소멸시효 등을 확인해야 합니다." },
+        { from: "customer", text: "그냥 지나칠 뻔했네요. 설명 감사합니다." },
+      ],
+    },
+  ],
+  realNote: "실제 후기는 고객 동의를 받아 게시하며, 프로필 사진·실명·연락처는 가렸습니다. 개별 경험이며 결과는 계약 내용에 따라 사람마다 다릅니다.",
   metricsTitle: "실제 운영 현황",
   metricsNote: "이 서비스의 운영 데이터 기준이며, 테스트·중복 신청은 제외했습니다.",
   metricLabel: {
@@ -115,7 +170,7 @@ export const REVIEW_GALLERY = {
     approvedReviews: "동의받은 고객 후기",
     verifiedPayoutCases: "확인된 보험금 지급 사례",
   },
-  ctaTitle: "혹시 나도 확인하지 못한 보험금이 있을까요?",
+  ctaTitle: "혹시 나도 놓친 보험금이 있을까요?",
   ctaButton: "나도 무료 점검 시작하기",
 } as const;
 

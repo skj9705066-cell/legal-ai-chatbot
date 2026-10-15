@@ -117,16 +117,29 @@ test("persuasion flow: stats → proof → cases → real review gallery → typ
   await expect(cases.locator("img")).toHaveCount(0);
   expect(await cases.innerText()).not.toMatch(/\d[\d,]*\s*(만\s*)?원/);
 
-  // 후기 갤러리: 실제 후기가 없으면 '실제 후기 준비 중' — 가상의 후기를 만들지 않는다
+  // 대화 갤러리: 실제 후기가 없으면 '가상 상황을 재구성한 대화 예시' 5개 — 빈 '준비 중' 영역 없음
   const reviews = page.locator("#reviews");
-  await expect(reviews.getByRole("heading", { level: 2 })).toHaveText("고객님들이 직접 전해주신 이야기");
+  await expect(reviews.getByRole("heading", { level: 2 })).toHaveText("나도 놓치고 있었을지 모르는 보험금");
+  await expect(page.getByTestId("reviews-empty")).toHaveCount(0);
+  await expect(page.getByTestId("example-label")).toContainText("가상 상황을 재구성한 대화 예시");
+  const examples = page.getByTestId("chat-example");
   if ((await page.getByTestId("real-review").count()) === 0) {
-    await expect(page.getByTestId("reviews-empty")).toContainText("실제 후기 준비 중");
-    await expect(page.getByTestId("reviews-empty")).toContainText("가상의 후기나 지급 금액은 만들어 싣지 않습니다");
+    await expect(page.getByTestId("reviews-subtitle")).toHaveText("보험금 점검 과정에서 생길 수 있는 다양한 상황을 대화 형식으로 재구성했습니다.");
+    await expect(examples).toHaveCount(5);
+    for (const t of ["수술비 특약 확인", "오래전 가입한 보험", "부모님 보험", "만기보험금", "병원비 청구"]) {
+      await expect(examples.filter({ hasText: t })).toHaveCount(1);
+    }
+    await expect(examples.filter({ hasText: "보험 약관과 청구권 소멸시효 등을 확인해야 합니다." })).toHaveCount(1);
+  }
+  // 예시 카드: 재구성 표시, 가짜 프로필 사진·금액 없음
+  for (const card of await examples.all()) {
+    await expect(card).toContainText("재구성 예시");
+    await expect(card.locator("img")).toHaveCount(0);
+    expect(await card.innerText()).not.toMatch(/\d[\d,]*\s*(만\s*)?원/);
   }
   await expect(page.getByTestId("real-review").filter({ hasNotText: "데모 데이터 · 실제 후기 아님" })).toHaveCount(0);
   await expect(page.getByTestId("operating-metrics")).toHaveCount(0);
-  await expect(page.locator("#gallery-cta")).toContainText("혹시 나도 확인하지 못한 보험금이 있을까요?");
+  await expect(page.locator("#gallery-cta")).toContainText("혹시 나도 놓친 보험금이 있을까요?");
   await page.locator("#gallery-cta").getByRole("button", { name: "나도 무료 점검 시작하기" }).click();
   await expect(page.locator("#services-title")).toBeInViewport();
   await page.goto("/");
@@ -137,7 +150,7 @@ test("persuasion flow: stats → proof → cases → real review gallery → typ
   await expect(page.locator("#services-title")).toBeFocused();
 });
 
-test("review gallery: only approved real reviews, desktop 3-up carousel / mobile 1-up slider", async ({ page, isMobile }) => {
+test("chat gallery: approved real reviews take the place of same-type examples; desktop 3-up / mobile 1-up", async ({ page, isMobile }) => {
   const origin = { Origin: "http://localhost:3100" };
   const login = await page.request.post("/api/admin/login", {
     data: { role: "admin", password: process.env.DEMO_ADMIN_PASSWORD || "demo-admin-local" },
@@ -169,23 +182,25 @@ test("review gallery: only approved real reviews, desktop 3-up carousel / mobile
     await page.locator("#reviews").scrollIntoViewIfNeeded();
     const mine = page.getByTestId("real-review").filter({ hasText: tag });
     await expect(mine).toHaveCount(5);
-    await expect(page.getByTestId("reviews-subtitle")).toHaveText("실제 상담 이후 남겨주신 소중한 후기들을 소개합니다.");
-    await expect(page.getByTestId("reviews-empty")).toHaveCount(0);
+    // 같은 유형 예시 4장이 실제 후기로 바뀌고(만기 1건은 앞에 추가), 해당 유형이 없는 '부모님 보험' 예시만 남는다
+    await expect(page.getByTestId("chat-example")).toHaveCount(1);
+    await expect(page.getByTestId("chat-example")).toContainText("부모님 보험");
+    await expect(page.getByTestId("example-label")).toContainText("'실제 후기' 표시가 있는 카드만");
     // 여러 줄 원문 = 말풍선 여러 개
     await expect(mine.filter({ hasText: "청구 서류를" }).locator("li")).toHaveCount(3);
 
     const fullyVisible = () =>
-      page.getByTestId("review-track").evaluate((track) => {
+      page.getByTestId("chat-track").evaluate((track) => {
         const t = track.getBoundingClientRect();
         return Array.from(track.children).filter((c) => {
           const r = c.getBoundingClientRect();
           return r.left >= t.left - 1 && r.right <= t.right + 1;
         }).length;
       });
-    expect(await fullyVisible()).toBe(isMobile ? 1 : 3);
-    const before = await page.getByTestId("review-track").evaluate((t) => t.scrollLeft);
-    await page.getByRole("button", { name: "다음 후기" }).click();
-    await expect.poll(() => page.getByTestId("review-track").evaluate((t) => t.scrollLeft)).toBeGreaterThan(before + 50);
+    await expect.poll(fullyVisible).toBe(isMobile ? 1 : 3);
+    const before = await page.getByTestId("chat-track").evaluate((t) => t.scrollLeft);
+    await page.getByRole("button", { name: "대화 카드 오른쪽으로 넘기기" }).click();
+    await expect.poll(() => page.getByTestId("chat-track").evaluate((t) => t.scrollLeft)).toBeGreaterThan(before + 50);
     await expect.poll(fullyVisible).toBe(isMobile ? 1 : 3); // 스크롤 스냅이 끝난 뒤에도 한 화면에 1장/3장
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
@@ -194,6 +209,31 @@ test("review gallery: only approved real reviews, desktop 3-up carousel / mobile
   }
   await page.goto("/");
   await expect(page.getByTestId("real-review").filter({ hasText: tag })).toHaveCount(0);
+});
+
+test("chat gallery auto-slides only when motion is allowed, and can be paused", async ({ page }) => {
+  await page.goto("/");
+  await page.addStyleTag({ content: "html{scroll-behavior:auto!important}" });
+  const track = page.getByTestId("chat-track");
+  await track.scrollIntoViewIfNeeded();
+  await expect(track).toHaveAttribute("data-autoplay", "running");
+  await page.mouse.move(2, 2); // 마우스가 카드 위에 있으면 멈추므로 비켜 둔다
+  await expect.poll(() => track.evaluate((t) => t.scrollLeft), { timeout: 9000 }).toBeGreaterThan(50);
+  await page.getByRole("button", { name: "자동 넘김 멈추기" }).click();
+  await expect(track).toHaveAttribute("data-autoplay", "stopped");
+  await expect(page.getByRole("button", { name: "자동 넘김 다시 시작" })).toBeVisible();
+});
+
+test("chat gallery does not auto-slide with reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const track = page.getByTestId("chat-track");
+  await track.scrollIntoViewIfNeeded();
+  await expect(track).toHaveAttribute("data-autoplay", "stopped");
+  const start = await track.evaluate((t) => t.scrollLeft);
+  await page.waitForTimeout(5800);
+  expect(await track.evaluate((t) => t.scrollLeft)).toBe(start);
+  await expect(page.getByRole("button", { name: "자동 넘김 멈추기" })).toHaveCount(0);
 });
 
 test("final CTA copy and it stays inside the site", async ({ page }) => {
