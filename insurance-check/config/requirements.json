@@ -1,0 +1,36 @@
+{
+  "$comment": "운영 모드(APP_MODE=production)에서 반드시 채워야 하는 환경변수. lib/config.ts와 scripts/check-deploy.mjs가 함께 읽는다.",
+  "operator": [
+    { "key": "OPERATOR_NAME", "label": "운영 주체(상호 또는 성명)" },
+    { "key": "AGENCY_NAME", "label": "소속 보험대리점(GA) 명칭" },
+    { "key": "AGENCY_REG_NO", "label": "보험대리점 등록번호" },
+    { "key": "PLANNER_NAME", "label": "보험설계사 성명" },
+    { "key": "PLANNER_REG_NO", "label": "보험설계사 등록번호" },
+    { "key": "CONTACT_PHONE", "label": "대표 연락처" },
+    { "key": "CONTACT_EMAIL", "label": "문의 이메일" },
+    { "key": "BUSINESS_ADDRESS", "label": "사업장 주소" },
+    { "key": "PRIVACY_OFFICER", "label": "개인정보 보호책임자(성명·연락처)" },
+    { "key": "PRIVACY_CONTROLLER", "label": "보험금 점검 신청 개인정보 처리 주체" },
+    { "key": "COVERAGE_PROCESSOR", "label": "보장 분석 상담 개인정보 처리 주체" },
+    { "key": "THIRD_PARTY_PROVISION", "label": "제3자 제공 여부(none 또는 제공받는 자·목적·항목·기간)" },
+    { "key": "RETENTION_CLAIM", "label": "보험금 점검 신청 정보 보유기간" },
+    { "key": "RETENTION_COVERAGE", "label": "보장 분석 상담 정보 보유기간" },
+    { "key": "AD_REVIEW_NO", "label": "광고 심의필 번호(소속 GA 준법 승인)" },
+    { "key": "PRIVACY_POLICY_EFFECTIVE_DATE", "label": "개인정보 처리방침 시행일(YYYY-MM-DD)" }
+  ],
+  "infra": [
+    { "key": "NEXT_PUBLIC_SITE_URL", "label": "서비스 URL(https)" },
+    { "key": "SUPABASE_URL", "label": "Supabase 프로젝트 URL" },
+    { "key": "SUPABASE_ANON_KEY", "label": "Supabase anon 키(관리자 로그인용, 서버에서만 사용)" },
+    { "key": "SUPABASE_SERVICE_ROLE_KEY", "label": "Supabase service role 키(서버 전용)" },
+    { "key": "APP_SECRET", "label": "세션·영수증 토큰 서명 키(32자 이상)" },
+    { "key": "PII_ENCRYPTION_KEY", "label": "연락처 암호화 키(base64 32바이트)" }
+  ],
+  "approvals": [
+    { "key": "APPROVAL_AD_REVIEW", "label": "소속 GA 보험 모집 광고 사전 심의 승인일" },
+    { "key": "APPROVAL_PRIVACY", "label": "소속 GA 개인정보 수집·이용 문구 및 처리 흐름 승인일" },
+    { "key": "APPROVAL_COVERAGE_OFFER", "label": "보장 분석 추가 제안 화면·동의 문구 승인일" },
+    { "key": "APPROVAL_THIRD_PARTY", "label": "개인정보 처리 주체·제3자 제공 여부 확정일" },
+    { "key": "APPROVAL_STATS_VERIFIED", "label": "통계 수치 원문(금융위원회 보도자료) 대조 완료일" }
+  ]
+}

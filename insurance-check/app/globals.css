@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    scroll-padding-top: 5.5rem;
+  }
+  body {
+    @apply bg-white font-sans text-ink antialiased;
+    font-size: 16px;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    -webkit-tap-highlight-color: transparent;
+  }
+  ::selection {
+    @apply bg-blue-100 text-navy;
+  }
+  :focus-visible {
+    outline: 2px solid #1463d9;
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+@layer components {
+  /* tailwind-merge가 배경색 클래스를 지우지 않도록 화살표 아이콘은 CSS 클래스로 분리 */
+  .select-chevron {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m5 8 5 5 5-5'/></svg>");
+    background-position: right 1rem center;
+    background-repeat: no-repeat;
+  }
+  /* 큰 숫자 전용 디스플레이 스타일 */
+  .num-display {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+    letter-spacing: -0.035em;
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
