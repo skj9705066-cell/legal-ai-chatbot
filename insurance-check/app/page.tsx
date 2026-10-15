@@ -6,7 +6,7 @@ import { ApplyProvider } from "@/components/landing/ApplyContext";
 import { Hero } from "@/components/landing/Hero";
 import { StatsSection } from "@/components/landing/StatsSection";
 import { CasesSection } from "@/components/landing/CasesSection";
-import { ReviewGallery } from "@/components/landing/ReviewGallery";
+import { ChatGallery } from "@/components/landing/ChatGallery";
 import { getPublicMetrics, getPublicReviews } from "@/lib/server/reviews";
 import { ServiceTypes } from "@/components/landing/ServiceTypes";
 import { Process } from "@/components/landing/Process";
@@ -29,10 +29,10 @@ export default async function LandingPage() {
       <SiteHeader demo={demo} />
       <main id="main">
         <Hero />
-        {/* 설득 흐름: 공식 통계 → 전국 지급 건수 → 상황별 사례 → 실제 고객 후기(없으면 '준비 중') → 유형 선택 → 절차 → 신청 */}
+        {/* 설득 흐름: 공식 통계 → 전국 지급 건수 → 상황별 사례 → 대화 갤러리(재구성 예시 · 실제 후기가 생기면 같은 유형 자리 대체) → 유형 선택 → 절차 → 신청 */}
         <StatsSection />
         <CasesSection />
-        <ReviewGallery reviews={reviews} metrics={metrics} />
+        <ChatGallery reviews={reviews} metrics={metrics} />
         <ServiceTypes />
         <Process />
         <ApplySection config={config} />
