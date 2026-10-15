@@ -103,7 +103,7 @@ export function StatsSection() {
           ))}
         </div>
 
-        {/* 건당 평균: 가장 크게 강조하되, '개인별 예상액 아님' 표기를 같은 카드·숫자 바로 아래에 함께 키운다 */}
+        {/* 건당 평균: 메인 수치와 같은 크기로, 블루 카드로 강조하되 '개인별 예상액 아님' 표기를 같은 카드·숫자 바로 아래에 함께 키운다 */}
         <Reveal className="mt-4 lg:mt-5" delay={360}>
           <div className="avg-feature relative overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#0866F5_0%,#0550C4_60%,#0B3E8A_100%)] p-6 shadow-[0_30px_80px_-24px_rgba(8,102,245,0.75)] ring-1 ring-inset ring-white/20 sm:p-10 lg:p-14">
             <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-white/15 blur-[80px]" />
@@ -114,14 +114,14 @@ export function StatsSection() {
                   {AVG.basis} {AVG.label}
                 </p>
                 <p
-                  className="mt-2 flex items-baseline gap-2 whitespace-nowrap font-black tracking-[-0.045em] text-white [font-size:clamp(56px,17vw,80px)] sm:text-[104px] lg:text-[128px] lg:leading-none"
+                  className="mt-3 flex items-baseline gap-2 whitespace-nowrap font-extrabold tracking-[-0.035em] text-white [font-size:clamp(30px,8.4vw,46px)] sm:text-[56px] lg:text-[72px]"
                   data-testid={`stat-${AVG.id}`}
                 >
-                  <span aria-hidden="true" className="text-[0.32em] font-bold text-white/80">{AVG.prefix}</span>
+                  <span aria-hidden="true" className="text-[0.45em] font-bold text-white/80">{AVG.prefix}</span>
                   <Odometer value={AVG.value} template={AVG.template} label={`${AVG.basis} ${AVG.label} ${AVG.text}`} duration={3000} delay={300} />
                 </p>
                 {/* 개인별 예상액으로 오인되지 않도록 숫자 바로 아래 고정 표기 */}
-                <div className="mt-3 lg:mt-5" data-testid="stat-average-note">
+                <div className="mt-4" data-testid="stat-average-note">
                   <p className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[16px] font-extrabold text-blue-700 shadow-sm lg:text-[18px]">
                     <Info className="h-[18px] w-[18px]" aria-hidden="true" />
                     {STATS_AVERAGE_NOTE.badge}
