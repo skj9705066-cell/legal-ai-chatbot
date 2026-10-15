@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "보장 분석 상담 신청", robots
 export default function CoveragePage() {
   const config = getPublicConfig();
   return (
-    <ApplyShell config={config}>
+    <ApplyShell config={config} journey={2}>
       <CoverageForm config={config} />
     </ApplyShell>
   );

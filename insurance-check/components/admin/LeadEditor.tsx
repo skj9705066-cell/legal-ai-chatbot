@@ -139,7 +139,7 @@ export function RevealPhone({ leadId, masked, allowed }: { leadId: string; maske
           원문 보기 (기록됨)
         </Button>
       )}
-      {error && <span className="text-[12.5px] text-danger">{error}</span>}
+      {error && <span className="text-[13px] text-danger">{error}</span>}
     </div>
   );
 }

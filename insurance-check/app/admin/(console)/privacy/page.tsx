@@ -18,23 +18,23 @@ export default async function PrivacyRequestsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-[22px] font-extrabold text-navy">동의 철회 · 삭제 요청</h1>
-        <p className="mt-1 text-[13.5px] text-navy-500">
+        <h1 className="text-[26px] font-extrabold tracking-[-0.03em] text-navy">동의 철회 · 삭제 요청</h1>
+        <p className="mt-1.5 text-[15px] leading-relaxed text-navy-600">
           마케팅·보장 분석 동의 철회는 접수 즉시 자동 반영됩니다. 삭제 요청은 즉시 연락 대상에서 제외되며, 본인 확인 후 &lsquo;완료&rsquo; 처리하면 식별
           정보가 파기됩니다.
         </p>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-navy-200 bg-white">
-        <table className="w-full min-w-[960px] text-left text-[13px]">
-          <thead className="border-b border-navy-200 bg-navy-50 text-[12px] font-bold text-navy-600">
+      <div className="overflow-x-auto rounded-2xl bg-white shadow-card ring-1 ring-navy-100">
+        <table className="w-full min-w-[960px] text-left text-[14px]">
+          <thead className="border-b border-navy-100 bg-navy-50/70 text-[13px] font-semibold text-navy-600">
             <tr>
-              <th scope="col" className="px-3 py-2.5">접수일시</th>
-              <th scope="col" className="px-3 py-2.5">요청 유형</th>
-              <th scope="col" className="px-3 py-2.5">요청자</th>
-              <th scope="col" className="px-3 py-2.5">일치 신청</th>
-              <th scope="col" className="px-3 py-2.5">상태</th>
-              <th scope="col" className="px-3 py-2.5">처리자 / 메모</th>
-              <th scope="col" className="px-3 py-2.5">처리</th>
+              <th scope="col" className="px-4 py-3">접수일시</th>
+              <th scope="col" className="px-4 py-3">요청 유형</th>
+              <th scope="col" className="px-4 py-3">요청자</th>
+              <th scope="col" className="px-4 py-3">일치 신청</th>
+              <th scope="col" className="px-4 py-3">상태</th>
+              <th scope="col" className="px-4 py-3">처리자 / 메모</th>
+              <th scope="col" className="px-4 py-3">처리</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-navy-100">
@@ -47,22 +47,22 @@ export default async function PrivacyRequestsPage() {
             )}
             {requests.map((r) => (
               <tr key={r.id} className="align-top">
-                <td className="whitespace-nowrap px-3 py-2.5 text-navy-600">{formatDateTime(r.createdAt)}</td>
-                <td className="px-3 py-2.5 font-semibold text-navy">{PRIVACY_REQUEST_TYPE_LABEL[r.type]}</td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-navy-700">
+                <td className="whitespace-nowrap px-4 py-3 text-navy-600">{formatDateTime(r.createdAt)}</td>
+                <td className="px-4 py-3 font-semibold text-navy">{PRIVACY_REQUEST_TYPE_LABEL[r.type]}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-navy-700">
                   {r.name} <span className="font-mono text-navy-500">{r.phoneMasked}</span>
                 </td>
-                <td className="px-3 py-2.5 text-navy-600">{r.matchedLeadIds.length}건</td>
-                <td className="px-3 py-2.5">
+                <td className="px-4 py-3 text-navy-600">{r.matchedLeadIds.length}건</td>
+                <td className="px-4 py-3">
                   <Badge variant={r.status === "completed" ? "mint" : r.status === "rejected" ? "default" : "caution"}>
                     {PRIVACY_REQUEST_STATUS_LABEL[r.status]}
                   </Badge>
                 </td>
-                <td className="px-3 py-2.5 text-navy-600">
+                <td className="px-4 py-3 text-navy-600">
                   {r.handledBy ?? "-"} {r.handledAt ? `· ${formatDateTime(r.handledAt)}` : ""}
-                  <div className="text-[12px] text-navy-500">{r.note}</div>
+                  <div className="text-[13px] text-navy-600">{r.note}</div>
                 </td>
-                <td className="px-3 py-2.5">
+                <td className="px-4 py-3">
                   {canHandle ? <PrivacyRequestActions id={r.id} status={r.status} type={r.type} /> : <span className="text-navy-500">관리자 전용</span>}
                 </td>
               </tr>

@@ -60,6 +60,24 @@ test.describe("admin", () => {
     await expect(page.getByText("APPROVAL_AD_REVIEW")).toBeVisible();
   });
 
+  test("list view does not create phantom 'viewed' audit entries via link prefetch", async ({ page }) => {
+    await login(page, "admin");
+    await page.waitForTimeout(2500); // 프리페치가 일어날 시간
+    await page.goto("/admin/audit");
+    const firstAction = page.locator("tbody tr").first().locator("td").nth(3);
+    await expect(firstAction).toHaveText("lead.list");
+    await expect(page.locator("tbody tr").nth(1).locator("td").nth(3)).toHaveText("auth.login");
+  });
+
+  test("detail panel and status chips work right after login", async ({ page }) => {
+    await login(page, "counselor");
+    await page.locator("tbody a[aria-label$='상세 패널 열기']").first().click();
+    await expect(page.locator("#lead-panel-title")).toBeVisible();
+    await expect(page).toHaveURL(/lead=/);
+    await page.getByRole("navigation", { name: "보험금 점검 상태 필터" }).getByRole("link", { name: "신규 접수" }).click();
+    await expect(page).toHaveURL(/claim=new/);
+  });
+
   test("counselor: no CSV export, no audit/settings menu", async ({ page }) => {
     await login(page, "counselor");
     await expect(page.getByRole("link", { name: "CSV 내보내기" })).toHaveCount(0);

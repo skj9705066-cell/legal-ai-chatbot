@@ -12,35 +12,44 @@ export const OFFICIAL_LOOKUP = {
 export const STATS_SOURCE = {
   publisher: "금융위원회",
   date: "2026-07-07",
+  dateLabel: "2026년 7월 7일",
   label: "금융위원회 보도자료(2026.7.7.)",
   url: "https://www.fsc.go.kr/po010103/87270",
 } as const;
 
 /**
- * 금융위원회 발표 통계 인용. 수치는 원문 그대로 표기한다.
- * ⚠️ 운영 배포 전 원문과 대조하고 APPROVAL_STATS_VERIFIED를 기록할 것 (docs/DEPLOY_CHECKLIST.md).
+ * 금융위원회 발표 통계 인용. 수치는 발표 원문 그대로 표기한다.
+ * 2026-10 교차 확인: 같은 발표를 보도한 복수 언론(뉴시스·헤럴드경제·비즈니스포스트·미디어펜)의 수치 일치.
+ * ⚠️ 개발 환경에서 fsc.go.kr 원문 접속이 차단되어 원문 직접 대조는 운영 전 필수 (APPROVAL_STATS_VERIFIED).
+ * 평균 환급액(건당 약 404만원)은 개인별 기대 금액으로 오인될 수 있어 의도적으로 노출하지 않는다.
  */
 export const STATS = [
-  {
-    id: "hidden-total",
-    label: "숨은보험금 규모",
-    basis: "2025년 말 기준",
-    value: "10조 3,000억원",
-  },
-  {
-    id: "refunded-2025",
-    label: "숨은보험금 환급 실적",
-    basis: "2025년 중",
-    value: "약 3조 2,470억원",
-    sub: "약 80만 건",
-  },
+  { id: "hidden-total", basis: "2025년 말 기준", label: "숨은보험금 잔액", value: "10조 3,000억원", num: "10조 3,000", unit: "억원" },
+  { id: "refund-amount", basis: "2025년 한 해", label: "숨은보험금 환급액", value: "약 3조 2,470억원", num: "3조 2,470", unit: "억원", prefix: "약" },
+  { id: "refund-count", basis: "2025년 한 해", label: "숨은보험금 환급 건수", value: "약 80만 건", num: "80만", unit: "건", prefix: "약" },
 ] as const;
 
 export const STATS_DISCLAIMER =
   "업권 전체의 집계 통계이며, 개인별 환급 가능 여부나 환급 금액을 의미하거나 보장하지 않습니다.";
 
+export const HIDDEN_DEFINITION =
+  "숨은보험금은 지급 사유가 생겨 지급 금액이 확정됐지만 아직 청구되지 않은 중도·만기·휴면보험금 등을 말합니다.";
+
+export const HERO = {
+  titleLines: ["혹시 아직 받지 못한", "보험금이 있으신가요?"],
+  highlight: "보험금",
+  subLines: ["병원비·수술비 미청구 보험금부터", "숨은 보험금과 환급 관련 사항까지,", "내 보험을 한 번에 점검하세요."],
+  cta: "내 보험금 점검 시작하기",
+} as const;
+
 export interface ServiceTypeContent {
   id: ServiceType;
+  /** 큰 선택 카드용 제목·한 줄 설명 */
+  cardTitle: string;
+  cardDesc: string;
+  cardNote?: string;
+  /** 절차 탭용 짧은 이름 */
+  tabLabel: string;
   shortTitle: string;
   title: string;
   summary: string;
@@ -52,6 +61,9 @@ export interface ServiceTypeContent {
 export const SERVICE_CONTENT: Record<ServiceType, ServiceTypeContent> = {
   unclaimed: {
     id: "unclaimed",
+    cardTitle: "병원비·수술비 미청구 보험금",
+    tabLabel: "미청구 보험금",
+    cardDesc: "통원·입원·수술 후 청구하지 않은 보험금이 있는지, 어떤 서류로 청구하는지 알려드려요.",
     shortTitle: "미청구 보험금",
     title: "병원비·수술비 등 미청구 보험금 점검 안내",
     summary:
@@ -75,6 +87,9 @@ export const SERVICE_CONTENT: Record<ServiceType, ServiceTypeContent> = {
   },
   hidden: {
     id: "hidden",
+    cardTitle: "숨은·만기·휴면보험금",
+    tabLabel: "숨은 보험금",
+    cardDesc: "찾아가지 않은 보험금은 공식 조회 서비스에서 직접 확인할 수 있도록 안내해 드려요.",
     shortTitle: "숨은·만기·휴면 보험금",
     title: "숨은·만기·휴면보험금 공식 조회 안내",
     summary:
@@ -94,6 +109,10 @@ export const SERVICE_CONTENT: Record<ServiceType, ServiceTypeContent> = {
   },
   refund: {
     id: "refund",
+    cardTitle: "과오납 보험료·해지환급금",
+    tabLabel: "과오납·해지",
+    cardDesc: "더 낸 보험료를 돌려받는 방법과 예상 해지환급금 확인 방법을 나눠서 알려드려요.",
+    cardNote: "해지하면 보장이 사라질 수 있어요. 해지를 권유하지 않습니다.",
     shortTitle: "과오납·해지환급금",
     title: "과오납 보험료 및 해지환급금 확인 안내",
     summary:
@@ -133,12 +152,12 @@ export const REFUND_COMPARISON = [
 ] as const;
 
 export const CHECK_CASES = [
-  { title: "최근 3년 안에 통원·입원·수술을 했는데", body: "금액이 작거나 서류가 번거로워 청구를 미뤄둔 적이 있다면 청구 가능 여부를 확인해 볼 수 있습니다." },
-  { title: "보험이 여러 개인데 어디서 무엇을 받는지 모를 때", body: "수술비·입원비 특약처럼 따로 청구해야 하는 항목이 있는지 가입 내역을 기준으로 살펴볼 수 있습니다." },
-  { title: "만기가 지났거나 중도보험금 지급 시기가 있었다면", body: "찾아가지 않은 만기·중도보험금이 있는지 공식 조회 서비스에서 확인할 수 있습니다." },
-  { title: "이사·연락처 변경으로 안내를 못 받았을 수 있다면", body: "보험사 안내를 받지 못해 놓친 지급 안내가 있을 수 있어 조회해 볼 만합니다." },
-  { title: "계약이 끝났는데 보험료가 계속 빠져나간 것 같다면", body: "과오납 여부는 납입 내역과 계약 상태를 대조해 보험사에 확인할 수 있습니다." },
-  { title: "해지를 고민 중이라면 해지 전에", body: "예상 해지환급금과 해지 시 사라지는 보장을 먼저 확인하는 것이 순서입니다." },
+  { title: "최근 3년 안에 병원 치료를 받고 청구하지 않았어요", body: "금액이 작거나 서류가 번거로워 청구를 미뤄둔 적이 있다면 청구 가능 여부를 확인해 볼 수 있습니다." },
+  { title: "보험이 여러 개라 어디서 받는지 잘 모르겠어요", body: "수술비·입원비 특약처럼 따로 청구해야 하는 항목이 있는지 가입 내역을 기준으로 살펴볼 수 있습니다." },
+  { title: "만기가 지났거나 중도보험금 받을 시기가 있었어요", body: "찾아가지 않은 만기·중도보험금이 있는지 공식 조회 서비스에서 확인할 수 있습니다." },
+  { title: "이사·연락처 변경으로 보험사 안내를 못 받았을 수 있어요", body: "보험사 안내를 받지 못해 놓친 지급 안내가 있을 수 있어 조회해 볼 만합니다." },
+  { title: "계약이 끝났는데 보험료가 계속 빠져나간 것 같아요", body: "과오납 여부는 납입 내역과 계약 상태를 대조해 보험사에 확인할 수 있습니다." },
+  { title: "해지를 고민 중이라 먼저 확인해 보고 싶어요", body: "예상 해지환급금과 해지 시 사라지는 보장을 먼저 확인하는 것이 순서입니다." },
 ] as const;
 
 export const CHECK_CASES_FOOTNOTE =

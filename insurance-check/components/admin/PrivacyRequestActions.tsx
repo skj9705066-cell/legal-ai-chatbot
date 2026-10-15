@@ -18,7 +18,7 @@ export function PrivacyRequestActions({ id, status, type }: { id: string; status
         aria-label="처리 상태"
         value={next}
         onChange={(e) => setNext(e.target.value as PrivacyRequestStatus)}
-        className="h-8 rounded-lg border border-navy-200 px-2 text-[13px]"
+        className="h-9 rounded-lg border border-navy-200 px-2.5 text-[14px]"
       >
         {PRIVACY_REQUEST_STATUSES.map((s) => (
           <option key={s} value={s}>
@@ -31,7 +31,7 @@ export function PrivacyRequestActions({ id, status, type }: { id: string; status
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="본인 확인 방법 등"
-        className="h-8 w-40 rounded-lg border border-navy-200 px-2 text-[13px]"
+        className="h-9 w-44 rounded-lg border border-navy-200 px-2.5 text-[14px]"
       />
       <Button
         size="sm"
@@ -52,7 +52,7 @@ export function PrivacyRequestActions({ id, status, type }: { id: string; status
       >
         반영
       </Button>
-      {err && <span className="text-[12px] text-danger">{err}</span>}
+      {err && <span className="text-[13px] text-danger">{err}</span>}
     </div>
   );
 }

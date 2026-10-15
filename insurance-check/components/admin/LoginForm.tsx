@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { STAFF_ROLES, STAFF_ROLE_LABEL, type StaffRole } from "@/lib/types";
 import { Alert } from "@/components/ui/alert";
@@ -9,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/field";
 
 export function LoginForm({ mode, setupIssues }: { mode: "demo" | "production"; setupIssues: string[] }) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<StaffRole>("admin");
@@ -33,8 +31,9 @@ export function LoginForm({ mode, setupIssues }: { mode: "demo" | "production"; 
         setBusy(false);
         return;
       }
-      router.replace("/admin");
-      router.refresh();
+      // 세션 쿠키가 바뀌었으므로 클라이언트 라우터 캐시를 쓰지 않고 전체 이동한다.
+      // (replace + refresh 조합은 직후의 같은 경로 이동을 멈추게 했다)
+      window.location.assign("/admin");
     } catch {
       setError("네트워크 오류가 발생했습니다.");
       setBusy(false);
@@ -50,7 +49,7 @@ export function LoginForm({ mode, setupIssues }: { mode: "demo" | "production"; 
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-5 space-y-4" noValidate>
+    <form onSubmit={onSubmit} className="mt-7 space-y-5" noValidate>
       {mode === "demo" && (
         <Alert tone="caution" title="데모 관리자">
           가짜 고객 데이터만 표시됩니다. 권한 차이를 확인하려면 역할을 바꿔 로그인하세요.
@@ -59,14 +58,14 @@ export function LoginForm({ mode, setupIssues }: { mode: "demo" | "production"; 
       {error && <Alert tone="error" role="alert" title={error} />}
       {mode === "production" ? (
         <div>
-          <label htmlFor="login-email" className="mb-1.5 block text-sm font-semibold text-navy">
+          <label htmlFor="login-email" className="mb-2 block text-[15px] font-semibold text-navy">
             이메일
           </label>
           <Input id="login-email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
       ) : (
         <div>
-          <label htmlFor="login-role" className="mb-1.5 block text-sm font-semibold text-navy">
+          <label htmlFor="login-role" className="mb-2 block text-[15px] font-semibold text-navy">
             데모 역할
           </label>
           <Select id="login-role" value={role} onChange={(e) => setRole(e.target.value as StaffRole)}>
@@ -79,7 +78,7 @@ export function LoginForm({ mode, setupIssues }: { mode: "demo" | "production"; 
         </div>
       )}
       <div>
-        <label htmlFor="login-password" className="mb-1.5 block text-sm font-semibold text-navy">
+        <label htmlFor="login-password" className="mb-2 block text-[15px] font-semibold text-navy">
           비밀번호
         </label>
         <Input

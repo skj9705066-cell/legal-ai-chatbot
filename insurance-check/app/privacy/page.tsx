@@ -25,7 +25,7 @@ export default function PrivacyPage() {
   const config = getPublicConfig();
   const o = config.operator;
   return (
-    <ApplyShell config={config}>
+    <ApplyShell config={config} wide>
       <article className="rounded-3xl border border-navy-200/80 bg-white p-6 shadow-card sm:p-10">
         <h1 className="text-[26px] font-extrabold text-navy">개인정보 처리방침</h1>
         <p className="mt-2 text-[14px] text-navy-500">

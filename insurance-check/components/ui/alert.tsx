@@ -3,10 +3,11 @@ import { AlertCircle, CheckCircle2, Info, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const styles = {
-  info: { box: "border-blue-100 bg-blue-50 text-navy-700", icon: Info, iconClass: "text-blue" },
-  caution: { box: "border-caution-200 bg-caution-50 text-navy-700", icon: TriangleAlert, iconClass: "text-caution" },
-  error: { box: "border-danger-200 bg-danger-50 text-danger", icon: AlertCircle, iconClass: "text-danger" },
-  success: { box: "border-mint-100 bg-mint-50 text-navy-700", icon: CheckCircle2, iconClass: "text-mint-700" },
+  info: { box: "bg-blue-50 text-ink", icon: Info, iconClass: "text-blue" },
+  neutral: { box: "bg-navy-50 text-ink", icon: Info, iconClass: "text-navy-500" },
+  caution: { box: "bg-caution-50 text-ink", icon: TriangleAlert, iconClass: "text-caution" },
+  error: { box: "bg-danger-50 text-danger", icon: AlertCircle, iconClass: "text-danger" },
+  success: { box: "bg-mint-50 text-ink", icon: CheckCircle2, iconClass: "text-mint-700" },
 };
 
 export function Alert({
@@ -25,11 +26,11 @@ export function Alert({
   const s = styles[tone];
   const Icon = s.icon;
   return (
-    <div role={role} className={cn("flex gap-3 rounded-xl border p-4 text-sm leading-relaxed", s.box, className)}>
+    <div role={role} className={cn("flex gap-3 rounded-2xl p-4 text-[15px] leading-relaxed sm:p-5", s.box, className)}>
       <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", s.iconClass)} aria-hidden="true" />
       <div className="min-w-0">
-        {title && <p className="font-semibold text-navy">{title}</p>}
-        {children && <div className={cn(title && "mt-1")}>{children}</div>}
+        {title && <p className={cn("font-semibold", tone === "error" ? "text-danger" : "text-navy")}>{title}</p>}
+        {children && <div className={cn(title && "mt-1", tone !== "error" && "text-navy-600")}>{children}</div>}
       </div>
     </div>
   );

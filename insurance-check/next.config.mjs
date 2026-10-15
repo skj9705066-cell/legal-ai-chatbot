@@ -7,13 +7,12 @@ const isProd = process.env.NODE_ENV === "production";
 // GA4는 운영 모드 + 측정 ID가 있고 방문자가 동의한 경우에만 로드된다. CSP는 그때를 대비해 열어 둔다.
 const GA_SCRIPT = "https://www.googletagmanager.com";
 const GA_COLLECT = "https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com";
-const FONT_CDN = "https://cdn.jsdelivr.net";
 
 const CSP = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"} ${GA_SCRIPT}`,
-  `style-src 'self' 'unsafe-inline' ${FONT_CDN}`,
-  `font-src 'self' ${FONT_CDN}`,
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
   "img-src 'self' data: https:",
   `connect-src 'self' ${GA_SCRIPT} ${GA_COLLECT}`,
   "frame-ancestors 'none'",

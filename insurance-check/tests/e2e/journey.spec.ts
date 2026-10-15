@@ -9,16 +9,18 @@ async function submitLead(page: Page, phone: string, utm = "") {
     if (req.url().endsWith("/api/events")) events.push(req.postData() ?? "");
   });
   await page.goto(`/${utm}`);
-  await page.locator("#services").getByText("숨은·만기·휴면보험금 공식 조회 안내").click();
-  await page.getByRole("button", { name: "조회가 어려우면 상담 신청" }).click();
-  await expect(page.locator("#apply-type-hidden")).toBeChecked();
+  await page.locator("#services").getByRole("button", { name: "조회가 어려우면 상담 신청" }).click();
+  await expect(page.locator("#apply-name")).toBeFocused();
   await page.fill("#apply-name", "테스트");
   await page.fill("#apply-phone", phone);
-  await page.selectOption("#apply-time", "weekday_afternoon");
+  await page.getByRole("button", { name: "다음" }).click();
+  await page.locator("#apply-time-weekday_afternoon").check({ force: true });
   await page.fill("#apply-memo", "만기 보험금 확인 문의");
+  await page.getByRole("button", { name: "다음" }).click();
+  await expect(page.getByRole("definition").filter({ hasText: "숨은·만기·휴면보험금" })).toBeVisible();
   await page.locator("#apply-privacy").check();
   await page.waitForTimeout(2100); // 봇 차단용 최소 체류시간
-  await page.getByRole("button", { name: "무료 점검 상담 신청하기" }).click();
+  await page.getByRole("button", { name: "무료 점검 신청하기" }).click();
   await expect(page).toHaveURL(/\/apply\/complete$/);
   await expect(page.getByRole("heading", { name: "보험금 점검 신청이 접수되었습니다" })).toBeVisible();
   return events;
@@ -34,8 +36,8 @@ test("A: claim → coverage offer → separate consent → coverage complete", a
   await expect(page).toHaveURL(/\/apply\/coverage$/);
   for (const t of ["상담 목적", "이용 항목", "연락 방법", "처리 주체"]) await expect(page.getByText(t, { exact: true }).first()).toBeVisible();
   await expect(page.locator("#cov-consent")).not.toBeChecked();
-  await page.locator("#cov-method-phone").check();
-  await page.selectOption("#cov-time", "weekday_morning");
+  await page.locator("#cov-method-phone").check({ force: true });
+  await page.locator("#cov-time-weekday_morning").check({ force: true });
   await page.getByRole("button", { name: "동의하고 보장 분석 신청" }).click();
   await expect(page.getByText("보장 분석 상담을 위한 별도 동의가 필요합니다.")).toBeVisible();
   await expect(page).toHaveURL(/\/apply\/coverage$/);

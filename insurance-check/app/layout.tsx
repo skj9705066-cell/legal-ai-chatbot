@@ -1,4 +1,7 @@
 import type { Metadata, Viewport } from "next";
+// Pretendard(OFL-1.1)를 npm 패키지에서 자체 호스팅한다. 외부 CDN이 막혀도 렌더링이 멈추지 않고,
+// 글꼴 파일이 늦거나 실패하면 font-display: swap으로 시스템 글꼴이 그대로 쓰인다.
+import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./globals.css";
 import { getPublicConfig } from "@/lib/config";
 import { Analytics } from "@/components/site/Analytics";
@@ -31,13 +34,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const config = getPublicConfig();
   return (
     <html lang="ko">
-      <head>
-        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
-        />
-      </head>
       <body>
         <a
           href="#main"

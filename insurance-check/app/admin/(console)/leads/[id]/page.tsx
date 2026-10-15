@@ -22,9 +22,9 @@ import { LeadEditor, RevealPhone } from "@/components/admin/LeadEditor";
 
 function Item({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[120px_1fr] gap-3 py-2 text-[14px]">
-      <dt className="text-navy-500">{label}</dt>
-      <dd className="min-w-0 text-navy">{children}</dd>
+    <div className="grid gap-1 py-3 text-[15px] sm:grid-cols-[140px_1fr] sm:gap-4">
+      <dt className="text-navy-600">{label}</dt>
+      <dd className="min-w-0 text-ink">{children}</dd>
     </div>
   );
 }
@@ -41,20 +41,20 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="space-y-6">
-      <Link href="/admin" className="inline-flex items-center gap-1 text-[13.5px] font-medium text-navy-600 hover:text-navy">
+      <Link prefetch={false} href="/admin" className="inline-flex items-center gap-1 text-[14px] font-medium text-navy-600 hover:text-navy">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         상담 DB
       </Link>
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="font-mono text-[22px] font-extrabold text-navy">{lead.refNo}</h1>
+        <h1 className="font-mono text-[26px] font-extrabold tracking-[-0.03em] text-navy">{lead.refNo}</h1>
         {lead.isDemo && <Badge variant="demo">데모</Badge>}
         {lead.duplicateOf && <Badge variant="caution">중복 · 최초 {lead.duplicateOf}</Badge>}
         {lead.privacyStatus !== "none" && <Badge variant="danger">{PRIVACY_STATUS_LABEL[lead.privacyStatus]}</Badge>}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <Card className="p-5">
-          <h2 className="text-[15px] font-bold text-navy">신청 정보</h2>
+        <Card className="rounded-2xl p-6">
+          <h2 className="text-[17px] font-bold text-navy">신청 정보</h2>
           <dl className="mt-2 divide-y divide-navy-100">
             <Item label="접수일시">{formatDateTime(lead.createdAt)}</Item>
             <Item label="점검 유형">{SERVICE_CONTENT[lead.serviceType].title}</Item>
@@ -67,14 +67,14 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
             <Item label="유입">
               {a.utmSource ?? "(direct)"} / {a.utmMedium ?? "-"} / {a.utmCampaign ?? "-"}
               {a.utmContent || a.utmTerm ? ` / ${a.utmContent ?? "-"} / ${a.utmTerm ?? "-"}` : ""}
-              <div className="text-[12.5px] text-navy-500">
+              <div className="text-[13px] text-navy-600">
                 referrer: {a.referrer ?? "-"} · landing: {a.landingPath ?? "-"}
               </div>
             </Item>
           </dl>
         </Card>
-        <Card className="p-5">
-          <h2 className="text-[15px] font-bold text-navy">동의 내역</h2>
+        <Card className="rounded-2xl p-6">
+          <h2 className="text-[17px] font-bold text-navy">동의 내역</h2>
           <dl className="mt-2 divide-y divide-navy-100">
             <Item label="개인정보(필수)">동의 · {lead.privacyConsentVersion}</Item>
             <Item label="광고성 정보(선택)">{lead.marketingConsent ? "동의" : "미동의/철회"}</Item>
@@ -82,7 +82,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
               {lead.coverageConsent ? (
                 <>
                   동의 · {formatDateTime(lead.coverageConsentAt)} · {lead.coverageConsentVersion}
-                  <div className="text-[12.5px] text-navy-500">
+                  <div className="text-[13px] text-navy-600">
                     연락 방법: {lead.coverageContactMethod ? CONTACT_METHOD_LABEL[lead.coverageContactMethod] : "-"}
                   </div>
                 </>
@@ -97,14 +97,14 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
         </Card>
       </div>
 
-      <Card className="p-5">
-        <h2 className="mb-4 text-[15px] font-bold text-navy">처리</h2>
+      <Card className="rounded-2xl p-6">
+        <h2 className="mb-4 text-[17px] font-bold text-navy">처리</h2>
         <LeadEditor lead={lead} role={session.role} salesEligible={eligible} canEdit={can(session.role, "edit")} />
       </Card>
 
-      <Card className="p-5">
-        <h2 className="text-[15px] font-bold text-navy">접근·처리 이력</h2>
-        <ul className="mt-3 divide-y divide-navy-100 text-[13.5px]">
+      <Card className="rounded-2xl p-6">
+        <h2 className="text-[17px] font-bold text-navy">접근·처리 이력</h2>
+        <ul className="mt-3 divide-y divide-navy-100 text-[14px]">
           {history.map((h) => (
             <li key={h.id} className="flex flex-wrap gap-x-3 gap-y-0.5 py-2">
               <span className="whitespace-nowrap text-navy-500">{formatDateTime(h.at)}</span>
@@ -112,7 +112,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
                 {h.actor}
                 {h.role in STAFF_ROLE_LABEL ? ` (${STAFF_ROLE_LABEL[h.role as keyof typeof STAFF_ROLE_LABEL]})` : ""}
               </span>
-              <span className="font-mono text-[12.5px] text-navy-600">{h.action}</span>
+              <span className="font-mono text-[13px] text-navy-600">{h.action}</span>
               <span className="text-navy-600">{h.detail}</span>
             </li>
           ))}

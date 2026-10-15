@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAppMode } from "@/lib/config";
@@ -12,10 +11,8 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
   return (
-    <Suspense>
-      <AdminShell session={session} demo={getAppMode() === "demo"}>
-        {children}
-      </AdminShell>
-    </Suspense>
+    <AdminShell session={session} demo={getAppMode() === "demo"}>
+      {children}
+    </AdminShell>
   );
 }

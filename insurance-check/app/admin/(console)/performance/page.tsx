@@ -31,14 +31,14 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-extrabold text-navy">광고 성과</h1>
-          <p className="mt-1 text-[13.5px] text-navy-500">
+          <h1 className="text-[26px] font-extrabold tracking-[-0.03em] text-navy">광고 성과</h1>
+          <p className="mt-1.5 text-[15px] leading-relaxed text-navy-600">
             방문~신청 시작은 익명 1st-party 이벤트, 유효 제출 이후는 실제 신청 기록 기준입니다. 클릭은 전환으로 세지 않습니다.
           </p>
         </div>
         <nav aria-label="기간" className="flex gap-1 rounded-lg border border-navy-200 bg-white p-1">
           {PERIODS.map((p) => (
-            <Link
+            <Link prefetch={false}
               key={p}
               href={`/admin/performance?days=${p}`}
               aria-current={p === days ? "page" : undefined}
@@ -50,8 +50,8 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
         </nav>
       </div>
 
-      <section aria-labelledby="funnel-title" className="rounded-xl border border-navy-200 bg-white p-5">
-        <h2 id="funnel-title" className="text-[15px] font-bold text-navy">
+      <section aria-labelledby="funnel-title" className="rounded-2xl bg-white shadow-card ring-1 ring-navy-100 p-5">
+        <h2 id="funnel-title" className="text-[17px] font-bold text-navy">
           전체 퍼널 <span className="font-medium text-navy-500">(방문 대비 비율)</span>
         </h2>
         <ol className="mt-4 space-y-3">
@@ -73,51 +73,51 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
             );
           })}
         </ol>
-        <p className="mt-4 text-[12.5px] text-navy-500">공식 조회 링크 클릭(참고 지표, 전환 아님): {total.officialLookup.toLocaleString()} 세션</p>
+        <p className="mt-4 text-[13px] text-navy-600">공식 조회 링크 클릭(참고 지표, 전환 아님): {total.officialLookup.toLocaleString()} 세션</p>
       </section>
 
       <section aria-labelledby="utm-title">
-        <h2 id="utm-title" className="mb-3 text-[15px] font-bold text-navy">
+        <h2 id="utm-title" className="mb-3 text-[17px] font-bold text-navy">
           UTM별 전환
         </h2>
-        <div className="overflow-x-auto rounded-xl border border-navy-200 bg-white">
-          <table className="w-full min-w-[1100px] text-left text-[13px]">
-            <thead className="border-b border-navy-200 bg-navy-50 text-[12px] font-bold text-navy-600">
+        <div className="overflow-x-auto rounded-2xl bg-white shadow-card ring-1 ring-navy-100">
+          <table className="w-full min-w-[1100px] text-left text-[14px]">
+            <thead className="border-b border-navy-100 bg-navy-50/70 text-[13px] font-semibold text-navy-600">
               <tr>
-                <th scope="col" className="px-3 py-2.5">source / medium / campaign</th>
+                <th scope="col" className="px-4 py-3">source / medium / campaign</th>
                 {STAGES.map((s) => (
-                  <th key={s.key} scope="col" className="px-3 py-2.5 text-right">
+                  <th key={s.key} scope="col" className="px-4 py-3 text-right">
                     {s.label}
                   </th>
                 ))}
-                <th scope="col" className="px-3 py-2.5 text-right">제출 전환율</th>
-                <th scope="col" className="px-3 py-2.5 text-right">동의율</th>
+                <th scope="col" className="px-4 py-3 text-right">제출 전환율</th>
+                <th scope="col" className="px-4 py-3 text-right">동의율</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-navy-100 tabular-nums">
               {rows.map((r) => (
                 <tr key={r.key}>
-                  <th scope="row" className="px-3 py-2.5 font-semibold text-navy">
+                  <th scope="row" className="px-4 py-3 font-semibold text-navy">
                     {r.utmSource ?? "(direct)"} <span className="font-normal text-navy-500">/ {r.utmMedium ?? "-"} / {r.utmCampaign ?? "-"}</span>
                   </th>
                   {STAGES.map((s) => (
-                    <td key={s.key} className="px-3 py-2.5 text-right text-navy-700">
+                    <td key={s.key} className="px-4 py-3 text-right text-navy-700">
                       {(r[s.key] as number).toLocaleString()}
                     </td>
                   ))}
-                  <td className="px-3 py-2.5 text-right font-semibold text-navy">{percent(r.validSubmit, r.visits)}</td>
-                  <td className="px-3 py-2.5 text-right text-navy-700">{percent(r.coverageOptIn, r.validSubmit)}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-navy">{percent(r.validSubmit, r.visits)}</td>
+                  <td className="px-4 py-3 text-right text-navy-700">{percent(r.coverageOptIn, r.validSubmit)}</td>
                 </tr>
               ))}
               <tr className="bg-navy-50 font-bold">
-                <th scope="row" className="px-3 py-2.5 text-navy">합계</th>
+                <th scope="row" className="px-4 py-3 text-navy">합계</th>
                 {STAGES.map((s) => (
-                  <td key={s.key} className="px-3 py-2.5 text-right text-navy">
+                  <td key={s.key} className="px-4 py-3 text-right text-navy">
                     {(total[s.key] as number).toLocaleString()}
                   </td>
                 ))}
-                <td className="px-3 py-2.5 text-right text-navy">{percent(total.validSubmit, total.visits)}</td>
-                <td className="px-3 py-2.5 text-right text-navy">{percent(total.coverageOptIn, total.validSubmit)}</td>
+                <td className="px-4 py-3 text-right text-navy">{percent(total.validSubmit, total.visits)}</td>
+                <td className="px-4 py-3 text-right text-navy">{percent(total.coverageOptIn, total.validSubmit)}</td>
               </tr>
             </tbody>
           </table>

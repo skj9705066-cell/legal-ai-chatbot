@@ -1,34 +1,64 @@
 import { cn } from "@/lib/utils";
 
-export function Section({
+export function SectionHeading({
   id,
   eyebrow,
   title,
   description,
-  children,
-  className,
-  tone = "white",
+  align = "left",
+  tone = "light",
 }: {
   id: string;
   eyebrow?: string;
   title: React.ReactNode;
   description?: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
-  tone?: "white" | "tint";
+  align?: "left" | "center";
+  tone?: "light" | "dark";
 }) {
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className={cn("py-16 sm:py-20 lg:py-24", tone === "tint" && "bg-navy-50/70", className)}>
-      <div className="container">
-        <div className="max-w-2xl">
-          {eyebrow && <p className="text-[13.5px] font-bold tracking-wide text-blue">{eyebrow}</p>}
-          <h2 id={`${id}-title`} className="mt-2 text-balance text-[24px] font-extrabold leading-snug tracking-[-0.015em] text-navy sm:text-[30px] lg:text-[34px]">
-            {title}
-          </h2>
-          {description && <p className="mt-3 text-[15.5px] leading-[1.75] text-navy-600 sm:text-[17px]">{description}</p>}
-        </div>
-        <div className="mt-8 sm:mt-10">{children}</div>
-      </div>
+    <div className={cn("max-w-2xl", align === "center" && "mx-auto text-center")}>
+      {eyebrow && <p className={cn("text-[15px] font-bold", tone === "dark" ? "text-blue-300" : "text-blue")}>{eyebrow}</p>}
+      <h2
+        id={`${id}-title`}
+        className={cn(
+          "mt-2.5 text-balance text-[28px] font-extrabold leading-[1.32] tracking-[-0.03em] sm:text-[34px] lg:text-[40px]",
+          tone === "dark" ? "text-white" : "text-navy",
+        )}
+      >
+        {title}
+      </h2>
+      {description && (
+        <p className={cn("mt-4 text-pretty text-[17px] leading-[1.7] lg:text-[18px]", tone === "dark" ? "text-navy-300" : "text-navy-600")}>
+          {description}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function Section({
+  id,
+  children,
+  className,
+  tone = "white",
+}: {
+  id: string;
+  children: React.ReactNode;
+  className?: string;
+  tone?: "white" | "tint" | "navy";
+}) {
+  return (
+    <section
+      id={id}
+      aria-labelledby={`${id}-title`}
+      className={cn(
+        "py-20 sm:py-24 lg:py-32",
+        tone === "tint" && "bg-navy-50",
+        tone === "navy" && "bg-navy text-white",
+        className,
+      )}
+    >
+      <div className="container">{children}</div>
     </section>
   );
 }

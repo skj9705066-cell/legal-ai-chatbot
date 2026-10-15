@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "신청 완료", robots: { index: fal
 
 export default function CompletePage() {
   return (
-    <ApplyShell config={getPublicConfig()}>
+    <ApplyShell config={getPublicConfig()} journey={1}>
       <CompleteView />
     </ApplyShell>
   );

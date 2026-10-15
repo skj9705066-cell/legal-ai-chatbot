@@ -1,77 +1,68 @@
-import { BadgeCheck, Landmark, ShieldCheck } from "lucide-react";
-import { STATS, STATS_DISCLAIMER, STATS_SOURCE } from "@/lib/content";
+import { CheckCircle2 } from "lucide-react";
+import { HERO } from "@/lib/content";
 import { OfficialLink } from "@/components/site/OfficialLink";
 import { ApplyCta } from "./ApplyCta";
+import { HeroVisual } from "./HeroVisual";
 
-const TRUST = [
-  { icon: BadgeCheck, label: "무료 점검 안내" },
-  { icon: ShieldCheck, label: "보험 가입 필수 아님" },
-  { icon: Landmark, label: "공식 조회 서비스 안내" },
-];
+const TRUST = ["무료 점검 안내", "보험 가입 의무 없음", "공식 조회 서비스 안내"];
+
+function Highlighted({ line }: { line: string }) {
+  const i = line.indexOf(HERO.highlight);
+  if (i < 0) return <>{line}</>;
+  return (
+    <>
+      {line.slice(0, i)}
+      <span className="text-blue">{HERO.highlight}</span>
+      {line.slice(i + HERO.highlight.length)}
+    </>
+  );
+}
 
 export function Hero() {
   return (
-    <section aria-labelledby="hero-title" className="relative overflow-hidden">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[560px] bg-[radial-gradient(60%_60%_at_80%_0%,#EFF6FF_0%,rgba(239,246,255,0)_70%)]"
-      />
-      <div className="container grid gap-10 pb-14 pt-10 sm:pt-14 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-14 lg:pb-24 lg:pt-20">
+    <section aria-labelledby="hero-title" className="overflow-hidden bg-white">
+      <div className="container grid items-center gap-12 pb-16 pt-10 sm:pt-14 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 lg:pb-28 lg:pt-20">
         <div className="animate-fade-up">
-          <h1 id="hero-title" className="text-balance text-[30px] font-extrabold leading-[1.25] tracking-[-0.02em] text-navy sm:text-[40px] lg:text-[52px]">
-            혹시 아직 받지 못한
-            <br />
-            <span className="text-blue">보험금</span>이 있으신가요?
-          </h1>
-          <p className="mt-5 max-w-xl text-[16px] leading-[1.7] text-navy-600 sm:text-[18px]">
-            병원비·수술비 미청구 보험금, 숨은 보험금, 과오납 보험료·해지환급금 확인 방법을 안내합니다.
+          <p className="inline-flex items-center gap-2 rounded-full bg-navy-50 px-3.5 py-1.5 text-[14px] font-semibold text-navy-600">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue" aria-hidden="true" />
+            보험금 청구 방법 · 공식 조회 안내
           </p>
-          <ul className="mt-6 flex flex-wrap gap-2" aria-label="서비스 특징">
-            {TRUST.map(({ icon: Icon, label }) => (
-              <li key={label} className="inline-flex items-center gap-1.5 rounded-full border border-navy-200 bg-white px-3 py-1.5 text-[13.5px] font-semibold text-navy-700">
-                <Icon className="h-4 w-4 text-mint" aria-hidden="true" />
-                {label}
-              </li>
+          <h1
+            id="hero-title"
+            className="mt-5 text-[34px] font-extrabold leading-[1.26] tracking-[-0.035em] text-navy sm:text-[46px] lg:text-[58px] lg:leading-[1.18]"
+          >
+            {HERO.titleLines.map((l) => (
+              <span key={l} className="block">
+                <Highlighted line={l} />
+              </span>
             ))}
-          </ul>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center" id="hero-cta">
-            <ApplyCta source="hero" size="xl" className="w-full sm:w-auto" />
-            <OfficialLink className="justify-center rounded-xl px-4 py-3 text-[15px] font-semibold text-navy-600 underline-offset-4 hover:text-navy hover:underline">
+          </h1>
+          <p className="mt-5 text-[17px] leading-[1.7] text-navy-600 sm:text-[19px] lg:mt-6">
+            {HERO.subLines.map((l) => (
+              <span key={l} className="block">
+                {l}
+              </span>
+            ))}
+          </p>
+
+          <div id="hero-cta" className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center lg:mt-10">
+            <ApplyCta source="hero" size="xl" className="w-full sm:w-auto sm:min-w-[300px]" />
+            <OfficialLink className="justify-center rounded-2xl px-4 py-3 text-[16px] font-semibold text-navy-600 underline-offset-4 hover:text-navy hover:underline">
               개인정보 입력 없이 공식 조회하기
             </OfficialLink>
           </div>
-        </div>
 
+          <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2.5" aria-label="서비스 특징">
+            {TRUST.map((t) => (
+              <li key={t} className="flex items-center gap-1.5 text-[15px] font-semibold text-navy-600">
+                <CheckCircle2 className="h-[18px] w-[18px] text-mint" aria-hidden="true" />
+                {t}
+              </li>
+            ))}
+          </ul>
+        </div>
         <div className="animate-fade-up [animation-delay:120ms]">
-          <div className="rounded-[28px] border border-blue-100 bg-blue-50/70 p-4 sm:p-5">
-            <div className="flex items-center justify-between px-1 pb-3">
-              <p className="text-[13px] font-bold text-navy-600">금융위원회 발표 통계 인용</p>
-              <a
-                href={STATS_SOURCE.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[12.5px] font-medium text-navy-500 underline underline-offset-2 hover:text-navy"
-              >
-                출처 보기<span className="sr-only">: {STATS_SOURCE.label} (새 창에서 열림)</span>
-              </a>
-            </div>
-            <dl className="grid gap-3">
-              {STATS.map((s) => (
-                <div key={s.id} className="rounded-2xl bg-white p-5 shadow-card">
-                  <dt className="text-[13.5px] font-semibold text-navy-500">
-                    {s.basis} {s.label}
-                  </dt>
-                  <dd className="mt-1.5 flex flex-wrap items-baseline gap-x-2">
-                    <span className="text-[28px] font-extrabold tracking-tight text-navy sm:text-[32px]">{s.value}</span>
-                    {"sub" in s && <span className="whitespace-nowrap text-[17px] font-bold text-navy-600">/ {s.sub}</span>}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            <p className="mt-3 px-1 text-[12.5px] leading-relaxed text-navy-500">
-              출처: {STATS_SOURCE.label}. {STATS_DISCLAIMER}
-            </p>
-          </div>
+          <HeroVisual />
         </div>
       </div>
     </section>

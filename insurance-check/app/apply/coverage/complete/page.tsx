@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "보장 분석 신청 완료", robots
 
 export default function CoverageCompletePage() {
   return (
-    <ApplyShell config={getPublicConfig()}>
+    <ApplyShell config={getPublicConfig()} journey={2}>
       <CoverageDoneView />
     </ApplyShell>
   );

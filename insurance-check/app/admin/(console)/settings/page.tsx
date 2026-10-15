@@ -21,26 +21,26 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[22px] font-extrabold text-navy">환경설정 · 배포 체크리스트</h1>
-        <p className="mt-1 text-[13.5px] text-navy-500">
+        <h1 className="text-[26px] font-extrabold tracking-[-0.03em] text-navy">환경설정 · 배포 체크리스트</h1>
+        <p className="mt-1.5 text-[15px] leading-relaxed text-navy-600">
           설정은 서버 환경변수로 관리합니다(.env.example 참고). 이 화면은 설정 여부만 표시하며 값·비밀키는 노출하지 않습니다.
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-navy-200 bg-white p-4">
-          <p className="text-[12.5px] text-navy-500">현재 모드</p>
+        <div className="rounded-2xl bg-white shadow-card ring-1 ring-navy-100 p-4">
+          <p className="text-[13px] text-navy-600">현재 모드</p>
           <p className="mt-1 text-[18px] font-extrabold text-navy">{mode === "demo" ? "데모" : "운영"}</p>
         </div>
-        <div className="rounded-xl border border-navy-200 bg-white p-4">
-          <p className="text-[12.5px] text-navy-500">운영 준비</p>
+        <div className="rounded-2xl bg-white shadow-card ring-1 ring-navy-100 p-4">
+          <p className="text-[13px] text-navy-600">운영 준비</p>
           <p className="mt-1 text-[18px] font-extrabold text-navy">
             {done} / {items.length}
           </p>
         </div>
-        <div className="rounded-xl border border-navy-200 bg-white p-4">
-          <p className="text-[12.5px] text-navy-500">담당자 알림(문자·알림톡)</p>
-          <p className="mt-1 text-[15px] font-bold text-navy">{notify.provider ? `${notify.provider} (어댑터 미구현 — 발송 안 함)` : "미설정 — 발송 안 함"}</p>
+        <div className="rounded-2xl bg-white shadow-card ring-1 ring-navy-100 p-4">
+          <p className="text-[13px] text-navy-600">담당자 알림(문자·알림톡)</p>
+          <p className="mt-1 text-[17px] font-bold text-navy">{notify.provider ? `${notify.provider} (어댑터 미구현 — 발송 안 함)` : "미설정 — 발송 안 함"}</p>
         </div>
       </div>
 
@@ -56,22 +56,22 @@ export default async function SettingsPage() {
       )}
 
       {(["approvals", "operator", "infra"] as const).map((g) => (
-        <section key={g} aria-labelledby={`g-${g}`} className="rounded-xl border border-navy-200 bg-white">
-          <h2 id={`g-${g}`} className="border-b border-navy-100 px-4 py-3 text-[15px] font-bold text-navy">
+        <section key={g} aria-labelledby={`g-${g}`} className="rounded-2xl bg-white shadow-card ring-1 ring-navy-100">
+          <h2 id={`g-${g}`} className="border-b border-navy-100 px-4 py-3 text-[17px] font-bold text-navy">
             {GROUP_LABEL[g]}
           </h2>
           <ul className="divide-y divide-navy-100">
             {items
               .filter((i) => i.group === g)
               .map((i) => (
-                <li key={i.key} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-[13.5px]">
+                <li key={i.key} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-[14px]">
                   {i.ok ? (
                     <CheckCircle2 className="h-4 w-4 text-mint-700" aria-label="완료" />
                   ) : (
                     <CircleDashed className="h-4 w-4 text-caution" aria-label="미완료" />
                   )}
                   <span className="min-w-[200px] flex-1 text-navy">{i.label}</span>
-                  <code className="text-[12px] text-navy-500">{i.key}</code>
+                  <code className="text-[13px] text-navy-600">{i.key}</code>
                   {!i.ok && <Badge variant="caution">{i.hint}</Badge>}
                 </li>
               ))}

@@ -4,7 +4,6 @@ import type { StaffSession } from "@/lib/session";
 import { can } from "@/lib/session";
 import { STAFF_ROLE_LABEL } from "@/lib/types";
 import { LogoMark } from "@/components/site/Logo";
-import { Badge } from "@/components/ui/badge";
 import { LogoutButton } from "./LogoutButton";
 import { NavLink } from "./NavLink";
 
@@ -19,33 +18,42 @@ export function AdminShell({ session, demo, children }: { session: StaffSession;
   ].filter((n) => n.show);
 
   return (
-    <div className="min-h-[100svh] bg-navy-50/60 lg:grid lg:grid-cols-[240px_1fr]">
-      <aside className="border-b border-navy-200 bg-white lg:sticky lg:top-0 lg:h-[100svh] lg:border-b-0 lg:border-r">
-        <div className="flex items-center justify-between gap-2 px-4 py-4 lg:block lg:px-5 lg:py-6">
-          <Link href="/admin" className="flex items-center gap-2">
-            <LogoMark className="h-7 w-7" />
-            <span className="text-[15px] font-extrabold text-navy">점검 CRM</span>
-            {demo && <Badge variant="demo">데모</Badge>}
+    <div className="min-h-[100svh] bg-navy-50 lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:bg-[linear-gradient(to_right,#102B4E_256px,#F4F7FB_256px)]">
+      <aside className="bg-navy text-white lg:sticky lg:top-0 lg:flex lg:h-[100svh] lg:flex-col">
+        <div className="flex items-center justify-between gap-2 px-4 py-4 lg:block lg:px-6 lg:pb-6 lg:pt-7">
+          <Link prefetch={false} href="/admin" className="flex items-center gap-2.5">
+            <LogoMark className="h-8 w-8 rounded-[10px] ring-1 ring-white/15" />
+            <span className="text-[17px] font-extrabold tracking-[-0.02em]">점검 CRM</span>
+            {demo && <span className="rounded-full bg-caution-50 px-2 py-0.5 text-[13px] font-bold text-caution">데모</span>}
           </Link>
-          <div className="text-right lg:mt-5 lg:text-left">
-            <p className="text-[13px] font-semibold text-navy">{session.name}</p>
-            <p className="text-[12px] text-navy-500">{STAFF_ROLE_LABEL[session.role]}</p>
+          <div className="text-right lg:hidden">
+            <p className="text-[14px] font-semibold">{session.name}</p>
+            <p className="text-[13px] text-navy-300">{STAFF_ROLE_LABEL[session.role]}</p>
           </div>
         </div>
-        <nav aria-label="관리자 메뉴" className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:px-3">
+        <nav aria-label="관리자 메뉴" className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-1 lg:flex-col lg:px-3 lg:pb-0">
           {nav.map((n) => (
             <NavLink key={n.href} href={n.href}>
-              <n.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <n.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
               {n.label}
             </NavLink>
           ))}
         </nav>
-        <div className="hidden px-3 lg:block">
-          <LogoutButton />
+        <div className="hidden border-t border-white/10 px-4 py-5 lg:block">
+          <div className="flex items-center gap-3 px-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-[15px] font-bold" aria-hidden="true">
+              {session.name.replace("데모 ", "").slice(0, 1)}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[15px] font-semibold">{session.name}</p>
+              <p className="text-[13px] text-navy-300">{STAFF_ROLE_LABEL[session.role]}</p>
+            </div>
+          </div>
+          <LogoutButton className="mt-3 text-navy-300 hover:bg-white/10 hover:text-white" />
         </div>
       </aside>
       <div className="min-w-0">
-        <main id="main" className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main id="main" className="mx-auto max-w-[1520px] px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
           {children}
         </main>
         <div className="px-4 pb-8 lg:hidden">
