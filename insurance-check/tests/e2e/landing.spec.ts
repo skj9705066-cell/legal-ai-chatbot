@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-const FORBIDDEN = ["평균 404", "404만원", "모든 고객", "대상자로 선정", "금융위원회 인증", "100% 환급", "무조건"];
+const FORBIDDEN = ["모든 고객", "대상자로 선정", "금융위원회 인증", "100% 환급", "무조건"];
 
 test("hero, stats with source and compliance copy", async ({ page }) => {
   await page.goto("/");
@@ -12,9 +12,18 @@ test("hero, stats with source and compliance copy", async ({ page }) => {
     await expect(page.getByRole("listitem").filter({ hasText: badge }).first()).toBeVisible();
   }
   const stats = page.locator("#stats");
-  await expect(stats).toContainText("10조 3,000억원");
-  await expect(stats).toContainText("3조 2,470억원");
+  await expect(stats.getByRole("heading", { level: 2 })).toHaveText("나도 몰랐던 보험금, 아직 남아 있을 수 있습니다.");
+  await expect(stats).toContainText("약 10조 3,000억원");
   await expect(stats).toContainText("약 80만 건");
+  await expect(stats).toContainText("약 3조 2,470억원");
+  await expect(stats).toContainText("약 404만원");
+  // 평균 환급액은 숫자 바로 아래에 '개인별 예상액 아님'을 함께 표시한다
+  const avg = page.locator('[data-testid="stat-refund-average"]');
+  const note = page.locator('[data-testid="stat-average-note"]');
+  await expect(note).toContainText("개인별 예상 환급액 아님");
+  await expect(note).toContainText("실제로 지급된 청구 건의 평균값");
+  const [a, n] = await Promise.all([avg.boundingBox(), note.boundingBox()]);
+  expect(n!.y - (a!.y + a!.height)).toBeLessThan(24);
   await expect(stats).toContainText("금융위원회");
   await expect(stats).toContainText("2026년 7월 7일");
   await expect(stats).toContainText("실시간으로 변하는 수치가 아닙니다");
@@ -29,7 +38,7 @@ test("hero, stats with source and compliance copy", async ({ page }) => {
 test("no external lookup CTA in the main flow; official link kept in FAQ and footer", async ({ page }) => {
   await page.goto("/");
   const ext = 'a[href*="cont.insure.or.kr"]';
-  for (const sel of ["header", "#hero-cta", "#stats", "#services", "#process", "#apply", "#final-cta"]) {
+  for (const sel of ["header", "#hero-cta", "#stats", "#stories", "#services", "#process", "#apply", "#final-cta"]) {
     await expect(page.locator(`${sel} ${ext}`), `external CTA in ${sel}`).toHaveCount(0);
   }
   await expect(page.locator(`footer ${ext}`)).toBeVisible();
@@ -51,8 +60,9 @@ test("odometer counts up once on entry and stops exactly on the official figures
   const widthAfter = await main.evaluate((e) => e.getBoundingClientRect().width);
   expect(Math.abs(widthAfter - widthBefore)).toBeLessThan(1); // 레이아웃 흔들림 없음
   // 화면에 보이는 자릿수를 바퀴 위치에서 직접 읽어 최종 표기와 비교
-  for (const id of ["stat-main", "stat-refund-amount", "stat-refund-count"]) {
+  for (const id of ["stat-main", "stat-refund-count", "stat-refund-amount", "stat-refund-average"]) {
     const odo = page.locator(`[data-testid="${id}"] .odo`);
+    await odo.scrollIntoViewIfNeeded(); // 모바일에서는 카드가 세로로 쌓여 각자 화면에 들어올 때 시작한다
     await expect(odo).toHaveAttribute("data-state", "done", { timeout: 6000 });
     const shown = await odo.evaluate((root) =>
       Array.from(root.children)
@@ -76,6 +86,30 @@ test("reduced motion shows the final figures without animation", async ({ page }
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   await expect(page.locator('[data-testid="stat-main"] .odo')).toHaveAttribute("data-state", "done");
+});
+
+test("story: numbers → situational examples → 'me too' CTA into the internal type selection", async ({ page }) => {
+  await page.goto("/");
+  const order = await page.evaluate(() =>
+    ["stats", "stories", "story-cta", "services"].map((id) => document.getElementById(id)!.getBoundingClientRect().top + window.scrollY),
+  );
+  expect([...order].sort((x, y) => x - y)).toEqual(order);
+  const stories = page.locator("#stories");
+  await expect(stories.getByRole("heading", { level: 2 })).toHaveText("이런 보험금, 모르고 지나치셨을 수 있어요.");
+  for (const t of ["만기가 됐지만 찾아가지 않은 보험금", "지급 시기를 몰랐던 중도보험금·축하금", "병원비·수술비를 청구하지 않은 경우"]) {
+    await expect(stories.getByRole("heading", { level: 3, name: t })).toBeVisible();
+  }
+  await expect(page.locator('[data-testid="story-footnote"]')).toContainText("실제 지급 사례가 아닌 일반적인 상황 예시입니다");
+  // 병원비 미청구는 숨은보험금 통계에 포함된 것처럼 보이지 않게
+  const medical = page.locator('[data-testid="story-medical"]');
+  await expect(medical).toContainText("숨은보험금 통계에 포함되지 않는");
+  await expect(medical).not.toContainText("숨은보험금 유형");
+  await expect(page.locator("#story-cta")).toContainText("다른 사람들은 찾아간 보험금, 혹시 나도?");
+  await expect(page.locator("#story-cta")).toContainText("가입한 보험이 있어도 미처 확인하지 못한 보험금이 있을 수 있습니다.");
+  await page.locator("#story-cta").getByRole("button", { name: "나도 무료 점검 시작하기" }).click();
+  await expect(page.locator("#services-title")).toBeInViewport();
+  await expect(page.locator("#services-title")).toBeFocused();
+  expect(page.url()).not.toContain("cont.insure.or.kr");
 });
 
 test("hero CTA scrolls to type selection; picked type flows into the single form", async ({ page }) => {

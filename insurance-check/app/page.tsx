@@ -5,6 +5,7 @@ import { DemoBanner } from "@/components/site/DemoBanner";
 import { ApplyProvider } from "@/components/landing/ApplyContext";
 import { Hero } from "@/components/landing/Hero";
 import { StatsSection } from "@/components/landing/StatsSection";
+import { StorySection } from "@/components/landing/StorySection";
 import { ServiceTypes } from "@/components/landing/ServiceTypes";
 import { Process } from "@/components/landing/Process";
 import { ApplySection } from "@/components/landing/ApplySection";
@@ -23,6 +24,7 @@ export default function LandingPage() {
       <main id="main">
         <Hero />
         <StatsSection />
+        <StorySection />
         <ServiceTypes />
         <Process />
         <ApplySection config={config} />

@@ -1,7 +1,7 @@
 import type { ServiceType } from "./types";
 
 // 랜딩 페이지 문구. 준법 검토 대상이므로 문구 수정은 이 파일에서만 한다.
-// 금지: 지급·환급 보장, "대상자 선정", 평균 환급액 강조, 공공기관 인증·위탁처럼 보이는 표현, 해지 유도.
+// 금지: 지급·환급 보장, "대상자 선정", 평균 환급액을 개인 예상액처럼 표현, 공공기관 인증·위탁처럼 보이는 표현, 해지 유도.
 
 export const OFFICIAL_LOOKUP = {
   name: "내보험찾아줌",
@@ -19,21 +19,65 @@ export const STATS_SOURCE = {
 
 /**
  * 금융위원회 발표 통계 인용. 수치는 발표 원문 그대로 표기한다.
- * 2026-10 교차 확인: 같은 발표를 보도한 복수 언론(뉴시스·헤럴드경제·비즈니스포스트·미디어펜)의 수치 일치.
+ * 2026-10 교차 확인: 같은 발표를 보도한 복수 언론(뉴시스·헤럴드경제·비즈니스포스트·미디어펜·디지털데일리·시사저널)의 수치 일치.
  * ⚠️ 개발 환경에서 fsc.go.kr 원문 접속이 차단되어 원문 직접 대조는 운영 전 필수 (APPROVAL_STATS_VERIFIED).
- * 평균 환급액(건당 약 404만원)은 개인별 기대 금액으로 오인될 수 있어 의도적으로 노출하지 않는다.
+ * 평균 환급액(건당 약 404만원)은 개인별 예상액으로 오인되지 않도록 숫자 바로 아래에 averageNote를 항상 함께 표시한다.
  */
 export const STATS = [
   // value는 애니메이션의 기준 정수, template은 화면 표기(숫자 자리 = value의 자릿수와 일치해야 함)
-  { id: "hidden-total", basis: "2025년 말 기준", label: "숨은보험금 잔액", value: 103000, template: "10조 3,000억원", text: "10조 3,000억원" },
-  { id: "refund-amount", basis: "2025년 중", label: "숨은보험금 환급 금액", value: 32470, template: "3조 2,470억원", text: "3조 2,470억원" },
-  { id: "refund-count", basis: "2025년 중", label: "숨은보험금 환급 건수", value: 80, template: "80만 건", text: "약 80만 건", prefix: "약" },
+  { id: "hidden-total", basis: "2025년 말 기준", label: "아직 찾아가지 않은 숨은보험금", value: 103000, template: "10조 3,000억원", text: "약 10조 3,000억원", prefix: "약" },
+  { id: "refund-count", basis: "2025년 중", label: "지급된 숨은보험금", value: 80, template: "80만 건", text: "약 80만 건", prefix: "약" },
+  { id: "refund-amount", basis: "2025년 중", label: "숨은보험금 지급액", value: 32470, template: "3조 2,470억원", text: "약 3조 2,470억원", prefix: "약" },
+  { id: "refund-average", basis: "2025년", label: "청구 1건당 평균 환급액", value: 404, template: "404만원", text: "약 404만원", prefix: "약" },
 ] as const;
+
+/** 평균 환급액 바로 아래 고정 표기 (생략 금지) */
+export const STATS_AVERAGE_NOTE = {
+  badge: "개인별 예상 환급액 아님",
+  text: "2025년에 실제로 지급된 청구 건의 평균값입니다.",
+} as const;
 
 export const STATS_DISCLAIMER =
   "전국 규모의 공식 집계이며, 개인별 환급 가능 여부나 환급 금액을 의미하거나 보장하지 않습니다.";
 
 export const STATS_MOTION_NOTE = "숫자 애니메이션은 표시 효과이며, 실시간으로 변하는 수치가 아닙니다.";
+
+/** 통계 다음의 상황별 예시. 실제 지급 사례가 아닌 일반적인 상황 설명이다. */
+export const STORY = {
+  eyebrow: "상황별 예시",
+  title: "이런 보험금, 모르고 지나치셨을 수 있어요.",
+  cases: [
+    {
+      id: "maturity",
+      title: "만기가 됐지만 찾아가지 않은 보험금",
+      desc: "저축성 보험이나 연금보험이 만기가 됐는데, 주소나 연락처가 바뀌어 안내를 받지 못하고 지나치는 경우가 있어요.",
+      tag: "숨은보험금 유형",
+      inStats: true,
+    },
+    {
+      id: "interim",
+      title: "지급 시기를 몰랐던 중도보험금·축하금",
+      desc: "가입 기간 중 정해진 시기에 나오는 중도보험금이나 입학·생일 축하금은 지급일을 기억하지 못하면 청구하지 않은 채 남아 있을 수 있어요.",
+      tag: "숨은보험금 유형",
+      inStats: true,
+    },
+    {
+      id: "medical",
+      title: "병원비·수술비를 청구하지 않은 경우",
+      desc: "진료비가 적어서, 또는 보장되는 줄 몰라서 실손·수술비 보험금을 청구하지 않고 넘어가는 경우도 있어요.",
+      tag: "별도 · 미청구 보험금",
+      inStats: false,
+      note: "위 숨은보험금 통계에 포함되지 않는, 별도로 확인해야 하는 보험금입니다.",
+    },
+  ],
+  footnote:
+    "실제 지급 사례가 아닌 일반적인 상황 예시입니다. 보험금 발생 여부와 금액은 가입한 계약 내용과 청구 요건에 따라 다르며, 지급 여부는 보험사가 결정합니다.",
+  cta: {
+    title: "다른 사람들은 찾아간 보험금, 혹시 나도?",
+    desc: "가입한 보험이 있어도 미처 확인하지 못한 보험금이 있을 수 있습니다.",
+    button: "나도 무료 점검 시작하기",
+  },
+} as const;
 
 export const HIDDEN_DEFINITION =
   "숨은보험금은 지급 사유가 생겨 지급 금액이 확정됐지만 아직 청구되지 않은 중도·만기·휴면보험금 등을 말합니다.";
