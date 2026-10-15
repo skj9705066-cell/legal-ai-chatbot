@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   if (!isSameOrigin(req)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   const auth = await requireApi("editReviews");
   if (auth.error) return auth.error;
-  const body = await readJson(req);
+  const body = await readJson(req, 2_200_000); // 캡처 이미지(data URL) 포함
   if (!body) return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
   const res = await createReview(auth.session, body);
   if (!res.ok) return NextResponse.json({ error: res.error }, { status: res.status });

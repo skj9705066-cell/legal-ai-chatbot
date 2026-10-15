@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { AuditLog, FunnelEvent, Review } from "@/lib/types";
-import { COMPLETED_CLAIM_STATUSES, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
+import { COMPLETED_CLAIM_STATUSES, type ReviewImage, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
 
 /**
  * 운영 저장소. service role 키로 서버에서만 접근한다.
@@ -122,6 +122,10 @@ function fromPrivacyRow(r: Row): PrivacyRequestRow {
   };
 }
 
+/** 목록 조회 시 이미지 본문(image_base64)은 읽지 않는다 */
+const REVIEW_SELECT =
+  "id, created_at, created_by, kind, display_name, category, content, has_image, pii_masked, payment_confirmed, verified_amount, use_consent, use_consent_at, status, reviewed_by, reviewed_at";
+
 function fromReviewRow(r: Row): Review {
   return {
     id: r.id as string,
@@ -129,8 +133,10 @@ function fromReviewRow(r: Row): Review {
     createdBy: r.created_by as string,
     kind: r.kind as Review["kind"],
     displayName: r.display_name as string,
-    claimType: r.claim_type as Review["claimType"],
-    content: r.content as string,
+    category: r.category as Review["category"],
+    content: (r.content as string) ?? "",
+    hasImage: !!r.has_image,
+    piiMasked: !!r.pii_masked,
     paymentConfirmed: !!r.payment_confirmed,
     verifiedAmount: r.verified_amount == null ? null : Number(r.verified_amount),
     useConsent: !!r.use_consent,
@@ -145,8 +151,10 @@ function fromReviewRow(r: Row): Review {
 const REVIEW_COLUMNS: Record<string, string> = {
   kind: "kind",
   displayName: "display_name",
-  claimType: "claim_type",
+  category: "category",
   content: "content",
+  hasImage: "has_image",
+  piiMasked: "pii_masked",
   paymentConfirmed: "payment_confirmed",
   verifiedAmount: "verified_amount",
   useConsent: "use_consent",
@@ -342,16 +350,31 @@ export const supabaseRepository: Repository = {
     must(await db().from("ic_reviews").insert({ id: r.id, created_at: r.createdAt, created_by: r.createdBy, ...toReviewColumns(r) }));
   },
   async listReviews() {
-    const data = must(await db().from("ic_reviews").select("*").order("created_at", { ascending: false }).limit(500));
+    const data = must(await db().from("ic_reviews").select(REVIEW_SELECT).order("created_at", { ascending: false }).limit(500));
     return (data ?? []).map(fromReviewRow);
   },
   async getReview(id) {
-    const data = must(await db().from("ic_reviews").select("*").eq("id", id).maybeSingle());
+    const data = must(await db().from("ic_reviews").select(REVIEW_SELECT).eq("id", id).maybeSingle());
     return data ? fromReviewRow(data) : null;
   },
   async updateReview(id, patch) {
-    const data = must(await db().from("ic_reviews").update(toReviewColumns(patch)).eq("id", id).select("*").maybeSingle());
+    const data = must(await db().from("ic_reviews").update(toReviewColumns(patch)).eq("id", id).select(REVIEW_SELECT).maybeSingle());
     return data ? fromReviewRow(data) : null;
+  },
+  async deleteReview(id) {
+    must(await db().from("ic_reviews").delete().eq("id", id));
+  },
+  async setReviewImage(id, image: ReviewImage | null) {
+    must(
+      await db()
+        .from("ic_reviews")
+        .update({ image_mime: image?.mime ?? null, image_base64: image?.base64 ?? null, has_image: !!image })
+        .eq("id", id),
+    );
+  },
+  async getReviewImage(id) {
+    const data = must(await db().from("ic_reviews").select("image_mime, image_base64").eq("id", id).maybeSingle()) as Row | null;
+    return data?.image_base64 ? { mime: data.image_mime as string, base64: data.image_base64 as string } : null;
   },
   async countRealLeads() {
     // 데모·테스트·중복 신청 제외 (운영 DB에는 데모 데이터가 없다)

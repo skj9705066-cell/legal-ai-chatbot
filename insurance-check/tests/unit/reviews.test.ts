@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canTransition, isAnonymizedDisplayName, publicMetrics, toPublicReviews, validateReviewInput } from "@/lib/reviews";
+import { canTransition, isAnonymizedDisplayName, parseImageDataUrl, publicMetrics, toBubbles, toPublicReviews, validateReviewInput } from "@/lib/reviews";
 import type { Review } from "@/lib/types";
 
 const base: Review = {
@@ -8,8 +8,10 @@ const base: Review = {
   createdBy: "관리자",
   kind: "review",
   displayName: "40대 직장인",
-  claimType: "unclaimed",
+  category: "claim_guidance",
   content: "어떤 보험을 확인해야 하는지 알게 되어 도움이 됐어요.",
+  hasImage: false,
+  piiMasked: false,
   paymentConfirmed: false,
   verifiedAmount: null,
   useConsent: true,
@@ -53,8 +55,39 @@ describe("후기 공개 규칙", () => {
 
   it("공개 항목에 작성자·동의 시각 등 내부 필드를 싣지 않는다", () => {
     const [r] = toPublicReviews([base]);
-    expect(Object.keys(r).sort()).toEqual(["claimType", "content", "displayName", "id", "isDemo", "kind", "monthLabel", "verifiedAmount"]);
+    expect(Object.keys(r).sort()).toEqual(["category", "content", "displayName", "id", "imageUrl", "isDemo", "kind", "monthLabel", "verifiedAmount"]);
     expect(r.monthLabel).toBe("2026년 10월");
+  });
+});
+
+describe("캡처 이미지 후기", () => {
+  it("개인정보 가림이 확인되지 않은 이미지는 공개·승인되지 않는다", () => {
+    const img = { ...base, hasImage: true, piiMasked: false };
+    expect(toPublicReviews([img])).toEqual([]);
+    expect(canTransition(img, "approved")).toMatch(/개인정보 가림/);
+    const [ok] = toPublicReviews([{ ...img, piiMasked: true }]);
+    expect(ok.imageUrl).toBe("/review-images/r1");
+  });
+
+  it("이미지가 있으면 원문 없이도 등록되지만 가림 확인은 필수", () => {
+    const raw = { kind: "review", category: "medical_claim", displayName: "30대 직장인", content: "", useConsent: true };
+    expect(validateReviewInput(raw, false).ok).toBe(false);
+    expect(validateReviewInput(raw, true).ok).toBe(false);
+    expect(validateReviewInput({ ...raw, piiMasked: true }, true).ok).toBe(true);
+  });
+
+  it("이미지 data URL은 형식·시그니처·크기를 검사한다", () => {
+    const jpeg = "data:image/jpeg;base64," + btoa(String.fromCharCode(0xff, 0xd8, 0xff, 0xe0, 1, 2, 3));
+    expect(parseImageDataUrl(jpeg).ok).toBe(true);
+    const fake = "data:image/jpeg;base64," + btoa("<svg onload=alert(1)>");
+    expect(parseImageDataUrl(fake).ok).toBe(false);
+    expect(parseImageDataUrl("data:image/svg+xml;base64,PHN2Zz4=").ok).toBe(false);
+    const big = "data:image/png;base64," + btoa(String.fromCharCode(0x89, 0x50, 0x4e, 0x47) + "a".repeat(1_600_000));
+    expect(parseImageDataUrl(big).ok).toBe(false);
+  });
+
+  it("메시지 원문은 줄 단위 말풍선으로 나뉜다", () => {
+    expect(toBubbles("감사합니다!\n\n  덕분에 확인했어요  \r\n")).toEqual(["감사합니다!", "덕분에 확인했어요"]);
   });
 });
 
@@ -65,14 +98,14 @@ describe("후기 입력 검증", () => {
   });
 
   it("지급 확인 없이 금액을 입력할 수 없다", () => {
-    const raw = { kind: "review", claimType: "hidden", displayName: "50대 고객", content: "만기된 보험을 확인하게 됐어요. 감사합니다.", useConsent: true };
+    const raw = { kind: "review", category: "maturity_dormant", displayName: "50대 고객", content: "만기된 보험을 확인하게 됐어요. 감사합니다.", useConsent: true };
     expect(validateReviewInput({ ...raw, verifiedAmount: 500000 }).ok).toBe(false);
     const ok = validateReviewInput({ ...raw, paymentConfirmed: true, verifiedAmount: 500000 });
     expect(ok.ok && ok.value.verifiedAmount).toBe(500000);
   });
 
   it("후기 내용의 연락처·이메일·주민번호를 거부한다", () => {
-    const raw = { kind: "review", claimType: "hidden", displayName: "50대 고객", useConsent: true };
+    const raw = { kind: "review", category: "maturity_dormant", displayName: "50대 고객", useConsent: true };
     for (const content of ["연락은 010-1234-5678로 주세요 감사합니다", "메일 test@example.com 으로 받았어요", "주민번호 900101-1234567 확인"]) {
       expect(validateReviewInput({ ...raw, content }).ok, content).toBe(false);
     }

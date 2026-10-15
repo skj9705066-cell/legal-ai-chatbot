@@ -102,8 +102,12 @@ create table if not exists public.ic_reviews (
   created_by         text not null,
   kind               text not null check (kind in ('review','payout_case')),
   display_name       text not null check (char_length(display_name) between 2 and 20),
-  claim_type         text not null check (claim_type in ('unclaimed','hidden','refund')),
-  content            text not null check (char_length(content) between 10 and 500),
+  category           text not null check (category in ('medical_claim','maturity_dormant','history_lookup','claim_guidance','coverage_consult')),
+  content            text not null default '' check (char_length(content) <= 1000),  -- 메시지 원문(줄바꿈 = 말풍선)
+  has_image          boolean not null default false,
+  image_mime         text check (image_mime in ('image/jpeg','image/png','image/webp')),
+  image_base64       text check (char_length(image_base64) <= 2100000),            -- 개인정보를 가린 캡처(≈1.5MB)
+  pii_masked         boolean not null default false,                                -- 프로필 사진·전화번호·실명 가림 확인
   payment_confirmed  boolean not null default false,
   verified_amount    bigint check (verified_amount is null or verified_amount > 0),
   use_consent        boolean not null default false,
@@ -114,7 +118,9 @@ create table if not exists public.ic_reviews (
   -- 공개 규칙을 DB에서도 강제
   constraint ic_reviews_amount_requires_payment check (verified_amount is null or payment_confirmed),
   constraint ic_reviews_approved_requires_consent check (status <> 'approved' or use_consent),
-  constraint ic_reviews_payout_requires_payment check (status <> 'approved' or kind <> 'payout_case' or payment_confirmed)
+  constraint ic_reviews_payout_requires_payment check (status <> 'approved' or kind <> 'payout_case' or payment_confirmed),
+  constraint ic_reviews_image_requires_masking check (status <> 'approved' or not has_image or pii_masked),
+  constraint ic_reviews_has_content check (has_image or char_length(content) >= 10)
 );
 create index if not exists ic_reviews_status_idx on public.ic_reviews (status, reviewed_at desc);
 

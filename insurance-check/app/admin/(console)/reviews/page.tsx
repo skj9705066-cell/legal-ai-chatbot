@@ -5,8 +5,7 @@ import { recordStaffAudit } from "@/lib/server/service";
 import { getOperatingMetrics, metricsGate } from "@/lib/server/reviews";
 import { canTransition, isPublishable, publicMetrics } from "@/lib/reviews";
 import { can } from "@/lib/session";
-import { REVIEW_KIND_LABEL, REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/types";
-import { SERVICE_CONTENT } from "@/lib/content";
+import { REVIEW_CATEGORY_LABEL, REVIEW_KIND_LABEL, REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/types";
 import { formatDateTime } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
@@ -43,7 +42,7 @@ export default async function ReviewsPage() {
     <div className="space-y-6">
       <PageHeader
         title="후기 · 지급 사례"
-        description="고객 동의를 받은 후기와 실제 지급이 확인된 사례만 등록하세요. 등록은 항상 승인 대기이며, 관리자가 공개 승인해야 랜딩에 표시됩니다. 지급 금액은 지급이 확인된 경우에만 노출됩니다."
+        description="고객이 실제로 보낸 메시지 원문이나 동의받은 캡처만 등록하세요. 등록은 항상 승인 대기이며, 관리자가 공개 승인해야 랜딩 후기 갤러리에 표시됩니다. 캡처는 개인정보를 가린 뒤 올리고, 지급 금액은 지급이 확인된 경우에만 노출됩니다. 공개 후기가 없으면 랜딩에는 '실제 후기 준비 중'이 표시됩니다."
       />
 
       <Panel className="p-5 sm:p-6" aria-labelledby="metrics-title">
@@ -93,8 +92,8 @@ export default async function ReviewsPage() {
             <tr>
               <th scope="col" className={tableHead}>등록일</th>
               <th scope="col" className={tableHead}>유형</th>
-              <th scope="col" className={tableHead}>표시명 · 보험금 유형</th>
-              <th scope="col" className={tableHead}>내용</th>
+              <th scope="col" className={tableHead}>표시명 · 후기 유형</th>
+              <th scope="col" className={tableHead}>원문 · 캡처</th>
               <th scope="col" className={tableHead}>지급 확인 · 금액</th>
               <th scope="col" className={tableHead}>게시 동의</th>
               <th scope="col" className={tableHead}>상태</th>
@@ -125,9 +124,20 @@ export default async function ReviewsPage() {
                 </td>
                 <td className={tableCell}>
                   <span className="font-semibold text-navy">{r.displayName}</span>
-                  <div className="text-[13px] text-navy-600">{SERVICE_CONTENT[r.claimType].shortTitle}</div>
+                  <div className="text-[13px] text-navy-600">{REVIEW_CATEGORY_LABEL[r.category]}</div>
                 </td>
-                <td className={`${tableCell} max-w-[360px] text-navy-700`}>{r.content}</td>
+                <td className={`${tableCell} max-w-[360px] text-navy-700`}>
+                  {r.content && <p className="whitespace-pre-line">{r.content}</p>}
+                  {r.hasImage && (
+                    <div className="mt-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={`/api/admin/reviews/${r.id}/image`} alt="개인정보를 가린 후기 캡처" className="max-h-40 rounded-lg ring-1 ring-navy-200" />
+                      <p className={`mt-1 text-[13px] font-semibold ${r.piiMasked ? "text-mint-700" : "text-caution"}`}>
+                        {r.piiMasked ? "개인정보 가림 확인" : "개인정보 가림 미확인"}
+                      </p>
+                    </div>
+                  )}
+                </td>
                 <td className={`${tableCell} whitespace-nowrap`}>
                   {r.paymentConfirmed ? <Badge variant="mint">지급 확인</Badge> : <Badge>미확인</Badge>}
                   {r.verifiedAmount != null && <div className="num-display mt-1 text-navy">{r.verifiedAmount.toLocaleString("ko-KR")}원</div>}
