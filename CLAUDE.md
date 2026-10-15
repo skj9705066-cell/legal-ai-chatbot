@@ -84,6 +84,9 @@ lib/
 
 middleware.ts               # /admin/* 접근을 Supabase 세션 + role='admin'으로 게이트
 
+insurance-check/            # ⚠️ 별도 앱 '내보험 통합 점검' (보험금 점검 광고 랜딩 + CRM). lawsel과 무관.
+                            #    독립 package.json/빌드. 루트 tsconfig exclude + .vercelignore로 분리됨 → insurance-check/README.md
+
 vercel/
   firewall.md               # WAF 레이트리밋 룰 기록 (CLI로 수동 적용 — 자동 반영 안 됨)
 

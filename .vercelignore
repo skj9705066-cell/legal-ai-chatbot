@@ -3,3 +3,5 @@ scripts/
 dev-server.log
 *.log
 .env.local
+# 별도 앱(내보험 통합 점검) — lawsel.kr 배포에 포함하지 않음
+insurance-check/
