@@ -15,13 +15,14 @@ UI는 shadcn/ui 규칙(cva + `cn`, 소스 복사 방식)으로 작성한 `compon
 
 ```bash
 cd insurance-check
-cp .env.example .env.local      # APP_SECRET, DEMO_ADMIN_PASSWORD 채우기 (openssl rand -hex 32)
 npm install
-npm run dev                     # http://localhost:3100
+npm run setup:demo              # 데모용 .env.local 생성 + 관리자 비밀번호 출력 (이미 있으면 유지)
+npm run dev                     # http://localhost:3100  ·  관리자: http://localhost:3100/admin/login
 ```
 
 | 명령 | 내용 |
 |---|---|
+| `npm run setup:demo` | 데모 모드 `.env.local` 생성 (APP_SECRET·관리자 비밀번호 랜덤) |
 | `npm run dev` / `build` / `start` | 개발 / 빌드(배포 게이트 포함) / 실행 (포트 3100) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` | 단위 테스트 (vitest) — 검증·마스킹·암호화·세션·CSV·영업대상 규칙 |
