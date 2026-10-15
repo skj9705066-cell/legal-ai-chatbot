@@ -13,6 +13,18 @@ UI는 shadcn/ui 규칙(cva + `cn`, 소스 복사 방식)으로 작성한 `compon
 
 ## 실행
 
+### Windows: 더블클릭으로 실행
+1. Node.js LTS(20 이상)를 설치합니다 — https://nodejs.org
+2. `insurance-check` 폴더의 **`start-demo.bat`**을 더블클릭합니다.
+   - Node.js 확인 → 설치(처음 1회) → 데모 설정(처음 1회) → 서버 실행 → 준비되면 브라우저 자동 열기
+   - 창에 표시되는 **관리자 비밀번호**로 http://localhost:3100/admin/login 에 로그인합니다.
+   - 창을 닫으면 서버가 꺼집니다. 이미 실행 중이면 브라우저만 엽니다.
+   - 인터넷에서 받은 파일이라 "Windows의 PC 보호" 또는 "게시자를 확인할 수 없습니다" 경고가 뜰 수 있습니다. **추가 정보 → 실행**을 누르세요.
+   - 항상 데모 모드로만 실행되며, `.env.local`이 운영 모드면 실행을 멈춥니다.
+   - 이 파일은 한글 Windows 명령 프롬프트용으로 CP949·CRLF로 저장되어 있습니다(`.gitattributes`로 변환 방지). GitHub 웹에서는 한글이 깨져 보일 수 있지만 실행에는 문제없습니다.
+
+### 직접 명령으로 실행
+
 ```bash
 cd insurance-check
 npm install

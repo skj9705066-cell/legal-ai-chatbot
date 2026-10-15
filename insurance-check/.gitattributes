@@ -1,0 +1,2 @@
+# start-demo.bat은 한글 Windows용(CP949)·CRLF로 저장한다. git이 줄바꿈·인코딩을 바꾸지 않게 한다.
+*.bat -text
