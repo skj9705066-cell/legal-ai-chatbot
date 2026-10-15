@@ -1,8 +1,7 @@
 import { ArrowUpRight, Info } from "lucide-react";
-import { HIDDEN_DEFINITION, STATS, STATS_DISCLAIMER, STATS_MOTION_NOTE, STATS_SOURCE } from "@/lib/content";
+import { HIDDEN_DEFINITION, STATS, STATS_AVERAGE_NOTE, STATS_DISCLAIMER, STATS_MOTION_NOTE, STATS_SOURCE } from "@/lib/content";
 import { Odometer } from "@/components/motion/Odometer";
 import { Reveal } from "@/components/motion/Reveal";
-import { ApplyCta } from "./ApplyCta";
 
 const [MAIN, ...SUBS] = STATS;
 
@@ -53,9 +52,9 @@ export function StatsSection() {
             </span>
           </p>
           <h2 id="stats-title" className="mt-3 text-balance text-[28px] font-extrabold leading-[1.3] tracking-[-0.03em] sm:text-[36px] lg:text-[44px]">
-            아직 주인을 찾지 못한
+            나도 몰랐던 보험금,{" "}
             <br />
-            숨은보험금이 있습니다
+            아직 남아 있을 수 있습니다.
           </h2>
           <p className="mt-4 text-[17px] leading-[1.7] text-navy-300 lg:text-[18px]">{HIDDEN_DEFINITION}</p>
         </Reveal>
@@ -70,7 +69,8 @@ export function StatsSection() {
                   <span className="h-2 w-2 rounded-full bg-mint" aria-hidden="true" />
                   {MAIN.basis} {MAIN.label}
                 </p>
-                <p className="mt-3 font-extrabold tracking-[-0.035em] text-white [font-size:clamp(30px,9vw,46px)] sm:text-[56px] lg:text-[72px]" data-testid="stat-main">
+                <p className="mt-3 flex items-baseline gap-2 whitespace-nowrap font-extrabold tracking-[-0.035em] text-white [font-size:clamp(30px,8.4vw,46px)] sm:text-[56px] lg:text-[72px]" data-testid="stat-main">
+                  <span aria-hidden="true" className="text-[0.45em] font-bold text-white/75">{MAIN.prefix}</span>
                   <Odometer value={MAIN.value} template={MAIN.template} label={`${MAIN.basis} ${MAIN.label} ${MAIN.text}`} duration={2800} />
                 </p>
                 <p className="mt-4 text-[15px] text-navy-300">
@@ -84,18 +84,28 @@ export function StatsSection() {
           </div>
         </Reveal>
 
-        {/* 보조 통계 */}
-        <div className="mt-4 grid gap-4 md:grid-cols-2 lg:mt-5 lg:gap-5">
+        {/* 보조 통계: 지급 건수 → 지급액 → 건당 평균 */}
+        <div className="mt-4 grid gap-4 lg:mt-5 lg:grid-cols-3 lg:gap-5">
           {SUBS.map((s, i) => (
             <Reveal key={s.id} delay={120 * (i + 1)}>
-              <div className="h-full rounded-[24px] bg-white/[0.05] p-6 ring-1 ring-inset ring-white/10 sm:p-8">
+              <div className="flex h-full flex-col rounded-[24px] bg-white/[0.05] p-6 ring-1 ring-inset ring-white/10 sm:p-8">
                 <p className="text-[16px] font-semibold text-white/90">
                   {s.basis} {s.label}
                 </p>
-                <p className="mt-3 flex items-baseline gap-1.5 whitespace-nowrap font-extrabold tracking-[-0.03em] text-white [font-size:clamp(30px,8.6vw,40px)] lg:text-[48px]" data-testid={`stat-${s.id}`}>
-                  {"prefix" in s && <span className="text-[0.5em] font-bold text-white/75">{s.prefix}</span>}
+                <p className="mt-3 flex items-baseline gap-1.5 whitespace-nowrap font-extrabold tracking-[-0.03em] text-white [font-size:clamp(30px,8.6vw,40px)]" data-testid={`stat-${s.id}`}>
+                  <span aria-hidden="true" className="text-[0.5em] font-bold text-white/75">{s.prefix}</span>
                   <Odometer value={s.value} template={s.template} label={`${s.basis} ${s.label} ${s.text}`} duration={2400} delay={150 * (i + 1)} />
                 </p>
+                {s.id === "refund-average" && (
+                  // 개인별 예상액으로 오인되지 않도록 숫자 바로 아래 고정 표기
+                  <div className="mt-3" data-testid="stat-average-note">
+                    <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-300/15 px-3 py-1.5 text-[14px] font-bold text-amber-200 ring-1 ring-inset ring-amber-300/30">
+                      <Info className="h-4 w-4" aria-hidden="true" />
+                      {STATS_AVERAGE_NOTE.badge}
+                    </p>
+                    <p className="mt-2 text-[15px] leading-relaxed text-navy-300">{STATS_AVERAGE_NOTE.text}</p>
+                  </div>
+                )}
               </div>
             </Reveal>
           ))}
@@ -142,10 +152,6 @@ export function StatsSection() {
             </div>
           </div>
         </Reveal>
-
-        <div className="mt-12 lg:mt-14">
-          <ApplyCta source="stats" target="types" variant="white" size="xl" className="w-full shadow-none sm:w-auto sm:min-w-[320px]" />
-        </div>
       </div>
     </section>
   );
