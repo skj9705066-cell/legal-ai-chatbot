@@ -83,7 +83,7 @@ function ChatFrame({
   topic: string;
   sub?: string;
   chip: React.ReactNode;
-  pill: string;
+  pill?: string;
   theme: (typeof THEMES)[number];
   children: React.ReactNode;
   footer: string;
@@ -107,8 +107,8 @@ function ChatFrame({
         {chip}
       </div>
       <div className={cn("flex flex-1 flex-col px-3.5 pb-4 pt-4", theme.chat)}>
-        <p className="mx-auto rounded-full bg-white/75 px-3 py-1 text-[12.5px] font-semibold text-navy-600">{pill}</p>
-        <ul className="mt-4 space-y-3">{children}</ul>
+        {pill && <p className="mx-auto mb-4 rounded-full bg-white/75 px-3 py-1 text-[12.5px] font-semibold text-navy-600">{pill}</p>}
+        <ul className="space-y-3">{children}</ul>
         {/* 입력창 모양(동작하지 않는 장식) */}
         <div aria-hidden="true" className="mt-auto flex items-center gap-2 pt-5">
           <span className="flex h-10 flex-1 items-center rounded-full bg-white/85 px-4 text-[13px] text-navy-400 ring-1 ring-navy-100">{footer}</span>
@@ -126,8 +126,7 @@ function ExampleCard({ s, index }: { s: Scenario; index: number }) {
     <ChatFrame
       topic={s.topic}
       sub={REVIEW_CATEGORY_LABEL[s.category]}
-      chip={<span className="shrink-0 rounded-full bg-navy-100 px-2.5 py-1 text-[12.5px] font-bold text-navy-600">{G.exampleChip}</span>}
-      pill="가상 상황 재구성"
+      chip={<span className="shrink-0 rounded-full bg-navy-100 px-2 py-0.5 text-[12px] font-semibold text-navy-600">{G.exampleChip}</span>}
       theme={THEMES[index % THEMES.length]}
       footer="예시 화면입니다"
       testId="chat-example"
@@ -180,7 +179,7 @@ function RealCard({ r, index }: { r: PublicReview; index: number }) {
 }
 
 /**
- * 보험금 점검 대화 갤러리. 기본은 '가상 상황을 재구성한 대화 예시' 5개이고,
+ * 보험금 점검 대화 갤러리. 기본은 보험금을 찾게 되는 상황 예시 대화 5개(제목 아래 '예시 대화', 카드마다 '상황 예시' 표시)이고,
  * 고객 동의 + 공개 승인된 실제 후기가 생기면 같은 유형의 예시 카드 자리를 대신한다.
  */
 export function ChatGallery({ reviews, metrics }: { reviews: PublicReview[]; metrics: Partial<OperatingMetrics> | null }) {
@@ -217,17 +216,15 @@ export function ChatGallery({ reviews, metrics }: { reviews: PublicReview[]; met
           </div>
         )}
 
-        {/* 갤러리 상단 표시: 예시 카드가 하나라도 있으면 항상 */}
-        {exampleCount > 0 && (
-          <p className="mt-9 inline-flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl bg-white px-4 py-2.5 text-[14.5px] ring-1 ring-navy-100" data-testid="example-label">
+        {/* 실제 후기와 예시가 섞여 있을 때만 구분 안내 */}
+        {exampleCount > 0 && realCount > 0 && (
+          <p className="mt-9 inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-[14.5px] text-navy-600 ring-1 ring-navy-100" data-testid="example-label">
             <Info className="h-[18px] w-[18px] shrink-0 text-blue" aria-hidden="true" />
-            <strong className="font-bold text-navy">{G.exampleLabel}</strong>
-            <span aria-hidden="true" className="hidden text-navy-300 sm:inline">·</span>
-            <span className="text-navy-600">{realCount ? G.mixedLabelNote : G.exampleLabelNote}</span>
+            {G.mixedLabelNote}
           </p>
         )}
 
-        <div className={exampleCount > 0 ? "mt-5" : "mt-10"}>
+        <div className={exampleCount > 0 && realCount > 0 ? "mt-5" : "mt-10"}>
           <Carousel
             id="chat-track"
             label="보험금 점검 대화 카드 (좌우로 넘겨 보세요)"
@@ -235,7 +232,7 @@ export function ChatGallery({ reviews, metrics }: { reviews: PublicReview[]; met
             slideClassName={(i) => THEMES[i % THEMES.length].offset}
             slides={slots.map((slot, i) =>
               slot.kind === "example"
-                ? { key: `ex-${slot.scenario.id}`, label: `${slot.scenario.topic} (재구성 예시)`, node: <ExampleCard s={slot.scenario} index={i} /> }
+                ? { key: `ex-${slot.scenario.id}`, label: `${slot.scenario.topic} (상황 예시)`, node: <ExampleCard s={slot.scenario} index={i} /> }
                 : { key: `rv-${slot.review.id}`, label: `${REVIEW_CATEGORY_LABEL[slot.review.category]} (실제 후기)`, node: <RealCard r={slot.review} index={i} /> },
             )}
           />

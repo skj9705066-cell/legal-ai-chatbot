@@ -94,30 +94,30 @@ export const CASES = {
 
 /**
  * 보험금 점검 대화 갤러리.
- * - 기본: 가상 상황을 재구성한 대화 예시 5개(실제 고객 대화 아님 — 항상 표시)
+ * - 기본: 보험금을 찾게 되는 상황 예시 대화 5개. 실제 고객 대화가 아니므로 '실제 후기'로 표시하지 않고, 예시라는 표시(제목 아래 '예시 대화', 카드 '상황 예시')는 유지한다
  * - 고객 동의 + 관리자 공개 승인된 실제 후기가 생기면, 같은 유형(category)의 예시 카드 자리를 실제 후기가 대신한다(lib/chat-gallery.ts)
  * 가짜 프로필 사진·실명처럼 보이는 이름·지급 금액을 쓰지 않는다. 상담사 아바타는 서비스 로고.
  */
 export const CHAT_GALLERY = {
   eyebrow: "보험금 점검 상황",
   title: "나도 놓치고 있었을지 모르는 보험금",
-  subtitle: "보험금 점검 과정에서 생길 수 있는 다양한 상황을 대화 형식으로 재구성했습니다.",
+  subtitle: "점검을 통해 놓친 보험금을 찾게 되는 대표적인 상황을 예시 대화로 정리했어요.",
   allRealSubtitle: "실제 상담 이후 고객님이 남겨주신 메시지를, 게시 동의를 받아 소개합니다.",
-  exampleLabel: "가상 상황을 재구성한 대화 예시",
-  exampleLabelNote: "실제 고객과 나눈 대화가 아닙니다",
-  mixedLabelNote: "'실제 후기' 표시가 있는 카드만 고객 동의를 받은 실제 메시지입니다",
-  exampleChip: "재구성 예시",
+  /** 실제 후기와 예시가 섞여 있을 때만 갤러리 위에 표시 */
+  mixedLabelNote: "'실제 후기' 표시가 있는 카드만 고객 동의를 받은 실제 메시지이며, 나머지는 상황 예시입니다",
+  exampleChip: "상황 예시",
   realChip: "실제 후기 · 게시 동의",
   counselorName: "점검 상담",
+  // 보험금을 '찾는' 흐름의 예시 대화. 지급 완료·금액은 단정하지 않는다(지급 여부는 보험사가 결정).
   scenarios: [
     {
       id: "surgery",
       topic: "수술비 특약 확인",
       category: "medical_claim",
       messages: [
-        { from: "customer", text: "저 예전에 수술했던 것도 확인해 볼 수 있나요?" },
-        { from: "counselor", text: "네, 당시 가입하신 보험과 수술비 특약을 확인해 볼 필요가 있습니다." },
-        { from: "customer", text: "실비만 생각했는데 다른 보장도 확인해 봐야겠네요. 감사합니다!" },
+        { from: "customer", text: "알려주신 대로 확인해 보니, 예전 수술 건에 청구하지 않은 수술비 특약이 있었어요." },
+        { from: "counselor", text: "확인하셨군요. 진단서와 수술확인서를 준비해서 보험사에 청구하시면 됩니다." },
+        { from: "customer", text: "실비만 받고 끝난 줄 알았는데, 놓친 걸 찾았네요. 감사합니다." },
       ],
     },
     {
@@ -125,9 +125,9 @@ export const CHAT_GALLERY = {
       topic: "오래전 가입한 보험",
       category: "history_lookup",
       messages: [
-        { from: "customer", text: "10년 전에 가입한 보험도 확인할 수 있나요?" },
-        { from: "counselor", text: "가입 내역과 계약 상태부터 확인하는 방법을 안내해 드릴게요." },
-        { from: "customer", text: "오래된 보험은 생각도 못 했네요. 알려주셔서 감사해요." },
+        { from: "customer", text: "10년 전에 가입하고 잊고 있던 보험을 찾았어요." },
+        { from: "counselor", text: "계약 상태와 보장 내용을 확인하시고, 받을 수 있는 보험금이 있는지 보험사에 문의해 보세요." },
+        { from: "customer", text: "있는 줄도 몰랐던 보험이라 더 반갑네요." },
       ],
     },
     {
@@ -135,9 +135,9 @@ export const CHAT_GALLERY = {
       topic: "부모님 보험",
       category: "coverage_consult",
       messages: [
-        { from: "customer", text: "부모님 보험이 여러 개인데 어떤 걸 확인해야 할지 모르겠어요." },
-        { from: "counselor", text: "계약별 보장 내용과 지급 조건을 구분해서 확인하시면 됩니다." },
-        { from: "customer", text: "혼자서는 어려웠는데 확인할 순서를 알겠어요. 감사합니다." },
+        { from: "customer", text: "부모님 보험을 하나씩 정리해 보니 청구 안 한 입원비 보장이 있었어요." },
+        { from: "counselor", text: "계약별로 지급 조건을 확인하신 덕분이에요. 청구 서류는 보험사마다 다르니 미리 확인해 보세요." },
+        { from: "customer", text: "부모님도 모르고 계셨는데, 확인해 보길 잘했어요." },
       ],
     },
     {
@@ -145,9 +145,9 @@ export const CHAT_GALLERY = {
       topic: "만기보험금",
       category: "maturity_dormant",
       messages: [
-        { from: "customer", text: "만기된 보험에 받을 돈이 남아 있을 수도 있나요?" },
-        { from: "counselor", text: "계약에 따라 가능할 수 있습니다. 공식 조회 방법부터 안내해 드릴게요." },
-        { from: "customer", text: "몰랐던 내용이네요. 한번 확인해 보겠습니다!" },
+        { from: "customer", text: "공식 조회로 확인해 보니 찾아가지 않은 만기보험금이 있더라고요." },
+        { from: "counselor", text: "해당 보험사에 청구하시면 됩니다. 필요한 서류는 보험사에 먼저 확인해 주세요." },
+        { from: "customer", text: "그냥 지나칠 뻔했는데 찾아서 다행이에요." },
       ],
     },
     {
@@ -155,9 +155,9 @@ export const CHAT_GALLERY = {
       topic: "병원비 청구",
       category: "claim_guidance",
       messages: [
-        { from: "customer", text: "병원 다녀온 지 오래됐는데 청구할 수 있을까요?" },
-        { from: "counselor", text: "보험 약관과 청구권 소멸시효 등을 확인해야 합니다." },
-        { from: "customer", text: "그냥 지나칠 뻔했네요. 설명 감사합니다." },
+        { from: "customer", text: "작년 통원 치료비를 아직 청구하지 않았다는 걸 알게 됐어요." },
+        { from: "counselor", text: "보험금 청구권은 보통 3년이 지나면 소멸할 수 있으니, 기한 안에 청구해 보세요." },
+        { from: "customer", text: "기한이 있는 줄 몰랐어요. 늦기 전에 청구할게요." },
       ],
     },
   ],
