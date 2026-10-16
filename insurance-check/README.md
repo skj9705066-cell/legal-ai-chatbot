@@ -39,6 +39,7 @@ npm run dev                     # http://localhost:3100  ·  관리자: http://l
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` | 단위 테스트 (vitest) — 검증·마스킹·암호화·세션·CSV·영업대상 규칙 |
 | `npm run test:e2e` | E2E (Playwright, 서버 실행 중이어야 함) — 사용자 여정·관리자 권한·axe 접근성·반응형 |
+| `DEMO_ADMIN_PASSWORD=… npm run verify:deployed` | 배포 사이트 점검(`tests/e2e/release-check.spec.ts`) — 사례 3개 우선·2개 접힘, 사례별 유형 자동 선택, 심사·지급 문구, 모바일 2단계 폼, 데모 신청 → CRM 조회. `E2E_BASE_URL`로 대상 변경. 운영 모드면 신청 테스트는 건너뜀 |
 | `npm run check:deploy` | 운영 배포 필수 항목·승인 기록 점검 |
 
 E2E는 레이트리밋(IP당 10분 5건)에 걸리지 않도록 **서버를 새로 띄운 뒤** 실행하세요.
