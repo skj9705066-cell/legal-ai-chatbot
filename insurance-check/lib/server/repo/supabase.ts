@@ -420,15 +420,21 @@ export async function verifyStaffCredentials(
 ): Promise<{ id: string; name: string; role: "admin" | "counselor" | "viewer" } | null> {
   const url = process.env.SUPABASE_URL;
   const anon = process.env.SUPABASE_ANON_KEY;
-  if (!url || !anon) return null;
+  // 실패 사유만 서버 로그에 남긴다(이메일·비밀번호·키는 기록하지 않음) — Vercel Logs에서 설정 문제를 찾기 위함
+  const fail = (reason: string) => {
+    console.warn(`[admin/login] 로그인 거절: ${reason}`);
+    return null;
+  };
+  if (!url || !anon) return fail("SUPABASE_URL 또는 SUPABASE_ANON_KEY 미설정");
   const auth = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data, error } = await auth.auth.signInWithPassword({ email, password });
-  if (error || !data.user) return null;
+  if (error || !data.user) return fail(`Supabase Auth 거절 (${error?.code ?? error?.status ?? "no user"})`);
   // Supabase 토큰은 쓰지 않는다(자체 HttpOnly 세션 발급). 즉시 폐기.
   await auth.auth.signOut().catch(() => undefined);
   const staff = must(
     await db().from("ic_staff").select("name, role, active").eq("user_id", data.user.id).maybeSingle(),
   );
-  if (!staff || !staff.active) return null;
+  if (!staff) return fail("Supabase Auth 계정은 맞지만 ic_staff에 등록되지 않음");
+  if (!staff.active) return fail("ic_staff 계정이 비활성(active=false)");
   return { id: data.user.id, name: staff.name as string, role: staff.role as "admin" | "counselor" | "viewer" };
 }

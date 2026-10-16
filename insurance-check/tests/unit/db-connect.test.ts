@@ -117,3 +117,24 @@ describe("lead save records consent and dedupes by key (demo store)", () => {
     expect(row.marketingConsentAt).not.toBeNull();
   });
 });
+
+describe("supabase-js with new-format keys (네트워크 없이 요청 헤더만 확인)", () => {
+  it("sends an sb_secret_ key in the apikey header to the REST API", async () => {
+    const { createClient } = await import("@supabase/supabase-js");
+    const seen: { url: string; apikey: string | null }[] = [];
+    const fakeFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const h = new Headers(init?.headers);
+      seen.push({ url: String(input), apikey: h.get("apikey") });
+      return new Response("[]", { status: 200, headers: { "content-type": "application/json" } });
+    };
+    const fakeKey = "sb_secret_unit_test_only_not_a_real_key";
+    const client = createClient("https://example.supabase.co", fakeKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: fakeFetch as typeof fetch },
+    });
+    const res = await client.from("ic_leads").select("id").limit(0);
+    expect(res.error).toBeNull();
+    expect(seen[0].url).toContain("/rest/v1/ic_leads");
+    expect(seen[0].apikey).toBe(fakeKey);
+  });
+});
