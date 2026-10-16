@@ -79,6 +79,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
           <dl className="mt-2 divide-y divide-navy-100">
             <Item label="개인정보(필수)">동의 · {lead.privacyConsentVersion}</Item>
             <Item label="광고성 정보(선택)">{lead.marketingConsent ? "동의" : "미동의/철회"}</Item>
+            <Item label="제3자 제공">{lead.thirdPartyConsent ? "동의" : "해당 없음/미동의"}</Item>
             <Item label="보장 분석(별도)">
               {lead.coverageConsent ? (
                 <>

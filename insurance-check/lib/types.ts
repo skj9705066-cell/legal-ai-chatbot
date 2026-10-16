@@ -178,6 +178,7 @@ export const FUNNEL_EVENTS = [
   "hero_cta_click",
   "stats_cta_click",
   "scenario_card_click",
+  "case_cta_click",
   "check_type_select",
   "form_view",
   "form_start",

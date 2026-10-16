@@ -14,8 +14,9 @@ async function submitLead(page: Page, phone: string, utm = "") {
   await expect(page.locator("#apply-name")).toBeFocused();
   await page.fill("#apply-name", "테스트");
   await page.fill("#apply-phone", phone);
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await expect(page.getByRole("definition").filter({ hasText: "숨은·만기·휴면보험금" })).toBeVisible();
+  // 2단계 한 화면: 고른 유형 표시 + 이름·연락처 + 동의 + 신청 (유형 재선택·확인 화면 없음)
+  await expect(page.getByTestId("apply-picked-type")).toContainText("숨은·만기보험금");
+  await expect(page.getByRole("button", { name: "다음", exact: true })).toHaveCount(0);
   // 선택 동의(마케팅)는 기본 해제 상태이고, 하지 않아도 신청된다
   await expect(page.locator("#apply-marketing")).not.toBeChecked();
   await page.locator("#apply-privacy").check();
@@ -24,6 +25,8 @@ async function submitLead(page: Page, phone: string, utm = "") {
   await expect(page).toHaveURL(/\/apply\/complete$/);
   await expect(page.getByRole("heading", { name: "무료 점검 상담 신청이 접수되었습니다." })).toBeVisible();
   await expect(page.getByTestId("contact-info")).toBeVisible();
+  // 데모에서는 실제 접수가 아님을 완료 화면에 명확히 표시
+  await expect(page.getByTestId("demo-receipt-note")).toContainText("실제 상담 신청으로 접수되지 않았으며");
   const refNo = (await page.locator("strong.font-mono").first().textContent())!.trim();
   return { events, refNo };
 }
@@ -69,7 +72,6 @@ test("a failed save never shows the completion screen", async ({ page }) => {
   await page.getByTestId("story-hospital").click();
   await page.fill("#apply-name", "테스트");
   await page.fill("#apply-phone", "010-9000-0009");
-  await page.getByRole("button", { name: "다음", exact: true }).click();
   await page.locator("#apply-privacy").check();
   await page.waitForTimeout(2100);
   await page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click();

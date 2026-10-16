@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, Loader2, Lock, PencilLine } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2, Lock } from "lucide-react";
 import type { PublicConfig } from "@/lib/config";
 import { SERVICE_TYPES, type ServiceType } from "@/lib/types";
 import { SERVICE_CONTENT } from "@/lib/content";
@@ -21,13 +21,18 @@ import { useApply } from "./ApplyContext";
 type Field = "serviceType" | "name" | "phone" | "privacyConsent" | "thirdPartyConsent";
 
 /**
- * 초기 신청은 최소 정보만: 점검 유형 → 이름·연락처 → 동의. (희망 시간·메모는 상담 때 확인)
- * 한 화면에 한 가지 질문만, 각 단계는 자기 항목만 검증하고 넘어간다.
+ * 초기 신청은 최소 정보만, 2단계: 점검 유형 → 이름·연락처 + 필수 동의 + 신청.
+ * 랜딩 카드·CTA에서 유형을 이미 골랐으면 1단계를 건너뛰어 한 화면에서 바로 신청한다(유형은 '변경'으로만 수정).
+ * 희망 시간·메모는 상담 때 확인. 보장 분석 상담은 신청 완료 후 별도 화면에서 선택 동의.
  */
 const STEPS: { label: string; title: string; description?: string; fields: Field[] }[] = [
   { label: "점검 유형", title: "점검 유형을 선택해 주세요", fields: ["serviceType"] },
-  { label: "연락처", title: "연락받으실 분을 알려주세요", description: "남겨주신 번호로 담당자가 연락드려요.", fields: ["name", "phone"] },
-  { label: "동의·확인", title: "마지막으로 확인해 주세요", fields: ["privacyConsent", "thirdPartyConsent"] },
+  {
+    label: "연락처·동의",
+    title: "연락받으실 분을 알려주세요",
+    description: "남겨주신 번호로 담당자가 연락드려요.",
+    fields: ["name", "phone", "privacyConsent", "thirdPartyConsent"],
+  },
 ];
 
 const FIELD_DOM_ID: Record<Field, string> = {
@@ -234,7 +239,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
           </span>
           <span className="text-navy-600">{current.label}</span>
         </p>
-        <ol className="mt-3 grid grid-cols-3 gap-1.5" aria-label="신청 진행 단계">
+        <ol className="mt-3 grid grid-cols-2 gap-1.5" aria-label="신청 진행 단계">
           {STEPS.map((s, i) => (
             <li key={s.label} aria-current={i === step ? "step" : undefined}>
               <span className={cn("block h-1.5 rounded-full transition-colors duration-300", i <= step ? "bg-blue" : "bg-navy-100")} />
@@ -382,36 +387,8 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
               />
               <FieldError id="apply-phone-error">{errors.phone}</FieldError>
             </div>
-          </div>
-        )}
 
-        {step === 2 && (
-          <div className="space-y-6">
-            <dl className="divide-y divide-navy-100 rounded-2xl bg-white px-5 ring-1 ring-navy-100 sm:bg-navy-50 sm:ring-0">
-              {[
-                { label: "점검 유형", value: serviceType ? SERVICE_CONTENT[serviceType].cardTitle : "-", go: 0 },
-                { label: "이름", value: name || "-", go: 1 },
-                { label: "연락처", value: phone || "-", go: 1 },
-              ].map((r) => (
-                <div key={r.label} className="flex items-center gap-3 py-4">
-                  <div className="min-w-0 flex-1">
-                    <dt className="text-[14px] text-navy-600">{r.label}</dt>
-                    <dd className="mt-0.5 text-[17px] font-semibold text-ink">{r.value}</dd>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => goTo(r.go)}
-                    className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-[15px] font-semibold text-blue-700 hover:bg-white"
-                    aria-label={`${r.label} 수정`}
-                  >
-                    <PencilLine className="h-4 w-4" aria-hidden="true" />
-                    수정
-                  </button>
-                </div>
-              ))}
-            </dl>
-
-            <div className="space-y-3">
+            <div className="space-y-3 pt-1" data-testid="apply-consents">
               <ConsentBox
                 id="apply-privacy"
                 required
@@ -475,7 +452,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
               이전
             </Button>
           )}
-          <Button type="submit" size="lg" className="min-w-0 flex-1" aria-disabled={busy || disabled}>
+          <Button type="submit" size="lg" className={cn("min-w-0", isLast ? "w-full sm:w-auto sm:flex-1" : "flex-1")} aria-disabled={busy || disabled}>
             {status === "submitting" ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />

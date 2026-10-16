@@ -34,7 +34,6 @@ test.describe("admin", () => {
     await page.getByTestId("story-hospital").click();
     await page.fill("#apply-name", "저장확인");
     await page.fill("#apply-phone", "010-9000-0077");
-    await page.getByRole("button", { name: "다음", exact: true }).click();
     await page.locator("#apply-privacy").check();
     await page.waitForTimeout(2100);
     await page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click();
@@ -48,6 +47,13 @@ test.describe("admin", () => {
     await expect(saved).toContainText("e2e_crm");
     await expect(saved).toContainText("save_check");
     await expect(saved).toContainText("010-****-0077"); // 목록에서도 연락처 마스킹
+    await expect(saved).toContainText("미청구 보험금"); // 고른 점검 유형이 그대로 저장
+    // 상세: 필수·선택 동의가 구분되어 기록된다(선택 동의는 하지 않음)
+    await saved.getByRole("link", { name: refNo }).click();
+    await expect(page.getByText("개인정보(필수)")).toBeVisible();
+    await expect(page.locator("dd").filter({ hasText: /^동의 · claim-/ })).toHaveCount(1);
+    await expect(page.locator("div").filter({ has: page.getByText("광고성 정보(선택)", { exact: true }) }).last()).toContainText("미동의/철회");
+    await expect(page.locator("div").filter({ has: page.getByText("제3자 제공", { exact: true }) }).last()).toContainText("해당 없음/미동의");
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "상담 DB" })).toBeVisible();
     await expect(page.getByRole("link", { name: "CSV 내보내기" })).toBeVisible();
