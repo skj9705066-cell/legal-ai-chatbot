@@ -16,12 +16,15 @@ export function Carousel({
   slides,
   autoplayMs = 0,
   slideClassName,
+  itemLabel = "대화 카드",
 }: {
   id: string;
   label: string;
   slides: { key: string; label: string; node: React.ReactNode }[];
   autoplayMs?: number;
   slideClassName?: (i: number) => string;
+  /** 이전·다음 버튼의 보조기기용 이름에 쓰는 카드 이름 */
+  itemLabel?: string;
 }) {
   const track = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
@@ -144,7 +147,7 @@ export function Carousel({
             <button
               type="button"
               aria-controls={id}
-              aria-label="대화 카드 왼쪽으로 넘기기"
+              aria-label={`${itemLabel} 왼쪽으로 넘기기`}
               disabled={edges.start}
               onClick={() => go(Math.max(0, index - 1))}
               className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-navy shadow-card ring-1 ring-navy-100 transition hover:bg-navy-50 disabled:opacity-40"
@@ -154,7 +157,7 @@ export function Carousel({
             <button
               type="button"
               aria-controls={id}
-              aria-label="대화 카드 오른쪽으로 넘기기"
+              aria-label={`${itemLabel} 오른쪽으로 넘기기`}
               disabled={edges.end}
               onClick={() => go(index + 1)}
               className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-navy shadow-card ring-1 ring-navy-100 transition hover:bg-navy-50 disabled:opacity-40"

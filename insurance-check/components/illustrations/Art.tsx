@@ -249,10 +249,23 @@ function Floor({ p, cx, cy, rx, ry = 7 }: { p: string; cx: number; cy: number; r
 
 /* ───────────────────────── 공감 카드 장면 (240×150) ───────────────────────── */
 
-export type CaseArtKind = "receipt" | "policy" | "medical";
+export type CaseArtKind = "receipt" | "policy" | "medical" | "smallbills" | "diagnosis" | "dormant";
 
-export function CaseArt({ kind, className }: { kind: CaseArtKind; className?: string }) {
-  const p = `case-${kind}`;
+/** 시계 (원점 기준 44×46) — 지급 시기가 지난 보험금 */
+function Clock({ p }: { p: string }) {
+  return (
+    <g>
+      <circle cx="22" cy="25" r="21" fill={C.blue700} />
+      <circle cx="22" cy="22" r="21" fill={`url(#${p}-blue)`} />
+      <circle cx="22" cy="22" r="15" fill="#fff" />
+      <path d="M22 13v9l6 4" stroke={C.navy} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <circle cx="22" cy="22" r="2" fill={C.navy} />
+    </g>
+  );
+}
+
+export function CaseArt({ kind, className, idPrefix = "case" }: { kind: CaseArtKind; className?: string; idPrefix?: string }) {
+  const p = `${idPrefix}-${kind}`;
   return (
     <svg viewBox="0 0 240 150" className={className} aria-hidden="true" focusable="false">
       <Defs p={p} />
@@ -297,6 +310,51 @@ export function CaseArt({ kind, className }: { kind: CaseArtKind; className?: st
           <Sparkle x={196} y={40} r={6} />
           <Sparkle x={42} y={42} r={4} color={C.mint} />
           <Sparkle x={210} y={112} r={3.5} color={C.blue400} />
+        </>
+      )}
+      {kind === "smallbills" && (
+        <>
+          {/* 작은 영수증 여러 장 + 아직 체크하지 않은 항목 */}
+          <Floor p={p} cx={118} cy={136} rx={84} />
+          <g transform="translate(40 34) scale(0.72) rotate(-14 35 52)">
+            <Receipt p={p} cross={false} />
+          </g>
+          <g transform="translate(70 22) scale(0.78) rotate(-3 35 52)">
+            <Receipt p={p} />
+          </g>
+          <g transform="translate(132 50) rotate(6 44 40)">
+            <Checklist p={p} checked={[true, false, false]} />
+          </g>
+          <Sparkle x={200} y={34} r={6} />
+          <Sparkle x={36} y={36} r={4} color={C.mint} />
+        </>
+      )}
+      {kind === "diagnosis" && (
+        <>
+          {/* 진단 서류를 돋보기로 확인 */}
+          <Floor p={p} cx={118} cy={136} rx={84} />
+          <g transform="translate(64 20) rotate(-5 39 51)">
+            <MedicalDoc p={p} />
+          </g>
+          <g transform="translate(130 58) scale(1.15)">
+            <Magnifier p={p} />
+          </g>
+          <Sparkle x={198} y={38} r={6} />
+          <Sparkle x={44} y={46} r={4} color={C.mint} />
+        </>
+      )}
+      {kind === "dormant" && (
+        <>
+          {/* 보험증권 + 지난 시점(시계) */}
+          <Floor p={p} cx={118} cy={136} rx={84} />
+          <g transform="translate(58 18) rotate(-7 40 52)">
+            <Policy p={p} />
+          </g>
+          <g transform="translate(140 62) scale(1.2)">
+            <Clock p={p} />
+          </g>
+          <Sparkle x={200} y={36} r={6} />
+          <Sparkle x={40} y={44} r={4} color={C.mint} />
         </>
       )}
     </svg>
