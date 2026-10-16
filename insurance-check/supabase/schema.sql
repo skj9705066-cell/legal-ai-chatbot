@@ -3,9 +3,17 @@
 -- 접근 모델
 --   * 모든 ic_* 테이블은 RLS ON + anon/authenticated 정책 "없음" = 브라우저(공개 키)에서 읽기·쓰기 불가.
 --   * 서버(Next.js 라우트)만 service role 키로 접근한다. service role 키는 서버 환경변수에만 둔다.
+--   * service_role에는 앱이 실제로 쓰는 권한만 준다(감사로그는 추가·조회만, 신청은 삭제 불가 — 파기는 익명화).
 --   * ⚠️ `using (true)` 같은 역할 제한 없는 정책을 추가하지 말 것 — anon 전체 공개 구멍이 된다.
+--
+-- 실행
+--   * 파일 전체를 한 번에 실행한다(begin~commit 한 트랜잭션 — 중간에 오류가 나면 아무것도 반영되지 않음).
+--   * 여러 번 실행해도 안전하다(이미 있으면 건너뜀). 테이블·데이터를 지우는 명령은 없다.
+--   * Supabase의 'Enable automatic RLS'·'Automatically expose new tables' 설정이 켜져 있든 꺼져 있든
+--     같은 결과가 되도록 RLS와 권한을 이 파일에서 명시적으로 지정한다.
+--   * gen_random_uuid()는 PostgreSQL 13+ 기본 함수라 pgcrypto 확장이 필요 없다.
 
-create extension if not exists pgcrypto;
+begin;
 
 -- 관리자/상담사 (Supabase Auth 사용자와 1:1)
 create table if not exists public.ic_staff (
@@ -136,22 +144,101 @@ alter table public.ic_reviews          enable row level security;
 -- 정책 없음 = anon/authenticated 거부. 혹시 남아 있는 공개 권한도 회수.
 revoke all on public.ic_staff, public.ic_leads, public.ic_audit_logs, public.ic_events, public.ic_privacy_requests, public.ic_reviews from anon, authenticated;
 
--- 감사로그는 추가만 가능하도록 (service role이라도 실수로 수정·삭제하지 않게)
-create or replace function public.ic_audit_immutable() returns trigger language plpgsql as $$
+-- service_role(서버)에는 앱이 쓰는 권한만 준다.
+-- 'Automatically expose new tables'가 꺼진 프로젝트에서는 기본 권한이 없어 서버가 막히므로 명시적으로 부여한다.
+--   신청·개인정보 요청: 삭제 권한 없음(파기는 익명화 update) / 감사로그·이벤트: 추가·조회만 / 직원: 조회만(등록은 SQL Editor에서)
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    revoke all on public.ic_staff, public.ic_leads, public.ic_audit_logs, public.ic_events, public.ic_privacy_requests, public.ic_reviews from service_role;
+    grant select                         on public.ic_staff            to service_role;
+    grant select, insert, update         on public.ic_leads            to service_role;
+    grant select, insert, update         on public.ic_privacy_requests to service_role;
+    grant select, insert, update, delete on public.ic_reviews          to service_role;
+    grant select, insert                 on public.ic_events           to service_role;
+    grant select, insert                 on public.ic_audit_logs       to service_role;
+  else
+    raise notice 'service_role 역할이 없어 서버 권한 부여를 건너뜀 (Supabase가 아닌 DB)';
+  end if;
+end $$;
+
+-- 자동 번호(identity 시퀀스)에도 공개 역할 권한을 남기지 않는다
+do $$
+declare s text;
+begin
+  foreach s in array array[pg_get_serial_sequence('public.ic_audit_logs', 'id'), pg_get_serial_sequence('public.ic_events', 'id')] loop
+    execute format('revoke all on sequence %s from anon, authenticated', s);
+  end loop;
+end $$;
+
+-- 감사로그는 추가만 가능하도록 (service role이라도 실수로 수정·삭제·비우기 하지 않게)
+create or replace function public.ic_audit_immutable() returns trigger language plpgsql set search_path = '' as $$
 begin
   raise exception 'ic_audit_logs is append-only';
 end $$;
-drop trigger if exists ic_audit_no_update on public.ic_audit_logs;
+revoke execute on function public.ic_audit_immutable() from public, anon, authenticated;
+drop trigger if exists ic_audit_no_update on public.ic_audit_logs;  -- 이 파일이 만드는 트리거를 다시 만들기 위함(데이터 무관)
 create trigger ic_audit_no_update before update or delete on public.ic_audit_logs
   for each row execute function public.ic_audit_immutable();
+-- 행 단위 트리거는 TRUNCATE(전체 비우기)를 막지 못하므로 문장 단위 트리거를 따로 둔다
+drop trigger if exists ic_audit_no_truncate on public.ic_audit_logs;
+create trigger ic_audit_no_truncate before truncate on public.ic_audit_logs
+  for each statement execute function public.ic_audit_immutable();
 
--- 검증 쿼리: 아래 결과가 0행이어야 한다 (ic_* 테이블에 anon/authenticated 정책이 없음)
+-- 데이터 정합성 규칙 — 앱이 이미 지키는 규칙을 DB에서도 강제한다. 이미 있으면 건너뜀.
+do $$
+declare c record;
+begin
+  for c in
+    select * from (values
+      -- 보장 분석: 동의했다면 동의 시각·문구 버전·연락 방법이 반드시 있어야 한다
+      ('ic_leads', 'ic_leads_coverage_consent_record',
+       $c$check (not coverage_consent or (coverage_consent_at is not null and coverage_consent_version is not null and coverage_contact_method is not null))$c$),
+      -- 보장 분석: 동의 중이면 영업 진행 상태여야 한다(반대 방향은 위의 ic_leads_coverage_requires_consent)
+      ('ic_leads', 'ic_leads_coverage_consent_status',
+       $c$check (not coverage_consent or coverage_status not in ('not_consented', 'withdrawn'))$c$),
+      -- 삭제 요청·처리 중인 고객은 광고·보장 분석 연락 대상에서 제외된 상태여야 한다
+      ('ic_leads', 'ic_leads_delete_request_no_contact',
+       $c$check (privacy_status not in ('delete_requested', 'processing') or (not marketing_consent and not coverage_consent))$c$),
+      -- 파기(익명화) 완료 행에는 연락처·메모·동의가 남아 있으면 안 된다
+      ('ic_leads', 'ic_leads_deleted_is_scrubbed',
+       $c$check (name <> '(삭제됨)' or (phone_enc = '' and phone_hash = '' and memo = '' and notes = '' and not marketing_consent and not coverage_consent and privacy_status = 'completed'))$c$),
+      -- 처리 완료·반려된 개인정보 요청에는 처리자와 처리 시각이 있어야 한다
+      ('ic_privacy_requests', 'ic_privacy_handled_record',
+       $c$check (status not in ('completed', 'rejected') or (handled_by is not null and handled_at is not null))$c$),
+      -- 삭제 요청이 완료되면 요청 기록의 이름·연락처 해시도 지운다
+      ('ic_privacy_requests', 'ic_privacy_delete_completed_scrubbed',
+       $c$check (type <> 'delete_all' or status <> 'completed' or (name = '(삭제됨)' and phone_hash = ''))$c$),
+      -- 후기: 게시 동의에는 동의 시각이 있어야 한다
+      ('ic_reviews', 'ic_reviews_consent_has_time',
+       $c$check (not use_consent or use_consent_at is not null)$c$),
+      -- 후기: 공개(승인)에는 승인자와 승인 시각이 있어야 한다
+      ('ic_reviews', 'ic_reviews_approved_has_reviewer',
+       $c$check (status <> 'approved' or (reviewed_by is not null and reviewed_at is not null))$c$),
+      -- 후기 이미지: 형식·본문은 함께 있거나 함께 없고, 이미지가 있으면 has_image가 켜져 있어야 한다
+      ('ic_reviews', 'ic_reviews_image_fields_paired',
+       $c$check ((image_base64 is null) = (image_mime is null) and (image_base64 is null or has_image))$c$),
+      -- 후기: 이미지 후기는 이미지가 실제로 저장된 뒤에만 공개할 수 있다
+      ('ic_reviews', 'ic_reviews_approved_image_present',
+       $c$check (status <> 'approved' or not has_image or image_base64 is not null)$c$)
+    ) as t(tbl, name, def)
+  loop
+    if not exists (select 1 from pg_constraint where conname = c.name and conrelid = format('public.%I', c.tbl)::regclass) then
+      execute format('alter table public.%I add constraint %I %s', c.tbl, c.name, c.def);
+    end if;
+  end loop;
+end $$;
+
+commit;
+
+-- 실행 후 점검: supabase/verify.sql (읽기 전용). 최소 확인 — 아래 결과가 0행이어야 한다(ic_* 테이블에 정책 없음)
 -- select * from pg_policies where tablename like 'ic_%';
 
 -- 최초 관리자 등록 (Auth에서 사용자 생성 후):
 -- insert into public.ic_staff (user_id, name, role) values ('<auth.users.id>', '홍관리', 'admin');
 
--- 보유기간 경과 데이터 파기 예시 (운영 정책 확정 후 pg_cron 등으로 주기 실행):
+-- 보유기간 경과 데이터 파기 예시 (운영 정책 확정 후 pg_cron 등으로 주기 실행). 위 정합성 규칙을 모두 만족하는 형태:
 -- update public.ic_leads set name='(삭제됨)', phone_masked='***-****-****', phone_enc='', phone_hash='', memo='', notes='',
---   privacy_status='completed', coverage_consent=false, coverage_status='withdrawn'
+--   marketing_consent=false, coverage_consent=false, coverage_status='withdrawn', privacy_status='completed',
+--   assignee=null, next_contact_at=null, updated_at=now()
 --   where created_at < now() - interval '1 year' and name <> '(삭제됨)';
