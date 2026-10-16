@@ -61,6 +61,8 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
+  // 접수 잠김 상태에서 신청 버튼을 누른 경우의 안내(입력값은 전송하지 않는다)
+  const [lockedNotice, setLockedNotice] = useState(false);
   const mountedAt = useRef(0);
   const idemKey = useRef("");
   // 전송 중 잠금. busy(state)는 다음 렌더링 전까지 반영되지 않아 연타 시 요청이 여러 번 나갈 수 있으므로 ref로 즉시 막는다
@@ -69,6 +71,8 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const stepChanged = useRef(false);
 
+  // 접수 잠김: 실제 전송(submit)만 막는다. 입력·선택·단계 이동 같은 화면 조작에는 절대 연결하지 않는다
+  // (잠김 상태로 필드를 disabled 처리했다가 Preview에서 유형 카드·이름·전화번호가 눌리지 않는 문제가 두 번 있었다)
   const disabled = !config.submissionEnabled;
   const busy = status !== "idle";
   const needThirdParty = requiresThirdPartyConsent(config.operator.thirdPartyProvision);
@@ -157,8 +161,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   }
 
   async function submit() {
-    if (disabled) return; // 접수 잠김: 전송하지 않는다
-    track("form_submit_attempt", { serviceType: serviceType || null });
+    if (!disabled) track("form_submit_attempt", { serviceType: serviceType || null });
     const v = validate();
     if (!v.ok) {
       setErrors(v.errors);
@@ -168,6 +171,11 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
         if (s !== step) goTo(s);
         else document.getElementById(FIELD_DOM_ID[first])?.focus();
       }
+      return;
+    }
+    if (disabled) {
+      // 입력은 정상이지만 접수가 열리지 않은 환경(운영 준비 중·미승인 Preview): 전송하지 않고 안내만 한다
+      setLockedNotice(true);
       return;
     }
     if (inFlight.current) return;
@@ -215,9 +223,9 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
-    // 접수가 잠겨 있어도 유형 선택·단계 이동은 된다. 실제 전송만 막는다(서버도 잠김 상태면 503으로 거절)
+    // 접수가 잠겨 있어도 단계 이동·입력 검증은 그대로. 실제 전송 여부는 submit()이 판단한다(서버도 잠김 상태면 503으로 거절)
     if (step < STEPS.length - 1) next();
-    else if (!disabled) void submit();
+    else void submit();
   }
 
   const current = STEPS[step];
@@ -289,7 +297,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
         {serverError && <Alert tone="error" role="alert" className="mt-6" title={serverError} />}
       </div>
 
-      {/* 접수 잠금(disabled)은 연락처 입력·신청 버튼에만 건다. 유형 선택과 다음·이전은 잠금과 무관하게 동작해야 한다 */}
+      {/* 전송 중(busy)에만 잠근다. 접수 잠김(disabled)은 여기에 연결하지 않는다 */}
       <fieldset key={step} disabled={busy} className="step-in mt-7">
         <legend className="sr-only">{current.title}</legend>
 
@@ -359,8 +367,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
                 </button>
               </div>
             )}
-            {/* 접수 잠김: 연락처·동의 입력을 받지 않는다(유형 '변경'·'이전'은 위·아래에서 그대로 동작) */}
-            <fieldset disabled={disabled} className="min-w-0 space-y-6" data-testid="apply-contact-fields">
+            <div className="space-y-6" data-testid="apply-contact-fields">
               <div>
                 <Label htmlFor="apply-name" required>
                   이름
@@ -446,7 +453,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
                 <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 선택 동의는 하지 않아도 신청할 수 있어요. 보장 분석 상담은 신청이 끝난 뒤 원하시는 경우에만 따로 동의받습니다.
               </p>
-            </fieldset>
+            </div>
           </div>
         )}
 
@@ -455,6 +462,14 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
           <label htmlFor="apply-website">웹사이트</label>
           <input id="apply-website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
         </div>
+
+        {isLast && disabled && lockedNotice && (
+          <div className="mt-8" data-testid="apply-locked-notice">
+            <Alert tone="caution" role="alert" title="지금은 신청을 접수할 수 없어요">
+              입력하신 정보는 전송되지 않았어요. 운영 정보와 승인 절차가 끝나면 접수가 시작됩니다.
+            </Alert>
+          </div>
+        )}
 
         {/* 마지막 단계는 신청 버튼 문구가 길어 좁은 화면에서 세로로 쌓는다(신청 버튼이 위·전체 너비) */}
         <div className={cn("mt-9 flex gap-2.5", isLast && "flex-col-reverse sm:flex-row")}>
@@ -474,9 +489,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
             type="submit"
             size="lg"
             className={cn("min-w-0", isLast ? "w-full sm:w-auto sm:flex-1" : "flex-1")}
-            // 잠김일 때 막는 것은 마지막 '신청하기'뿐. 1단계 '다음'은 항상 누를 수 있다
-            disabled={isLast && disabled}
-            aria-disabled={busy || (isLast && disabled)}
+            aria-disabled={busy}
           >
             {status === "submitting" ? (
               <>

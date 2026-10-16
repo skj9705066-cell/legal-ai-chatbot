@@ -38,7 +38,6 @@ async function openFormFromHero(page: Page) {
 
 test("C·D: 세 유형 카드 모두 눌러서 선택되고, 다음·이전·유형 변경 시 입력값이 유지된다 @preview", async ({ page, isMobile }) => {
   await openFormFromHero(page);
-  test.skip(await isLocked(page), "접수 잠김 화면은 연락처 입력이 막혀 있어 아래 '잠김' 테스트가 확인한다");
   const next = page.locator("#apply").getByRole("button", { name: "다음", exact: true });
   for (const t of TYPES) {
     await pickCard(page, t.pick, isMobile);
@@ -63,7 +62,65 @@ test("C·D: 세 유형 카드 모두 눌러서 선택되고, 다음·이전·유
   await expect(page.locator("#apply-type-hidden")).toBeChecked();
 });
 
-test("잠김: 접수가 잠겨 있어도 세 유형 카드는 선택되고 다음으로 넘어가며, 연락처 입력·신청만 막힌다 @preview", async ({ page, isMobile }) => {
+/** 사용자처럼 칸을 누르고(모바일은 탭) 포커스가 갔는지 확인한 뒤 키보드로 입력한다(fill로 값을 밀어 넣지 않는다) */
+async function typeInto(page: Page, selector: string, text: string, isMobile: boolean) {
+  const el = page.locator(selector);
+  if (isMobile) await el.tap();
+  else await el.click();
+  await expect(el).toBeFocused();
+  await page.keyboard.type(text);
+}
+
+/** 동의 체크: 보이는 문구(라벨)를 누른다 */
+async function tapConsent(page: Page, id: string, isMobile: boolean) {
+  const label = page.locator(`label[for="${id}"]`);
+  if (isMobile) await label.tap();
+  else await label.click();
+}
+
+test("입력: 이름·전화번호 칸을 누르면 포커스되고 실제 타이핑·수정이 되며, 필수·선택 동의는 따로 체크된다 @preview", async ({ page, isMobile }) => {
+  const posts: string[] = [];
+  page.on("request", (r) => r.url().endsWith("/api/leads") && r.method() === "POST" && posts.push(r.url()));
+  await page.goto("/#apply");
+  await pickCard(page, "병원비·수술비", isMobile);
+  await page.locator("#apply").getByRole("button", { name: "다음", exact: true }).click();
+  await expect(page.locator("#apply").getByText(/2단계\s*\/\s*2/)).toBeVisible();
+
+  for (const id of ["#apply-name", "#apply-phone", "#apply-privacy", "#apply-marketing"]) {
+    await expect(page.locator(id)).toBeEnabled();
+    await expect(page.locator(id)).toBeEditable();
+  }
+  // 이름: 입력 → 일부 지우고 → 고쳐 쓰기
+  await typeInto(page, "#apply-name", "흐름검사", isMobile);
+  await expect(page.locator("#apply-name")).toHaveValue("흐름검사");
+  await page.keyboard.press("Backspace");
+  await page.keyboard.press("Backspace");
+  await page.keyboard.type("확인");
+  await expect(page.locator("#apply-name")).toHaveValue("흐름확인");
+  // 전화번호: 숫자만 쳐도 하이픈 자동 → 끝자리 수정
+  await typeInto(page, "#apply-phone", "01000000392", isMobile);
+  await expect(page.locator("#apply-phone")).toHaveValue("010-0000-0392");
+  await page.keyboard.press("Backspace");
+  await page.keyboard.type("3");
+  await expect(page.locator("#apply-phone")).toHaveValue("010-0000-0393");
+  // 필수 동의와 선택(광고성 정보) 동의는 서로 독립
+  await tapConsent(page, "apply-privacy", isMobile);
+  await expect(page.locator("#apply-privacy")).toBeChecked();
+  await expect(page.locator("#apply-marketing")).not.toBeChecked();
+  await tapConsent(page, "apply-marketing", isMobile);
+  await expect(page.locator("#apply-marketing")).toBeChecked();
+  await tapConsent(page, "apply-privacy", isMobile);
+  await expect(page.locator("#apply-privacy")).not.toBeChecked();
+  await expect(page.locator("#apply-marketing")).toBeChecked();
+  // 이전 → 다음으로 돌아와도 입력값 유지
+  await page.locator("#apply").getByRole("button", { name: "이전", exact: true }).click();
+  await page.locator("#apply").getByRole("button", { name: "다음", exact: true }).click();
+  await expect(page.locator("#apply-name")).toHaveValue("흐름확인");
+  await expect(page.locator("#apply-phone")).toHaveValue("010-0000-0393");
+  expect(posts).toHaveLength(0);
+});
+
+test("잠김: 접수가 잠겨 있어도 유형 선택·입력·동의는 모두 되고, 신청 버튼은 전송 없이 접수 불가 안내만 띄운다 @preview", async ({ page, isMobile }) => {
   const posts: string[] = [];
   page.on("request", (r) => r.url().endsWith("/api/leads") && r.method() === "POST" && posts.push(r.url()));
   await page.goto("/#apply");
@@ -80,11 +137,27 @@ test("잠김: 접수가 잠겨 있어도 세 유형 카드는 선택되고 다�
   await next.click();
   await expect(page.locator("#apply").getByText(/2단계\s*\/\s*2/)).toBeVisible();
   await expect(page.getByTestId("apply-picked-type")).toContainText("과오납·해지환급금");
-  // 실제 접수에 필요한 입력과 신청 버튼은 잠김
-  await expect(page.locator("#apply-name")).toBeDisabled();
-  await expect(page.locator("#apply-phone")).toBeDisabled();
-  await expect(page.locator("#apply-privacy")).toBeDisabled();
-  await expect(page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true })).toBeDisabled();
+
+  // 입력 검증은 잠김과 무관하게 동작
+  const submit = page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true });
+  await expect(submit).toBeEnabled();
+  await submit.click();
+  await expect(page.getByText("이름을 입력해 주세요.")).toBeVisible();
+  await expect(page.getByTestId("apply-locked-notice")).toHaveCount(0);
+
+  await typeInto(page, "#apply-name", "흐름검사", isMobile);
+  await typeInto(page, "#apply-phone", "01000000394", isMobile);
+  await tapConsent(page, "apply-privacy", isMobile);
+  await submit.click();
+  // 올바르게 입력해도 전송하지 않고 접수 불가 안내
+  await expect(page.getByTestId("apply-locked-notice")).toBeVisible();
+  await expect(page.getByTestId("apply-locked-notice")).toContainText("지금은 신청을 접수할 수 없어요");
+  await page.waitForTimeout(500);
+  expect(posts).toHaveLength(0);
+  await expect(page).not.toHaveURL(/\/apply\/complete/);
+  await expect(page.locator("#apply-name")).toHaveValue("흐름검사");
+  await expect(page.locator("#apply-phone")).toHaveValue("010-0000-0394");
+
   // 이전·변경으로 유형 단계에 돌아가 다시 고를 수 있다
   await page.locator("#apply").getByRole("button", { name: "이전", exact: true }).click();
   await expect(page.locator("#apply-type-refund")).toBeChecked();
@@ -166,7 +239,6 @@ test("오류: 필수 입력 누락 · 잘못된 연락처 · 동의 누락은 �
   const posts: string[] = [];
   page.on("request", (r) => r.url().endsWith("/api/leads") && r.method() === "POST" && posts.push(r.url()));
   await page.goto("/#apply");
-  test.skip(await isLocked(page), "접수 잠김 화면은 연락처 입력이 막혀 있어 아래 '잠김' 테스트가 확인한다");
   const next = page.locator("#apply").getByRole("button", { name: "다음", exact: true });
   await next.click();
   await expect(page.getByText("점검 유형을 선택해 주세요.")).toBeVisible();
