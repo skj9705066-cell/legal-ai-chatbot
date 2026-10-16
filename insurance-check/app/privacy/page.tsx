@@ -74,7 +74,18 @@ export default function PrivacyPage() {
             </ul>
           </section>
           <section>
-            <h2 className="text-[18px] font-bold text-navy">8. 정보주체의 권리와 동의 철회</h2>
+            <h2 className="text-[18px] font-bold text-navy">8. 방문 기록과 광고 성과 측정</h2>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              <li>서비스 개선을 위해 화면 방문·버튼 클릭 같은 이용 기록을 무작위 세션 번호, 광고 유입 정보(UTM), 선택한 점검 유형과 함께 저장합니다. 이름·연락처는 포함하지 않습니다.</li>
+              <li>
+                Google Analytics, Meta 픽셀 등 외부 분석·광고 측정 도구는 운영 중 설정된 경우에만, 방문자가 화면 하단 안내에서 &lsquo;동의&rsquo;를 선택한 뒤에만
+                사용합니다. 이 도구들에는 이름·연락처·건강정보를 보내지 않으며, 신청 완료 여부만 전달합니다.
+              </li>
+              <li>동의하지 않아도 서비스 이용과 신청에는 제한이 없습니다.</li>
+            </ul>
+          </section>
+          <section>
+            <h2 className="text-[18px] font-bold text-navy">9. 정보주체의 권리와 동의 철회</h2>
             <p className="mt-2">
               언제든지 열람·정정·삭제·처리정지 및 동의 철회를 요청할 수 있습니다.{" "}
               <Link href="/privacy/withdraw" className="font-semibold text-blue underline underline-offset-2">
@@ -84,7 +95,7 @@ export default function PrivacyPage() {
             </p>
           </section>
           <section>
-            <h2 className="text-[18px] font-bold text-navy">9. 개인정보 보호책임자</h2>
+            <h2 className="text-[18px] font-bold text-navy">10. 개인정보 보호책임자</h2>
             <p className={cn("mt-2", !o.privacyOfficer && "font-medium text-caution")}>{orSetting(o.privacyOfficer, "개인정보 보호책임자")}</p>
             <p className="mt-1">
               문의: {orSetting(o.contactPhone, "대표 연락처")} · {orSetting(o.contactEmail, "문의 이메일")}

@@ -9,6 +9,8 @@ export interface FunnelRow {
   utmCampaign: string | null;
   visits: number;
   typeSelect: number;
+  /** 신청 폼이 화면에 들어온 세션 */
+  formView: number;
   formStart: number;
   /** 유효 제출 = 서버에 저장된 신청 중 30일 내 중복 제외. 광고 전환은 이 값만 쓴다. */
   validSubmit: number;
@@ -25,6 +27,7 @@ const blank = (key: string, s: string | null, m: string | null, c: string | null
   utmCampaign: c,
   visits: 0,
   typeSelect: 0,
+  formView: 0,
   formStart: 0,
   validSubmit: 0,
   coverageOptIn: 0,
@@ -69,6 +72,7 @@ export async function computeFunnel(days: number): Promise<{ rows: FunnelRow[]; 
       const row = map.get(k)!;
       if (name === "landing_view") row.visits = set.size;
       if (name === "check_type_select") row.typeSelect = set.size;
+      if (name === "form_view") row.formView = set.size;
       if (name === "form_start") row.formStart = set.size;
       if (name === "official_lookup_click") row.officialLookup = set.size;
     }
@@ -86,7 +90,7 @@ export async function computeFunnel(days: number): Promise<{ rows: FunnelRow[]; 
 
   const rows = [...map.values()].sort((a, b) => b.validSubmit - a.validSubmit || b.visits - a.visits);
   const total = rows.reduce((acc, r) => {
-    for (const k of ["visits", "typeSelect", "formStart", "validSubmit", "coverageOptIn", "consulted", "contracted", "officialLookup"] as const) {
+    for (const k of ["visits", "typeSelect", "formView", "formStart", "validSubmit", "coverageOptIn", "consulted", "contracted", "officialLookup"] as const) {
       acc[k] += r[k];
     }
     return acc;

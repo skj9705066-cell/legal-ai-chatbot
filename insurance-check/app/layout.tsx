@@ -42,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           본문 바로가기
         </a>
         {children}
-        <Analytics gaId={config.gaMeasurementId} />
+        <Analytics gaId={config.gaMeasurementId} metaPixelId={config.metaPixelId} />
       </body>
     </html>
   );

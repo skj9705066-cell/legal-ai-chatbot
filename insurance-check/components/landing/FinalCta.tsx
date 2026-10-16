@@ -14,9 +14,7 @@ export function FinalCta() {
             {FINAL_CTA.title}
           </h2>
           <div className="relative mt-7 flex flex-col items-center gap-3">
-            <ApplyCta source="final" target="types" variant="white" size="xl" className="h-[62px] w-full text-[18px] shadow-none sm:w-auto sm:min-w-[340px]">
-              {FINAL_CTA.button}
-            </ApplyCta>
+            <ApplyCta source="final" variant="white" size="xl" className="h-[60px] w-full text-[18px] shadow-none sm:w-auto sm:min-w-[340px]" />
             <p className="text-[14px] text-navy-300">{FINAL_CTA.trust}</p>
           </div>
         </div>

@@ -30,12 +30,12 @@ export function SiteHeader({ demo }: { demo: boolean }) {
               {n.label}
             </Link>
           ))}
-          <Link href="/#services" className={buttonVariants({ size: "sm", className: "ml-3 shadow-none" })}>
+          <Link href="/#apply" className={buttonVariants({ size: "sm", className: "ml-3 shadow-none" })}>
             무료 점검 시작
           </Link>
         </nav>
         <div className="flex items-center gap-1.5 lg:hidden">
-          <Link href="/#services" className={buttonVariants({ size: "sm", className: "h-9 rounded-xl px-3.5 text-[15px] shadow-none" })}>
+          <Link href="/#apply" className={buttonVariants({ size: "sm", className: "h-9 rounded-xl px-3.5 text-[15px] shadow-none" })}>
             무료 점검
           </Link>
           <MobileMenu items={NAV} />

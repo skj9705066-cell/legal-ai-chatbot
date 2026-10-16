@@ -461,36 +461,6 @@ export function MemoryScene({ className }: { className?: string }) {
   );
 }
 
-/* ───────────────────────── 공감 장면 오브젝트 (120×120) ───────────────────────── */
-
-export type ObjectArtKind = "policy" | "receipt" | "calendar";
-
-export function ObjectArt({ kind, className }: { kind: ObjectArtKind; className?: string }) {
-  const p = `obj-${kind}`;
-  return (
-    <svg viewBox="0 0 120 120" className={className} aria-hidden="true" focusable="false">
-      <Defs p={p} />
-      <circle cx="60" cy="60" r="57" fill={`url(#${p}-tile)`} />
-      <Floor p={p} cx={60} cy={106} rx={38} ry={6} />
-      {kind === "policy" && (
-        <g transform="translate(24 10) scale(0.9) rotate(-6 40 52)">
-          <Policy p={p} label={false} />
-        </g>
-      )}
-      {kind === "receipt" && (
-        <g transform="translate(28 8) scale(0.92) rotate(5 35 52)">
-          <Receipt p={p} />
-        </g>
-      )}
-      {kind === "calendar" && (
-        <g transform="translate(20 26) scale(0.95) rotate(-4 42 39)">
-          <Calendar p={p} />
-        </g>
-      )}
-    </svg>
-  );
-}
-
 /* ───────────────────────── 절차 아이콘 (56×56) ───────────────────────── */
 
 export type StepArtKind = "apply" | "guide" | "insurer";

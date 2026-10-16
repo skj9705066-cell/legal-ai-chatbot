@@ -83,7 +83,10 @@ function seed(): DemoState {
       const at = now - Math.floor(rand() * 21 * day);
       ev("landing_view", at, sid, c);
       if (rand() < 0.42) ev("check_type_select", at + 20_000, sid, c, pick(SERVICE_TYPES));
-      if (rand() < 0.2) ev("form_start", at + 40_000, sid, c);
+      if (rand() < 0.2) {
+        ev("form_view", at + 35_000, sid, c);
+        ev("form_start", at + 40_000, sid, c);
+      }
       if (rand() < 0.12) ev("official_lookup_click", at + 30_000, sid, c);
     }
   }
@@ -98,6 +101,7 @@ function seed(): DemoState {
     const sid = `demo-l-${i}`;
     ev("landing_view", createdAt - 180_000, sid, c);
     ev("check_type_select", createdAt - 150_000, sid, c, serviceType);
+    ev("form_view", createdAt - 130_000, sid, c, serviceType);
     ev("form_start", createdAt - 120_000, sid, c, serviceType);
     ev("lead_submit_success", createdAt, sid, c, serviceType);
     ev("coverage_offer_view", createdAt + 2_000, sid, c, serviceType);

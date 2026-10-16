@@ -9,9 +9,8 @@ async function submitLead(page: Page, phone: string, utm = "") {
     if (req.url().endsWith("/api/events")) events.push(req.postData() ?? "");
   });
   await page.goto(`/${utm}`);
-  // "혹시 나도 해당될까요?"에서 고른 카드가 신청서에 반영되고, 행동 장면 CTA로 바로 이름 입력
-  await page.getByTestId("pick-old-policy").click();
-  await page.locator("#action-cta").getByRole("button").click();
+  // 스토리 카드를 누르면 그 유형이 신청서에 반영되어 유형 단계 없이 바로 이름 입력
+  await page.getByTestId("story-old-policy").click();
   await expect(page.locator("#apply-name")).toBeFocused();
   await page.fill("#apply-name", "테스트");
   await page.fill("#apply-phone", phone);
@@ -25,11 +24,12 @@ async function submitLead(page: Page, phone: string, utm = "") {
   await expect(page).toHaveURL(/\/apply\/complete$/);
   await expect(page.getByRole("heading", { name: "무료 점검 상담 신청이 접수되었습니다." })).toBeVisible();
   await expect(page.getByTestId("contact-info")).toBeVisible();
-  return events;
+  const refNo = (await page.locator("strong.font-mono").first().textContent())!.trim();
+  return { events, refNo };
 }
 
 test("A: claim → coverage offer → separate consent → coverage complete", async ({ page }) => {
-  const events = await submitLead(page, "010-9000-0001", "?utm_source=e2e&utm_medium=test&utm_campaign=journey_a");
+  const { events } = await submitLead(page, "010-9000-0001", "?utm_source=e2e&utm_medium=test&utm_campaign=journey_a");
   await expect(page.getByRole("heading", { name: "현재 가입하신 보험, 보장도 함께 확인해 보시겠어요?" })).toBeVisible();
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(axe.violations.filter((v) => ["serious", "critical"].includes(v.impact ?? "")).map((v) => v.id)).toEqual([]);
@@ -51,10 +51,34 @@ test("A: claim → coverage offer → separate consent → coverage complete", a
   // 이벤트 페이로드에 개인정보가 없어야 한다
   await page.waitForTimeout(300);
   const joined = events.join("\n");
-  for (const ev of ["landing_view", "check_type_select", "form_start", "form_submit_attempt", "lead_submit_success"]) expect(joined).toContain(ev);
+  for (const ev of ["landing_view", "scenario_card_click", "check_type_select", "form_view", "form_start", "form_submit_attempt", "lead_submit_success"]) expect(joined).toContain(ev);
   expect(joined).toContain("coverage_opt_in");
   expect(joined).toContain('"utmSource":"e2e"');
   for (const pii of ["테스트", "9000"]) expect(joined).not.toContain(pii);
+});
+
+test("a failed save never shows the completion screen", async ({ page }) => {
+  const events: string[] = [];
+  await page.addInitScript(() => Object.defineProperty(navigator, "sendBeacon", { value: undefined }));
+  page.on("request", (req) => {
+    if (req.url().endsWith("/api/events")) events.push(req.postData() ?? "");
+  });
+  // 저장 API가 실패하는 상황(DB 장애 등)을 흉내 낸다
+  await page.route("**/api/leads", (route) => route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ ok: false, error: "일시적인 오류로 신청을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요." }) }));
+  await page.goto("/");
+  await page.getByTestId("story-hospital").click();
+  await page.fill("#apply-name", "테스트");
+  await page.fill("#apply-phone", "010-9000-0009");
+  await page.getByRole("button", { name: "다음", exact: true }).click();
+  await page.locator("#apply-privacy").check();
+  await page.waitForTimeout(2100);
+  await page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "저장하지 못했습니다" })).toBeVisible();
+  await expect(page).not.toHaveURL(/\/apply\/complete/);
+  await page.waitForTimeout(300);
+  const joined = events.join("\n");
+  expect(joined).toContain("lead_submit_error");
+  expect(joined).not.toContain("lead_submit_success");
 });
 
 test("B: decline coverage → claim-only completion, no sales opt-in", async ({ page }) => {
