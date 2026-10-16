@@ -13,16 +13,16 @@ const FLOW = [
 export function ApplySection({ config }: { config: PublicConfig }) {
   const contact = orSetting(config.operator.contactPhone, "대표 연락처");
   return (
-    <section id="apply" aria-labelledby="apply-title" className="scroll-mt-16 bg-navy-50 py-20 sm:py-24 lg:py-32">
+    <section id="apply" aria-labelledby="apply-title" className="scroll-mt-16 bg-navy-50 py-14 sm:py-20 lg:py-24">
       <div className="container grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-x-16 lg:gap-y-10">
         <div className="lg:col-start-1 lg:row-start-1">
           <p className="text-[15px] font-bold text-blue">무료 점검 신청</p>
-          <h2 id="apply-title" className="mt-2.5 text-balance text-[28px] font-extrabold leading-[1.32] tracking-[-0.03em] text-navy sm:text-[34px] lg:text-[40px]">
+          <h2 id="apply-title" className="mt-2.5 text-balance text-[26px] font-extrabold leading-[1.32] tracking-[-0.03em] text-navy sm:text-[32px] lg:text-[38px]">
             필요한 것만 묻고,
             <br />
             확인 방법을 안내해요
           </h2>
-          <p className="mt-4 text-[17px] leading-[1.7] text-navy-600">4단계, 한 번에 한 가지씩만 입력하면 돼요.</p>
+          <p className="mt-3 text-[16px] leading-[1.65] text-navy-600">4단계, 한 번에 한 가지씩만 입력하면 돼요.</p>
         </div>
 
         <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">

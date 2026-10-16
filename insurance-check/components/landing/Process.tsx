@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef } from "react";
-import { FileText, ShieldAlert } from "lucide-react";
+import { useRef, useState } from "react";
+import { ChevronDown, FileText, ShieldAlert } from "lucide-react";
 import { SERVICE_TYPES, type ServiceType } from "@/lib/types";
 import { REFUND_COMPARISON, SERVICE_CONTENT } from "@/lib/content";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,35 @@ import { Reveal } from "@/components/motion/Reveal";
 import { useApply } from "./ApplyContext";
 import { ApplyCta } from "./ApplyCta";
 import { Section, SectionHeading } from "./Section";
+
+/** 모바일에서는 접어 두고(제목만), 데스크톱에서는 항상 펼친다 */
+function InfoBox({ icon, title, items, dot }: { icon: React.ReactNode; title: string; items: readonly string[]; dot: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-3xl bg-navy-50 p-5 sm:p-7">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-2 text-left text-[17px] font-bold text-navy lg:pointer-events-none"
+      >
+        <span className="flex items-center gap-2">
+          {icon}
+          {title}
+        </span>
+        <ChevronDown className={cn("h-5 w-5 text-navy-500 transition-transform lg:hidden", open && "rotate-180")} aria-hidden="true" />
+      </button>
+      <ul className={cn("mt-3 space-y-2 sm:mt-4 sm:space-y-2.5 lg:block", open ? "block" : "hidden")}>
+        {items.map((d) => (
+          <li key={d} className="flex gap-2.5 text-[15.5px] leading-relaxed text-navy-600 sm:text-[16px]">
+            <span aria-hidden="true" className={cn("mt-[11px] h-1.5 w-1.5 shrink-0 rounded-full", dot)} />
+            {d}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 const ACTOR_STYLE: Record<string, string> = {
   고객: "bg-navy-100 text-navy-700",
@@ -40,13 +69,13 @@ export function Process() {
   };
 
   return (
-    <Section id="process">
+    <Section id="process" className="border-t border-navy-100">
       <Reveal>
       <SectionHeading
         id="process"
         eyebrow="점검 절차"
         title="점검은 4단계로 진행돼요"
-        description="청구와 지급 결정은 고객님과 보험사 사이에서 이뤄집니다. 저희는 확인 방법과 순서를 알기 쉽게 안내해 드려요."
+        description="확인 방법과 순서를 안내해 드려요. 청구와 지급 결정은 고객님과 보험사 사이에서 이뤄집니다."
       />
       </Reveal>
 
@@ -54,7 +83,7 @@ export function Process() {
         role="tablist"
         aria-label="점검 유형별 절차"
         onKeyDown={onKeyDown}
-        className="mt-10 grid grid-cols-3 gap-1 rounded-2xl bg-navy-50 p-1.5 sm:inline-grid sm:min-w-[520px] lg:mt-12"
+        className="mt-7 grid grid-cols-3 gap-1 rounded-2xl bg-navy-50 p-1.5 sm:inline-grid sm:min-w-[520px] lg:mt-10"
       >
         {SERVICE_TYPES.map((t) => (
           <button
@@ -79,10 +108,10 @@ export function Process() {
       </div>
 
       <div id="process-panel" role="tabpanel" aria-labelledby={`tab-${active}`} tabIndex={0} className="mt-6 focus-visible:outline-none">
-        <div className="grid gap-5 lg:grid-cols-[1.25fr_1fr]">
-          <div className="rounded-3xl bg-navy-50 p-6 sm:p-8">
+        <div className="grid gap-3 sm:gap-5 lg:grid-cols-[1.25fr_1fr]">
+          <div className="rounded-3xl bg-navy-50 p-5 sm:p-8">
             <h3 className="text-[20px] font-bold tracking-[-0.02em] text-navy">{c.title}</h3>
-            <ol className="relative mt-7 space-y-7">
+            <ol className="relative mt-5 space-y-5 sm:mt-7 sm:space-y-7">
               <span aria-hidden="true" className="absolute bottom-3 left-[17px] top-3 w-px bg-navy-200" />
               {c.steps.map((s, i) => (
                 <li key={s.title} className="relative flex gap-4">
@@ -100,41 +129,16 @@ export function Process() {
                       </span>
                       <span className={cn("rounded-full px-2.5 py-0.5 text-[13px] font-semibold", ACTOR_STYLE[s.actor])}>{s.actor}</span>
                     </p>
-                    <p className="mt-1.5 text-[16px] leading-[1.65] text-navy-600">{s.body}</p>
+                    <p className="mt-1 text-[15.5px] leading-[1.6] text-navy-600 sm:mt-1.5 sm:text-[16px]">{s.body}</p>
                   </div>
                 </li>
               ))}
             </ol>
           </div>
 
-          <div className="flex flex-col gap-5">
-            <div className="rounded-3xl bg-navy-50 p-6 sm:p-7">
-              <p className="flex items-center gap-2 text-[17px] font-bold text-navy">
-                <FileText className="h-5 w-5 text-blue" aria-hidden="true" />
-                준비하면 좋은 자료
-              </p>
-              <ul className="mt-4 space-y-2.5">
-                {c.documents.map((d) => (
-                  <li key={d} className="flex gap-2.5 text-[16px] leading-relaxed text-navy-600">
-                    <span aria-hidden="true" className="mt-[11px] h-1.5 w-1.5 shrink-0 rounded-full bg-blue" />
-                    {d}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="rounded-3xl bg-navy-50 p-6 sm:p-7">
-              <p className="flex items-center gap-2 text-[17px] font-bold text-navy">
-                <ShieldAlert className="h-5 w-5 text-caution" aria-hidden="true" />꼭 확인하세요
-              </p>
-              <ul className="mt-4 space-y-2.5">
-                {c.notices.map((n) => (
-                  <li key={n} className="flex gap-2.5 text-[16px] leading-relaxed text-navy-600">
-                    <span aria-hidden="true" className="mt-[11px] h-1.5 w-1.5 shrink-0 rounded-full bg-navy-400" />
-                    {n}
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <div className="flex flex-col gap-3 sm:gap-5">
+            <InfoBox icon={<FileText className="h-5 w-5 text-blue" aria-hidden="true" />} title="준비하면 좋은 자료" items={c.documents} dot="bg-blue" />
+            <InfoBox icon={<ShieldAlert className="h-5 w-5 text-caution" aria-hidden="true" />} title="꼭 확인하세요" items={c.notices} dot="bg-navy-400" />
           </div>
         </div>
 
@@ -180,7 +184,7 @@ export function Process() {
           </Alert>
         )}
 
-        <div className="mt-10">
+        <div className="mt-7 lg:mt-10">
           <ApplyCta source="process" type={active} size="xl" className="w-full sm:w-auto sm:min-w-[320px]">
             이 절차로 무료 점검 상담 신청하기
           </ApplyCta>
