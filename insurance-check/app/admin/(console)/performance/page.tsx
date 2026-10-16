@@ -11,6 +11,7 @@ const PERIODS = [7, 30, 90] as const;
 const STAGES: { key: keyof FunnelRow; label: string; note: string }[] = [
   { key: "visits", label: "방문", note: "고유 세션" },
   { key: "typeSelect", label: "유형 선택", note: "고유 세션" },
+  { key: "formView", label: "신청 폼 진입", note: "폼이 화면에 보인 세션" },
   { key: "formStart", label: "신청 시작", note: "폼 첫 입력" },
   { key: "validSubmit", label: "유효 제출", note: "저장된 신청, 30일 중복 제외 · 광고 전환 기준" },
   { key: "coverageOptIn", label: "별도 상담 동의", note: "보장 분석 별도 동의" },

@@ -29,7 +29,26 @@ test.describe("admin", () => {
   });
 
   test("admin: CRM table, sales view, performance, audit, settings", async ({ page }) => {
+    // 저장 검증: 랜딩에서 실제로 신청 → 완료 화면의 신청번호가 CRM에 유입 경로(UTM)와 함께 기록되어 있다
+    await page.goto("/?utm_source=e2e_crm&utm_medium=cpc&utm_campaign=save_check");
+    await page.getByTestId("story-hospital").click();
+    await page.fill("#apply-name", "저장확인");
+    await page.fill("#apply-phone", "010-9000-0077");
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.locator("#apply-privacy").check();
+    await page.waitForTimeout(2100);
+    await page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click();
+    await expect(page).toHaveURL(/\/apply\/complete$/);
+    const refNo = (await page.locator("strong.font-mono").first().textContent())!.trim();
+
     await login(page, "admin");
+    await page.goto(`/admin?q=${encodeURIComponent(refNo)}`);
+    const saved = page.getByRole("row").filter({ hasText: refNo });
+    await expect(saved).toHaveCount(1);
+    await expect(saved).toContainText("e2e_crm");
+    await expect(saved).toContainText("save_check");
+    await expect(saved).toContainText("010-****-0077"); // 목록에서도 연락처 마스킹
+    await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "상담 DB" })).toBeVisible();
     await expect(page.getByRole("link", { name: "CSV 내보내기" })).toBeVisible();
     for (const h of ["신청번호", "유입 채널/UTM", "보험금 점검 상태", "보장 분석 동의", "보장 분석 상태", "다음 연락", "담당자", "처리 메모"]) {

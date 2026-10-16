@@ -91,6 +91,7 @@ export function hasAdConsent(): boolean {
 declare global {
   interface Window {
     dataLayer?: unknown[];
+    fbq?: (...args: unknown[]) => void;
   }
 }
 
@@ -112,6 +113,15 @@ export function track(name: FunnelEventName, params: SafeParams = {}): void {
     }
   } catch {
     /* 계측 실패는 사용자 흐름에 영향 주지 않음 */
+  }
+
+  // Meta 픽셀: 저장 성공(전환)만 표준 이벤트 Lead로 보낸다. 파라미터 없음(개인정보·건강정보·유형 미전송)
+  if (name === "lead_submit_success" && window.fbq && hasAdConsent()) {
+    try {
+      window.fbq("track", "Lead");
+    } catch {
+      /* 무시 */
+    }
   }
 
   if (window.dataLayer && hasAdConsent()) {

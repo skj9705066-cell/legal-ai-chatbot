@@ -73,6 +73,23 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
     idemKey.current = crypto.randomUUID();
   }, []);
 
+  // 신청 폼 진입(화면에 보임) — 세션당 한 번, 개인정보 없음
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          trackOnce("form_view");
+          io.disconnect();
+        }
+      },
+      { threshold: 0.3 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   // 랜딩의 유형 카드·탭에서 고른 값을 폼에 반영
   useEffect(() => {
     if (ctxType) setServiceType(ctxType);
@@ -83,10 +100,13 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
     if (!request.n) return;
     let target = "heading";
     if (request.type) {
+      // 카드·CTA에서 이미 고른 유형 → 유형 단계를 건너뛰고 연락처로(바꾸고 싶을 때만 '변경')
       setServiceType(request.type);
       setErrors((e) => ({ ...e, serviceType: undefined }));
       setStep((s) => (s === 0 ? 1 : s));
       target = "apply-name";
+    } else if (request.choose) {
+      setStep(0);
     }
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const t = window.setTimeout(() => {

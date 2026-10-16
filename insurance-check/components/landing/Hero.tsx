@@ -2,9 +2,22 @@ import { HERO } from "@/lib/content";
 import { MemoryScene } from "@/components/illustrations/Art";
 import { ApplyCta } from "./ApplyCta";
 
+function Highlighted({ line }: { line: string }) {
+  const i = line.indexOf(HERO.highlight);
+  if (i < 0) return <>{line}</>;
+  return (
+    <>
+      {line.slice(0, i)}
+      <span className="text-blue">{HERO.highlight}</span>
+      {line.slice(i + HERO.highlight.length)}
+    </>
+  );
+}
+
 /**
- * 장면 1 — 기억을 떠올리게 하는 질문. 성공 사례가 아니라 "그때 다 확인했나?"를 묻는다.
- * 모바일: 질문 → 보조 질문 → 한 줄 설명 → 일러스트 → CTA가 첫 화면 안에 들어온다. 데스크톱: 왼쪽 카피·CTA, 오른쪽 일러스트.
+ * 첫 화면: "보험료는 꼬박꼬박 냈는데, 받을 수 있는 보험금은 모두 확인하셨나요?" — 강조는 '보험금' 한 단어만.
+ * 모바일: 제목(3~4줄) → 한 줄 보조 문구 → 설명 → 일러스트 → CTA가 첫 화면 안에 들어온다. 데스크톱: 왼쪽 카피·CTA, 오른쪽 일러스트.
+ * CTA는 바로 신청 폼(1단계: 점검 유형)으로 간다.
  */
 export function Hero() {
   return (
@@ -13,31 +26,29 @@ export function Hero() {
         <div className="animate-fade-up lg:col-start-1 lg:row-start-1 lg:self-end">
           <h1
             id="hero-title"
-            className="text-balance text-[31px] font-extrabold leading-[1.24] tracking-[-0.04em] text-navy min-[400px]:text-[33px] sm:text-[44px] lg:text-[50px] lg:leading-[1.18] xl:text-[56px]"
+            className="text-balance text-[28px] font-extrabold leading-[1.28] tracking-[-0.04em] text-navy min-[400px]:text-[30px] sm:text-[40px] lg:text-[44px] lg:leading-[1.22] xl:text-[50px]"
           >
-            {HERO.title}
+            {HERO.titleLines.map((l) => (
+              <span key={l} className="block">
+                <Highlighted line={l} />
+              </span>
+            ))}
           </h1>
-          <p className="mt-2 text-balance text-[21px] font-bold leading-[1.4] tracking-[-0.03em] text-blue sm:text-[26px] lg:mt-3 lg:text-[30px]" data-testid="hero-question">
-            {HERO.question}
+          <p className="mt-3 text-[17px] font-semibold leading-[1.5] tracking-[-0.02em] text-ink sm:text-[19px] lg:mt-5 lg:text-[20px]" data-testid="hero-sub">
+            {HERO.sub}
           </p>
-          <p className="mt-2.5 max-w-[520px] text-pretty text-[16px] leading-[1.6] text-navy-600 sm:text-[18px] lg:mt-5" data-testid="hero-subtitle">
+          <p className="mt-1 text-pretty text-[15.5px] leading-[1.6] text-navy-600 sm:text-[17px]" data-testid="hero-subtitle">
             {HERO.description}
           </p>
         </div>
 
-        <div className="mx-auto mt-4 w-full max-w-[380px] animate-fade-up [animation-delay:120ms] sm:max-w-[460px] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0 lg:max-w-[560px] lg:self-center">
+        <div className="mx-auto mt-3 w-full max-w-[340px] animate-fade-up [animation-delay:120ms] sm:max-w-[460px] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0 lg:max-w-[560px] lg:self-center">
           <MemoryScene />
         </div>
 
-        <div id="hero-cta" className="mt-5 animate-fade-up [animation-delay:200ms] lg:col-start-1 lg:row-start-2 lg:mt-9 lg:self-start">
-          <ApplyCta
-            source="hero"
-            target="types"
-            primaryLabel={HERO.cta}
-            size="xl"
-            className="h-[58px] w-full text-[18px] sm:h-[62px] sm:w-auto sm:min-w-[320px]"
-          />
-          <p className="mt-2.5 text-center text-[13.5px] leading-relaxed text-navy-600 sm:text-left sm:text-[14px]" data-testid="hero-cta-note">
+        <div id="hero-cta" className="mt-4 animate-fade-up [animation-delay:200ms] lg:col-start-1 lg:row-start-2 lg:mt-9 lg:self-start">
+          <ApplyCta source="hero" size="xl" className="h-[58px] w-full text-[18px] sm:h-[62px] sm:w-auto sm:min-w-[320px]" />
+          <p className="mt-2.5 text-center text-[13px] leading-relaxed text-navy-600 sm:text-left sm:text-[14px]" data-testid="hero-cta-note">
             {HERO.ctaNote}
           </p>
         </div>

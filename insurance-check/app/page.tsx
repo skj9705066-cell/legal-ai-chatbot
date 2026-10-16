@@ -5,12 +5,11 @@ import { DemoBanner } from "@/components/site/DemoBanner";
 import { ApplyProvider } from "@/components/landing/ApplyContext";
 import { Hero } from "@/components/landing/Hero";
 import { StatsSection } from "@/components/landing/StatsSection";
-import { ActionScene, EmpathyScene, PickScene } from "@/components/landing/StoryScenes";
+import { StoryCards } from "@/components/landing/StoryScenes";
 import { RealReviews } from "@/components/landing/RealReviews";
 import { getPublicMetrics, getPublicReviews } from "@/lib/server/reviews";
 import { Process } from "@/components/landing/Process";
 import { ApplySection } from "@/components/landing/ApplySection";
-import { Trust } from "@/components/landing/Trust";
 import { Faq } from "@/components/landing/Faq";
 import { FinalCta } from "@/components/landing/FinalCta";
 import { MobileStickyCta } from "@/components/landing/MobileStickyCta";
@@ -28,15 +27,13 @@ export default async function LandingPage() {
       <SiteHeader demo={demo} />
       <main id="main">
         <Hero />
-        {/* 스토리텔링: 기억(히어로) → 공감 → 새로운 사실(공식 통계) → 나에게 해당? → 행동. 한 장면 = 메시지 하나 */}
-        <EmpathyScene />
+        {/* 광고 클릭 → 호기심(히어로) → 자기 경험 회상(스토리 카드) → 신뢰(공식 통계·실제 후기) → 무료 점검 신청.
+            모든 CTA의 목적지는 같은 신청 폼이며, 고른 점검 유형을 유지한다 */}
+        <StoryCards />
         <StatsSection />
-        <PickScene />
-        <ActionScene />
         <RealReviews reviews={reviews} metrics={metrics} />
         <Process />
         <ApplySection config={config} />
-        <Trust />
         <Faq contactPhone={config.operator.contactPhone} />
         <FinalCta />
       </main>

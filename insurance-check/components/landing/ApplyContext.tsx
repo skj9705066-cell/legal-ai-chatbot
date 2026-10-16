@@ -1,26 +1,28 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { FunnelEventName, ServiceType } from "@/lib/types";
 import { CTA_VARIANTS, type CtaVariant } from "@/lib/content";
 import { track } from "@/lib/analytics";
 
-export type CtaSource = "hero" | "stats" | "type_card" | "cases" | "reviews" | "action" | "process" | "final" | "sticky" | "header";
+export type CtaSource = "hero" | "stats" | "type_card" | "cases" | "reviews" | "process" | "final" | "sticky" | "header";
 
 export interface ApplyRequest {
   n: number;
   type: ServiceType | null;
+  /** 유형을 폼에서 다시 고르게 할 때(유형이 정해지지 않은 카드) */
+  choose: boolean;
 }
 
 interface ApplyCtx {
   serviceType: ServiceType | null;
   selectType: (t: ServiceType) => void;
-  /** '잘 모르겠어요'처럼 유형이 정해지지 않은 선택 — 신청 폼에서 고르게 한다 */
-  clearType: () => void;
-  /** 신청 폼(단 하나)으로 이동. 폼이 request를 보고 단계·포커스를 맞춘다. 유형을 안 넘기면 이미 고른 유형을 유지한다. */
-  startApply: (source: CtaSource, t?: ServiceType) => void;
-  /** 점검 유형 선택 영역으로 이동. 선택한 유형은 같은 신청 폼에 반영된다. */
-  goToTypes: (source: CtaSource) => void;
+  /**
+   * 모든 CTA의 목적지 = 같은 신청 폼. 폼이 request를 보고 단계·포커스를 맞춘다.
+   * t를 넘기면 그 유형으로, 생략하면 이미 고른 유형을 그대로 유지해 연락처 단계로(고른 적 없으면 유형 단계),
+   * null이면 유형을 비우고 유형 단계에서 고르게 한다.
+   */
+  startApply: (source: CtaSource, t?: ServiceType | null) => void;
   request: ApplyRequest;
   /** 메인 CTA 문구 A/B 안(?cta=a~d). 기본 A */
   ctaVariant: CtaVariant;
@@ -63,8 +65,10 @@ function readVariant(): CtaVariant {
 
 export function ApplyProvider({ children }: { children: React.ReactNode }) {
   const [serviceType, setServiceType] = useState<ServiceType | null>(null);
-  const [request, setRequest] = useState<ApplyRequest>({ n: 0, type: null });
+  const [request, setRequest] = useState<ApplyRequest>({ n: 0, type: null, choose: false });
   const [ctaVariant, setCtaVariant] = useState<CtaVariant>("a");
+  const typeRef = useRef<ServiceType | null>(null);
+  typeRef.current = serviceType;
 
   useEffect(() => setCtaVariant(readVariant()), []);
 
@@ -75,30 +79,22 @@ export function ApplyProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const clearType = useCallback(() => setServiceType(null), []);
-
   const startApply = useCallback(
-    (source: CtaSource, t?: ServiceType) => {
+    (source: CtaSource, t?: ServiceType | null) => {
+      const type = t === undefined ? typeRef.current : t;
       const ev = CLICK_EVENT[source];
-      if (ev) track(ev, { serviceType: t ?? null });
-      if (t) selectType(t);
-      setRequest((r) => ({ n: r.n + 1, type: t ?? null }));
+      if (ev) track(ev, { serviceType: type });
+      if (type) selectType(type);
+      else if (t === null) setServiceType(null);
+      setRequest((r) => ({ n: r.n + 1, type, choose: t === null }));
       smoothScrollTo("apply");
     },
     [selectType],
   );
 
-  const goToTypes = useCallback((source: CtaSource) => {
-    const ev = CLICK_EVENT[source];
-    if (ev) track(ev);
-    const reduce = smoothScrollTo("services");
-    // 스크롤이 끝난 뒤 섹션 제목으로 포커스 (스크린리더가 선택 영역을 읽도록)
-    window.setTimeout(() => document.getElementById("services-title")?.focus({ preventScroll: true }), reduce ? 0 : 550);
-  }, []);
-
   const value = useMemo(
-    () => ({ serviceType, selectType, clearType, startApply, goToTypes, request, ctaVariant, ctaLabel: CTA_VARIANTS[ctaVariant] }),
-    [serviceType, selectType, clearType, startApply, goToTypes, request, ctaVariant],
+    () => ({ serviceType, selectType, startApply, request, ctaVariant, ctaLabel: CTA_VARIANTS[ctaVariant] }),
+    [serviceType, selectType, startApply, request, ctaVariant],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

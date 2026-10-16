@@ -80,6 +80,8 @@ export interface PublicConfig {
   submissionEnabled: boolean;
   operator: OperatorInfo;
   gaMeasurementId: string | null;
+  /** Meta 픽셀 ID(숫자). 운영 모드 + 값이 있을 때만 */
+  metaPixelId: string | null;
 }
 
 export function getOperatorInfo(): OperatorInfo {
@@ -122,7 +124,13 @@ export function getPublicConfig(): PublicConfig {
     operator: getOperatorInfo(),
     // 광고·분석 태그는 운영 모드에서만. 데모 트래픽이 광고 통계를 오염시키지 않게 한다.
     gaMeasurementId: mode === "production" ? env("NEXT_PUBLIC_GA_MEASUREMENT_ID") : null,
+    metaPixelId: mode === "production" ? numericId(env("NEXT_PUBLIC_META_PIXEL_ID")) : null,
   };
+}
+
+/** 픽셀 ID는 숫자만 허용(스크립트에 그대로 들어가므로 형식이 다르면 로드하지 않는다) */
+function numericId(v: string | null): string | null {
+  return v && /^\d{6,20}$/.test(v) ? v : null;
 }
 
 export const PRIVACY_CONSENT_VERSION = "claim-2026-10-16.v2"; // 수집 항목에서 희망 시간·메모 제외

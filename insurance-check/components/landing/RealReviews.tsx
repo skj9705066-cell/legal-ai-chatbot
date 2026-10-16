@@ -149,7 +149,7 @@ function RealCard({ r, index }: { r: PublicReview; index: number }) {
  * 고객 동의 + 관리자 공개 승인된 후기만, 없으면 아무것도 렌더링하지 않는다(가상 후기·대화를 만들지 않음).
  * 데스크톱 3장 / 모바일 1장 캐러셀, 자동 넘김.
  */
-const MAX_REVIEWS = 3;
+const MAX_REVIEWS = 5;
 
 export function RealReviews({ reviews, metrics }: { reviews: PublicReview[]; metrics: Partial<OperatingMetrics> | null }) {
   const metricKeys = metrics ? (Object.keys(G.metricLabel) as (keyof OperatingMetrics)[]).filter((k) => metrics[k]) : [];
