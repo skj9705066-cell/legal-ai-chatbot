@@ -81,8 +81,8 @@ function seed(): DemoState {
     for (let i = 0; i < c.visits; i++) {
       const sid = `demo-v-${c.utmSource ?? "direct"}-${i}`;
       const at = now - Math.floor(rand() * 21 * day);
-      ev("page_view", at, sid, c);
-      if (rand() < 0.42) ev("service_type_select", at + 20_000, sid, c, pick(SERVICE_TYPES));
+      ev("landing_view", at, sid, c);
+      if (rand() < 0.42) ev("check_type_select", at + 20_000, sid, c, pick(SERVICE_TYPES));
       if (rand() < 0.2) ev("form_start", at + 40_000, sid, c);
       if (rand() < 0.12) ev("official_lookup_click", at + 30_000, sid, c);
     }
@@ -96,10 +96,10 @@ function seed(): DemoState {
     const coverageConsent = rand() < 0.42;
     const coverageStatus = coverageConsent ? pick(COVERAGE_ACTIVE_STATUSES) : "not_consented";
     const sid = `demo-l-${i}`;
-    ev("page_view", createdAt - 180_000, sid, c);
-    ev("service_type_select", createdAt - 150_000, sid, c, serviceType);
+    ev("landing_view", createdAt - 180_000, sid, c);
+    ev("check_type_select", createdAt - 150_000, sid, c, serviceType);
     ev("form_start", createdAt - 120_000, sid, c, serviceType);
-    ev("form_submit_success", createdAt, sid, c, serviceType);
+    ev("lead_submit_success", createdAt, sid, c, serviceType);
     ev("coverage_offer_view", createdAt + 2_000, sid, c, serviceType);
     ev(coverageConsent ? "coverage_opt_in" : "coverage_decline", createdAt + 20_000, sid, c, serviceType);
     if (["booked", "consulted", "contracted"].includes(coverageStatus)) {
@@ -139,6 +139,7 @@ function seed(): DemoState {
       privacyStatus: "none",
       duplicateOf: null,
       isTest: false,
+      thirdPartyConsent: false,
       isDemo: true,
     });
   }

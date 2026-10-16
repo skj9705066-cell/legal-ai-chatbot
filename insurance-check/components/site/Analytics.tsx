@@ -7,7 +7,7 @@ import { AD_CONSENT_KEY, captureAttribution, track } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 
 /**
- * - 모든 페이지: UTM 보존 + 익명 page_view
+ * - 모든 페이지: UTM 보존 / 랜딩(/)에서는 익명 landing_view
  * - GA4: 운영 모드에서 측정 ID가 있을 때만, 방문자가 '허용'한 뒤에만 로드
  * - 동의 안내는 한 번만 노출(선택 결과를 기억), 화면을 가리는 팝업은 쓰지 않는다.
  */
@@ -20,8 +20,8 @@ export function Analytics({ gaId }: { gaId: string | null }) {
   }, []);
 
   useEffect(() => {
-    if (pathname.startsWith("/admin")) return;
-    track("page_view");
+    if (pathname !== "/") return;
+    track("landing_view");
   }, [pathname]);
 
   useEffect(() => {

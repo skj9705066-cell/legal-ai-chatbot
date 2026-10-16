@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { FAQ } from "@/lib/content";
+import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { OfficialLink } from "@/components/site/OfficialLink";
 import { Reveal } from "@/components/motion/Reveal";
@@ -54,7 +55,10 @@ export function Faq({ contactPhone }: { contactPhone: string | null }) {
                     id={`faq-q-${i}`}
                     aria-expanded={isOpen}
                     aria-controls={`faq-a-${i}`}
-                    onClick={() => setOpen(isOpen ? null : i)}
+                    onClick={() => {
+                      if (!isOpen) track("faq_open");
+                      setOpen(isOpen ? null : i);
+                    }}
                     className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left text-[16.5px] sm:py-5 font-semibold leading-snug text-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue sm:px-6 sm:text-[18px]"
                   >
                     {f.q}

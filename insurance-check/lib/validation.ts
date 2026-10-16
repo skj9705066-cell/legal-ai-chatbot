@@ -60,12 +60,19 @@ export interface LeadInput {
   memo: string;
   privacyConsent: true;
   marketingConsent: boolean;
+  /** 제3자 제공이 설정된 운영에서만 필수. 그 외에는 항상 false */
+  thirdPartyConsent: boolean;
+}
+
+/** 제3자 제공이 실제로 있는지 (THIRD_PARTY_PROVISION이 비어 있지 않고 'none'이 아님) */
+export function requiresThirdPartyConsent(provision: string | null | undefined): boolean {
+  return !!provision && provision.trim().toLowerCase() !== "none";
 }
 
 const isOneOf = <T extends string>(list: readonly T[], v: unknown): v is T =>
   typeof v === "string" && (list as readonly string[]).includes(v);
 
-export function validateLeadInput(raw: Record<string, unknown>):
+export function validateLeadInput(raw: Record<string, unknown>, opts: { requireThirdParty?: boolean } = {}):
   | { ok: true; value: LeadInput }
   | { ok: false; errors: FieldErrors } {
   const errors: FieldErrors = {};
@@ -82,7 +89,8 @@ export function validateLeadInput(raw: Record<string, unknown>):
   if (!phoneRaw.trim()) errors.phone = "휴대전화번호를 입력해 주세요.";
   else if (!phone) errors.phone = "휴대전화번호 형식을 확인해 주세요. (예: 010-1234-5678)";
 
-  const preferredTime = raw.preferredTime;
+  // 초기 신청은 이름·연락처·유형만 받는다. 희망 시간은 보내지 않으면 '시간 무관'으로 기록한다.
+  const preferredTime = raw.preferredTime === undefined || raw.preferredTime === "" ? "anytime" : raw.preferredTime;
   if (!isOneOf(PREFERRED_TIMES, preferredTime)) errors.preferredTime = "상담 희망 시간을 선택해 주세요.";
 
   const memo = (typeof raw.memo === "string" ? raw.memo : "").trim();
@@ -90,6 +98,7 @@ export function validateLeadInput(raw: Record<string, unknown>):
   else if (looksLikeRrn(memo)) errors.memo = "주민등록번호는 입력하지 말아 주세요.";
 
   if (raw.privacyConsent !== true) errors.privacyConsent = "개인정보 수집·이용에 동의해야 신청할 수 있습니다.";
+  if (opts.requireThirdParty && raw.thirdPartyConsent !== true) errors.thirdPartyConsent = "개인정보 제3자 제공에 동의해야 신청할 수 있습니다.";
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return {
@@ -102,6 +111,7 @@ export function validateLeadInput(raw: Record<string, unknown>):
       memo,
       privacyConsent: true,
       marketingConsent: raw.marketingConsent === true,
+      thirdPartyConsent: !!opts.requireThirdParty && raw.thirdPartyConsent === true,
     },
   };
 }

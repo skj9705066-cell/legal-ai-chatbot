@@ -67,8 +67,8 @@ export async function computeFunnel(days: number): Promise<{ rows: FunnelRow[]; 
   for (const [name, byKey] of sessions) {
     for (const [k, set] of byKey) {
       const row = map.get(k)!;
-      if (name === "page_view") row.visits = set.size;
-      if (name === "service_type_select") row.typeSelect = set.size;
+      if (name === "landing_view") row.visits = set.size;
+      if (name === "check_type_select") row.typeSelect = set.size;
       if (name === "form_start") row.formStart = set.size;
       if (name === "official_lookup_click") row.officialLookup = set.size;
     }

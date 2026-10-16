@@ -34,6 +34,7 @@ create table if not exists public.ic_leads (
   claim_status              text not null default 'new'
                             check (claim_status in ('new','contacting','guided','docs_pending','closed','unreachable')),
   marketing_consent         boolean not null default false,
+  third_party_consent       boolean not null default false,  -- 제3자 제공이 설정된 경우에만 받는 별도 동의
   privacy_consent_version   text not null,
   coverage_consent          boolean not null default false,
   coverage_consent_at       timestamptz,
@@ -55,6 +56,7 @@ create table if not exists public.ic_leads (
 );
 -- 기존 DB 업그레이드용 (이미 테이블이 있으면 위 create table은 건너뛴다)
 alter table public.ic_leads add column if not exists is_test boolean not null default false;
+alter table public.ic_leads add column if not exists third_party_consent boolean not null default false;
 create index if not exists ic_leads_created_idx on public.ic_leads (created_at desc);
 create index if not exists ic_leads_phone_hash_idx on public.ic_leads (phone_hash);
 create index if not exists ic_leads_coverage_idx on public.ic_leads (coverage_consent, coverage_status);

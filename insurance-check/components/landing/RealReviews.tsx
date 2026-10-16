@@ -7,6 +7,7 @@ import { REAL_REVIEWS as G } from "@/lib/content";
 import { toBubbles } from "@/lib/reviews";
 import { cn } from "@/lib/utils";
 import { Reveal } from "@/components/motion/Reveal";
+import { ApplyCta } from "./ApplyCta";
 import { Carousel } from "./Carousel";
 
 /** 카드마다 대화창 톤·세로 위치를 조금씩 달리해 반복감을 줄인다 */
@@ -195,6 +196,14 @@ export function RealReviews({ reviews, metrics }: { reviews: PublicReview[]; met
               <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               {G.note}
             </p>
+            <div id="reviews-cta" className="mt-10 text-center">
+              <p className="text-balance text-[21px] font-extrabold leading-[1.45] tracking-[-0.025em] text-navy sm:text-[26px]">{G.ctaTitle}</p>
+              <div className="mt-5">
+                <ApplyCta source="reviews" size="xl" className="h-[60px] w-full text-[18px] sm:w-auto sm:min-w-[320px]">
+                  {G.ctaButton}
+                </ApplyCta>
+              </div>
+            </div>
           </>
         )}
       </div>

@@ -29,11 +29,12 @@ export default async function LandingPage() {
       <SiteHeader demo={demo} />
       <main id="main">
         <Hero />
-        {/* 신청 동선: 히어로 → 공식 통계 → 점검 유형 선택 → 공감 상황 → (실제 후기: 동의·승인된 것만) → 절차 → 신청 */}
+        {/* 광고 유입 동선: 호기심(히어로) → 사회적 증거(공식 통계) → 자기 연관성(공감 카드) → (실제 후기: 동의·승인된 것만)
+            → 행동(유형 선택 → 신청). 공감 카드·유형 카드는 바로 신청 폼으로 이어진다 */}
         <StatsSection />
-        <ServiceTypes />
         <CasesSection />
         <RealReviews reviews={reviews} metrics={metrics} />
+        <ServiceTypes />
         <Process />
         <ApplySection config={config} />
         <Trust operator={config.operator} />

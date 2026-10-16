@@ -1,4 +1,6 @@
-import { BadgeCheck, FileLock2, HandHeart, Scale, UserRoundCheck } from "lucide-react";
+import { BadgeCheck, FileLock2, Landmark, Scale, UserRoundCheck } from "lucide-react";
+import { OFFICIAL_LOOKUP } from "@/lib/content";
+import { OfficialLink } from "@/components/site/OfficialLink";
 import Link from "next/link";
 import type { OperatorInfo } from "@/lib/config";
 import { orSetting, isPlaceholder } from "@/lib/display";
@@ -7,10 +9,10 @@ import { Reveal } from "@/components/motion/Reveal";
 import { Section, SectionHeading } from "./Section";
 
 const ITEMS = [
-  { icon: BadgeCheck, title: "점검 안내는 무료", body: "점검과 청구 방법 안내에 비용을 받지 않습니다." },
-  { icon: HandHeart, title: "보험 가입 의무 없음", body: "가입 여부와 관계없이 안내받을 수 있습니다." },
-  { icon: FileLock2, title: "필요한 정보만", body: "이름·연락처·희망 시간만 받고, 주민번호·병력은 묻지 않습니다." },
-  { icon: Scale, title: "지급은 보험사가 결정", body: "지급을 보장하지 않으며, 보험사 약관과 심사에 따릅니다." },
+  { icon: BadgeCheck, title: "무료 점검 상담", body: "무료 점검 상담으로 확인할 사항을 안내해 드립니다." },
+  { icon: Scale, title: "지급은 보험사가 결정", body: "보험금 지급 여부와 금액은 가입 계약, 약관 및 보험사의 심사 결과에 따라 달라집니다." },
+  { icon: FileLock2, title: "동의한 상담만", body: "별도의 동의 없이 보장 분석 상담이나 마케팅 안내를 진행하지 않습니다." },
+  { icon: Landmark, title: "공식 조회도 가능", body: "숨은보험금은 공식 조회 서비스에서도 직접 확인할 수 있습니다." },
 ];
 
 function InfoRow({ label, value }: { label: string; value: string }) {
@@ -27,7 +29,7 @@ export function Trust({ operator }: { operator: OperatorInfo }) {
   return (
     <Section id="trust">
       <Reveal>
-        <SectionHeading id="trust" eyebrow="안심하고 이용하세요" title="투명하게 운영해요" />
+        <SectionHeading id="trust" eyebrow="안심하고 이용하세요" title="신청 전에 꼭 알려드려요" />
       </Reveal>
       <div className="mt-7 grid grid-cols-2 gap-3 sm:gap-x-8 sm:gap-y-8 lg:mt-10 lg:grid-cols-4">
         {ITEMS.map(({ icon: Icon, title, body }, i) => (
@@ -37,13 +39,19 @@ export function Trust({ operator }: { operator: OperatorInfo }) {
             </span>
             <div>
               <h3 className="text-[16px] font-bold tracking-[-0.015em] text-navy sm:text-[18px]">{title}</h3>
-              <p className="mt-1.5 hidden text-[15.5px] leading-[1.6] text-navy-600 sm:block">{body}</p>
+              <p className="mt-1.5 text-[14.5px] leading-[1.55] text-navy-600 sm:text-[15.5px] sm:leading-[1.6]">{body}</p>
             </div>
           </Reveal>
         ))}
       </div>
 
-      <div className="mt-6 grid gap-3 sm:gap-5 lg:mt-12 lg:grid-cols-[1.4fr_1fr]">
+      <p className="mt-4 rounded-2xl bg-mint-50 px-4 py-3.5 text-[15px] leading-relaxed text-ink sm:px-5" data-testid="official-lookup-note">
+        공식 조회 서비스{" "}
+        <OfficialLink className="font-semibold text-blue-700 underline underline-offset-2">{OFFICIAL_LOOKUP.name}(cont.insure.or.kr)</OfficialLink>
+        은 본인인증만으로 직접 무료 조회할 수 있으며, 이용하려고 이 사이트에 개인정보를 제출할 필요가 없습니다.
+      </p>
+
+      <div className="mt-6 grid gap-3 sm:gap-5 lg:mt-10 lg:grid-cols-[1.4fr_1fr]">
         <div className="rounded-3xl border border-navy-100 p-5 sm:p-8">
           <p className="flex items-center gap-2 text-[18px] font-bold text-navy">
             <UserRoundCheck className="h-5 w-5 text-blue" aria-hidden="true" />

@@ -125,5 +125,5 @@ export function getPublicConfig(): PublicConfig {
   };
 }
 
-export const PRIVACY_CONSENT_VERSION = "claim-2026-10-15.v1";
+export const PRIVACY_CONSENT_VERSION = "claim-2026-10-16.v2"; // 수집 항목에서 희망 시간·메모 제외
 export const COVERAGE_CONSENT_VERSION = "coverage-2026-10-15.v1";

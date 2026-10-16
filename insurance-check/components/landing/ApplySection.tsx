@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 import { ApplyForm } from "./ApplyForm";
 
 const FLOW = [
-  { icon: MessageSquareText, title: "신청 접수", body: "이름·연락처·희망 시간만 받아요." },
-  { icon: PhoneCall, title: "담당자 연락", body: "희망하신 시간에 확인 방법을 안내해 드려요." },
+  { icon: MessageSquareText, title: "신청 접수", body: "이름·연락처·관심 유형만 받아요." },
+  { icon: PhoneCall, title: "담당자 연락", body: "남겨주신 번호로 연락해 확인할 사항을 안내해요." },
   { icon: Send, title: "보험사에 직접 청구", body: "청구는 고객님이, 지급 결정은 보험사가 해요." },
 ];
 
@@ -16,13 +16,13 @@ export function ApplySection({ config }: { config: PublicConfig }) {
     <section id="apply" aria-labelledby="apply-title" className="scroll-mt-16 bg-navy-50 py-14 sm:py-20 lg:py-24">
       <div className="container grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-x-16 lg:gap-y-10">
         <div className="lg:col-start-1 lg:row-start-1">
-          <p className="text-[15px] font-bold text-blue">무료 점검 신청</p>
+          <p className="text-[15px] font-bold text-blue-700">무료 점검 상담 신청</p>
           <h2 id="apply-title" className="mt-2.5 text-balance text-[26px] font-extrabold leading-[1.32] tracking-[-0.03em] text-navy sm:text-[32px] lg:text-[38px]">
-            필요한 것만 묻고,
+            혹시 놓친 보험금이 있는지,
             <br />
-            확인 방법을 안내해요
+            확인할 사항부터 알아보세요.
           </h2>
-          <p className="mt-3 text-[16px] leading-[1.65] text-navy-600">4단계, 한 번에 한 가지씩만 입력하면 돼요.</p>
+          <p className="mt-3 text-[16px] leading-[1.65] text-navy-600">필요한 정보를 남겨주시면 점검 상담을 위한 안내를 도와드립니다.</p>
         </div>
 
         <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">

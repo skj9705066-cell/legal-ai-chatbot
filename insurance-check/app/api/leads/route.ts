@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAppMode, isSubmissionEnabled } from "@/lib/config";
-import { validateLeadInput } from "@/lib/validation";
+import { requiresThirdPartyConsent, validateLeadInput } from "@/lib/validation";
 import { clientIp, isSameOrigin, rateLimit, readJson } from "@/lib/server/request";
 import { parseAttribution } from "@/lib/server/attribution";
 import { signReceipt } from "@/lib/server/crypto";
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   for (const [k, v] of idem) if (now - v.at > IDEM_TTL) idem.delete(k);
   if (key && idem.has(key)) return NextResponse.json(idem.get(key)!.body);
 
-  const parsed = validateLeadInput(body);
+  const parsed = validateLeadInput(body, { requireThirdParty: requiresThirdPartyConsent(process.env.THIRD_PARTY_PROVISION) });
   if (!parsed.ok) {
     return NextResponse.json({ ok: false, error: "입력 내용을 확인해 주세요.", fieldErrors: parsed.errors }, { status: 422 });
   }
