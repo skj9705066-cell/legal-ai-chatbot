@@ -15,7 +15,8 @@ function Highlighted({ line }: { line: string }) {
 }
 
 /**
- * 첫 화면: "보험료는 꼬박꼬박 냈는데, 받을 수 있는 보험금은 모두 확인하셨나요?" — 강조는 '보험금' 한 단어만.
+ * 첫 화면: "보험료는 꼬박꼬박 내는데, / 보험금은 모두 확인하셨나요?" — 강조는 '보험금' 한 단어만.
+ * PC(lg↑)는 줄마다 줄바꿈 금지 + 열 너비에 맞춘 글자 크기로 정확히 2줄. 모바일은 원래 크기로 자연스럽게 줄바꿈.
  * 모바일: 제목(3~4줄) → 한 줄 보조 문구 → 설명 → 일러스트 → CTA가 첫 화면 안에 들어온다. 데스크톱: 왼쪽 카피·CTA, 오른쪽 일러스트.
  * CTA는 바로 신청 폼(1단계: 점검 유형)으로 간다.
  */
@@ -26,10 +27,10 @@ export function Hero() {
         <div className="animate-fade-up lg:col-start-1 lg:row-start-1 lg:self-end">
           <h1
             id="hero-title"
-            className="text-balance text-[28px] font-extrabold leading-[1.28] tracking-[-0.04em] text-navy min-[400px]:text-[30px] sm:text-[40px] lg:text-[44px] lg:leading-[1.22] xl:text-[50px]"
+            className="text-balance text-[28px] font-extrabold leading-[1.28] tracking-[-0.04em] text-navy min-[400px]:text-[30px] sm:text-[40px] lg:leading-[1.22] lg:[font-size:clamp(36px,3.6vw,52px)]"
           >
             {HERO.titleLines.map((l) => (
-              <span key={l} className="block">
+              <span key={l} className="block lg:whitespace-nowrap">
                 <Highlighted line={l} />
               </span>
             ))}
