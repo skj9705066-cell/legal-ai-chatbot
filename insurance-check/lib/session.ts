@@ -9,6 +9,13 @@ import type { StaffRole } from "./types";
 export const SESSION_COOKIE = "ic_admin";
 export const SESSION_TTL_SECONDS = 60 * 60 * 8;
 
+/** 관리자 API 인증·권한 오류: 화면에 그대로 보여 줄 수 있는 문구 + 기계용 code */
+export const AUTH_ERROR = {
+  unauthorized: { error: "로그인이 만료되었어요. 다시 로그인해 주세요.", code: "unauthorized" },
+  forbidden: { error: "이 작업을 할 권한이 없어요.", code: "forbidden" },
+  badOrigin: { error: "잘못된 요청입니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.", code: "bad_origin" },
+} as const;
+
 export interface StaffSession {
   sub: string;
   name: string;
