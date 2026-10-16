@@ -100,7 +100,7 @@ export const HIDDEN_DEFINITION = "지급 사유가 생겼지만 아직 청구되
 
 export const HERO = {
   /** 줄바꿈 위치. 로열블루 강조는 highlight 단어에만 */
-  titleLines: ["보험료는 꼬박꼬박 냈는데,", "받을 수 있는 보험금은 모두 확인하셨나요?"],
+  titleLines: ["보험료는 꼬박꼬박 내는데,", "보험금은 모두 확인하셨나요?"],
   highlight: "보험금",
   sub: "예전에 다녀온 병원부터 오래전에 가입한 보험까지.",
   description: "내 보험에서 무엇을 확인해야 할지 무료로 안내받아 보세요.",

@@ -3,9 +3,31 @@ import AxeBuilder from "@axe-core/playwright";
 
 const FORBIDDEN = ["모든 고객", "대상자로 선정", "금융위원회 인증", "100% 환급", "무조건", "80만 명", "방금 신청", "명이 신청", "님이 신청", "찾았어요", "찾았네요", "받았어요"];
 
+test("hero title is exactly 2 lines on PC (1024~1920) and never overflows its column", async ({ page, isMobile }) => {
+  test.skip(isMobile, "desktop only");
+  for (const width of [1024, 1280, 1440, 1920]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    const m = await page.locator("#hero-title").evaluate((h) => {
+      const lh = parseFloat(getComputedStyle(h).lineHeight);
+      const col = h.parentElement!.getBoundingClientRect();
+      // 줄(span)은 block이라 텍스트 실제 폭은 Range로 잰다
+      const spans = Array.from(h.children).map((c) => {
+        const r = document.createRange();
+        r.selectNodeContents(c);
+        return r.getBoundingClientRect();
+      });
+      return { lines: Math.round(h.getBoundingClientRect().height / lh), overflow: Math.max(...spans.map((r) => r.right)) - col.right, fontPx: parseFloat(getComputedStyle(h).fontSize) };
+    });
+    expect(m.lines, `lines at ${width}`).toBe(2);
+    expect(m.overflow, `overflow at ${width}`).toBeLessThanOrEqual(0);
+    expect(m.fontPx, `font at ${width}`).toBeGreaterThanOrEqual(36);
+  }
+});
+
 test("hero hook and official stats with source and compliance copy", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("보험료는 꼬박꼬박 냈는데,받을 수 있는 보험금은 모두 확인하셨나요?");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("보험료는 꼬박꼬박 내는데,보험금은 모두 확인하셨나요?");
   // 로열블루 강조는 '보험금' 한 단어만
   await expect(page.locator("#hero-title .text-blue")).toHaveText("보험금");
   await expect(page.getByTestId("hero-sub")).toHaveText("예전에 다녀온 병원부터 오래전에 가입한 보험까지.");
