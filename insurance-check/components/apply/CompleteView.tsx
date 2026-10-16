@@ -16,10 +16,13 @@ const COVERAGE_POINTS = [
   { icon: RefreshCcw, label: "갱신 조건" },
 ];
 
-const NEXT = ["희망하신 시간에 담당자가 연락드려요", "확인할 항목과 필요한 서류를 안내해 드려요", "보험사에 직접 청구하시면 보험사가 지급을 결정해요"];
+const NEXT = ["남겨주신 번호로 담당자가 연락드려요", "확인할 항목과 필요한 서류를 안내해 드려요", "보험사에 직접 청구하시면 보험사가 지급을 결정해요"];
 
-/** 8. 신청 완료 + 9. 보장 분석 별도 제안 (신청 완료 후에만 노출) */
-export function CompleteView() {
+/**
+ * 신청 완료 + 보장 분석 별도 제안. 서버 저장에 성공한 경우에만 영수증이 생기므로(ApplyForm), 이 화면은 실제 접수 후에만 보인다.
+ * 자동 조회·지급 완료처럼 보이는 표현을 쓰지 않는다.
+ */
+export function CompleteView({ contactPhone, contactHours }: { contactPhone: string | null; contactHours: string | null }) {
   const router = useRouter();
   const [receipt] = useReceipt();
   const offer = receipt && receipt.coverage === "offered" && receipt.receiptToken;
@@ -43,9 +46,13 @@ export function CompleteView() {
       <section aria-labelledby="done-title" className="rounded-[28px] bg-white px-6 py-9 text-center shadow-card sm:px-10 sm:py-11">
         <SuccessMark />
         <h1 id="done-title" className="mt-5 text-balance text-[26px] font-bold leading-snug tracking-[-0.03em] text-navy sm:text-[30px]">
-          보험금 점검 신청이 접수되었습니다
+          무료 점검 상담 신청이 접수되었습니다.
         </h1>
-        <p className="mt-3 text-[16px] leading-relaxed text-navy-600 sm:text-[17px]">{SERVICE_CONTENT[receipt.serviceType].cardTitle} 점검으로 접수했어요.</p>
+        <p className="mt-3 text-[16px] leading-relaxed text-navy-600 sm:text-[17px]">
+          남겨주신 정보를 바탕으로 상담 안내를 도와드리겠습니다.
+          <br />
+          <span className="font-semibold text-navy">{SERVICE_CONTENT[receipt.serviceType].cardTitle}</span> 점검으로 접수했어요.
+        </p>
         <RefNo refNo={receipt.refNo} demo={receipt.demo} />
         <ol className="mx-auto mt-8 max-w-sm space-y-3.5 text-left">
           {NEXT.map((t, i) => (
@@ -57,6 +64,18 @@ export function CompleteView() {
             </li>
           ))}
         </ol>
+        <p className="mx-auto mt-6 max-w-sm rounded-2xl bg-navy-50 px-4 py-3 text-[15px] leading-relaxed text-navy-700" data-testid="contact-info">
+          연락 방식: 전화{" "}
+          {contactPhone ? (
+            <>
+              · 문의 <strong className="font-semibold text-navy">{contactPhone}</strong>
+            </>
+          ) : (
+            <span className="text-caution">· [설정 필요: 대표 연락처]</span>
+          )}
+          <br />
+          운영시간: {contactHours ?? <span className="text-caution">[설정 필요: 운영시간]</span>}
+        </p>
       </section>
 
       {offer ? (

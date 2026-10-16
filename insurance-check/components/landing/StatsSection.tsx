@@ -1,12 +1,10 @@
 import { ArrowUpRight, Info } from "lucide-react";
-import { HIDDEN_DEFINITION, PROOF, STATS, STATS_AVERAGE_NOTE, STATS_DISCLAIMER, STATS_MOTION_NOTE, STATS_SOURCE } from "@/lib/content";
+import { HIDDEN_DEFINITION, PROOF, STATS, STATS_DISCLAIMER, STATS_MOTION_NOTE, STATS_SOURCE } from "@/lib/content";
 import { Odometer } from "@/components/motion/Odometer";
 import { Reveal } from "@/components/motion/Reveal";
 import { ApplyCta } from "./ApplyCta";
 
-const [MAIN, ...REST] = STATS;
-const AVG = REST.find((s) => s.id === "refund-average")!;
-const SUBS = REST.filter((s) => s.id !== "refund-average");
+const [MAIN, ...SUBS] = STATS;
 
 /** 장식용 링 그래픽: 숫자 애니메이션 진행에 맞춰 그려진다. 시점별 추이·데이터를 나타내지 않는다. */
 function DecorativeRing() {
@@ -63,7 +61,7 @@ export function StatsSection() {
             <br />
             아직 찾아가지 않은 상태입니다.
           </h2>
-          <p className="mt-3 text-[16px] leading-[1.65] text-navy-300 lg:text-[17px]">숨은보험금: {HIDDEN_DEFINITION}</p>
+          <p className="mt-3 text-[17px] font-semibold leading-[1.6] text-white/90 lg:text-[19px]">내가 가입한 보험에도 확인하지 못한 지급 항목이 있을까요?</p>
         </Reveal>
 
         {/* 메인 통계 */}
@@ -120,38 +118,6 @@ export function StatsSection() {
             ))}
           </div>
 
-          {/* 건당 평균: 블루 카드로 강조하되 '개인별 예상액 아님'을 숫자 바로 아래에 함께 */}
-          <Reveal className="mt-3 lg:mt-4" delay={360}>
-            <div className="avg-feature relative overflow-hidden rounded-[24px] bg-[linear-gradient(135deg,#0866F5_0%,#0550C4_60%,#0B3E8A_100%)] p-5 shadow-[0_30px_80px_-24px_rgba(8,102,245,0.75)] ring-1 ring-inset ring-white/20 sm:p-8 lg:p-10">
-              <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-white/15 blur-[80px]" />
-              <div className="relative lg:flex lg:items-end lg:justify-between lg:gap-10">
-                <div className="min-w-0">
-                  <p className="text-[16px] font-bold text-white lg:text-[19px]">
-                    {AVG.basis} {AVG.label}
-                  </p>
-                  <p
-                    className="mt-2 flex items-baseline gap-2 whitespace-nowrap font-extrabold tracking-[-0.035em] text-white [font-size:clamp(30px,8.4vw,46px)] sm:text-[56px] lg:text-[72px]"
-                    data-testid={`stat-${AVG.id}`}
-                  >
-                    <span aria-hidden="true" className="text-[0.45em] font-bold text-white/80">{AVG.prefix}</span>
-                    <Odometer value={AVG.value} template={AVG.template} label={`${AVG.basis} ${AVG.label} ${AVG.text}`} duration={3000} delay={300} />
-                  </p>
-                  {/* 개인별 예상액으로 오인되지 않도록 숫자 바로 아래 고정 표기 */}
-                  <div className="mt-3" data-testid="stat-average-note">
-                    <p className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1.5 text-[16px] font-extrabold text-blue-700 shadow-sm">
-                      <Info className="h-[18px] w-[18px]" aria-hidden="true" />
-                      {STATS_AVERAGE_NOTE.badge}
-                    </p>
-                    <p className="mt-2 text-[15px] font-medium leading-relaxed text-white/90 lg:text-[16px]">{STATS_AVERAGE_NOTE.text}</p>
-                  </div>
-                </div>
-                <p className="mt-4 max-w-[300px] border-t border-white/20 pt-4 text-[14px] leading-relaxed text-white/85 lg:mt-0 lg:shrink-0 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0 lg:text-[15px]">
-                  받을 수 있는 금액은 계약 내용과 청구 요건에 따라 사람마다 다르며, 지급 여부는 보험사가 결정합니다.
-                </p>
-              </div>
-            </div>
-          </Reveal>
-
           {/* 출처·유의사항 (한 패널) */}
           <div className="mt-3 rounded-[22px] bg-white/[0.03] p-5 text-[14px] leading-relaxed text-navy-300 ring-1 ring-inset ring-white/10 sm:p-6 lg:mt-4 lg:text-[15px]">
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-white/90">
@@ -172,15 +138,25 @@ export function StatsSection() {
                 <span className="sr-only">(새 창에서 열림)</span>
               </a>
             </p>
-            <p className="mt-2">
+            <p className="mt-2">숨은보험금: {HIDDEN_DEFINITION} 병원비·수술비 등 청구하지 않은 보험금은 이 통계에 포함되지 않습니다.</p>
+            <p className="mt-1.5">
               {STATS_DISCLAIMER} {STATS_MOTION_NOTE} 링 그래픽은 장식이며 추이를 나타내지 않습니다.
             </p>
           </div>
 
-          <div id="proof-cta" className="mt-8 lg:mt-10">
-            <ApplyCta source="stats" target="types" variant="white" size="xl" className="h-[60px] w-full text-[18px] shadow-none sm:w-auto sm:min-w-[320px]">
-              {PROOF.cta}
-            </ApplyCta>
+          {/* 숫자 → "나도 확인해 볼까?" */}
+          <div className="mt-10 lg:mt-12">
+            <p className="text-balance text-[22px] font-extrabold leading-[1.45] tracking-[-0.025em] sm:text-[28px]" data-testid="proof-hook">
+              {PROOF.hookLines[0]}
+              <br />
+              {PROOF.hookLines[1]}
+            </p>
+            <p className="mt-2 text-[16px] text-navy-300 sm:text-[17px]">{PROOF.hookSub}</p>
+            <div id="proof-cta" className="mt-6">
+              <ApplyCta source="stats" target="types" variant="white" size="xl" className="h-[60px] w-full text-[17px] shadow-none sm:w-auto sm:min-w-[340px] sm:text-[18px]">
+                {PROOF.cta}
+              </ApplyCta>
+            </div>
           </div>
         </div>
       </div>

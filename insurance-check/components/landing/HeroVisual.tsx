@@ -106,7 +106,7 @@ export function HeroVisual() {
         </span>
         <span>
           <span className="block text-[14px] font-bold text-navy">필요한 정보만</span>
-          <span className="block text-[13px] text-navy-500">이름 · 연락처 · 희망 시간</span>
+          <span className="block text-[13px] text-navy-500">이름 · 연락처 · 점검 유형</span>
         </span>
       </div>
     </div>

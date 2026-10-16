@@ -19,7 +19,7 @@ export function MissingReceiptView() {
       </span>
       <h1 className="mt-5 text-[24px] font-bold tracking-[-0.025em] text-navy">신청 정보를 찾을 수 없습니다</h1>
       <p className="mt-3 text-[16px] leading-relaxed text-navy-600">
-        이 화면은 신청 직후 같은 브라우저 창에서만 볼 수 있어요. 이미 신청하셨다면 희망 시간에 연락드립니다.
+        이 화면은 신청 직후 같은 브라우저 창에서만 볼 수 있어요. 이미 신청하셨다면 남겨주신 번호로 연락드립니다.
       </p>
       <Link href="/#apply" className={buttonVariants({ size: "lg", className: "mt-7 w-full sm:w-auto" })}>
         처음 화면으로

@@ -54,6 +54,7 @@ export async function submitLead(input: LeadInput, attribution: Attribution): Pr
     attribution,
     claimStatus: "new",
     marketingConsent: input.marketingConsent,
+    thirdPartyConsent: input.thirdPartyConsent,
     privacyConsentVersion: PRIVACY_CONSENT_VERSION,
     // 보장 분석은 신청 완료 후 별도 동의로만 켜진다. 여기서는 항상 미동의.
     coverageConsent: false,

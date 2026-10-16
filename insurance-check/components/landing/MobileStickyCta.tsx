@@ -10,9 +10,10 @@ import { ApplyCta } from "./ApplyCta";
  */
 export function MobileStickyCta() {
   const [hidden, setHidden] = useState(true);
+  const [typing, setTyping] = useState(false);
 
   useEffect(() => {
-    const ids = ["hero-cta", "proof-cta", "type-cta", "apply", "final-cta"];
+    const ids = ["hero-cta", "proof-cta", "cases-cta", "reviews-cta", "apply", "final-cta"];
     const targets = ids.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => !!el);
     if (!targets.length) return;
     const visible = new Set<string>();
@@ -30,15 +31,30 @@ export function MobileStickyCta() {
     return () => io.disconnect();
   }, []);
 
+  // 입력 중(모바일 키보드가 열린 상태)에는 숨겨 입력을 가리지 않는다
+  useEffect(() => {
+    const isField = (el: Element | null) => !!el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
+    const onIn = (e: FocusEvent) => isField(e.target as Element) && setTyping(true);
+    const onOut = () => window.setTimeout(() => setTyping(isField(document.activeElement)), 0);
+    document.addEventListener("focusin", onIn);
+    document.addEventListener("focusout", onOut);
+    return () => {
+      document.removeEventListener("focusin", onIn);
+      document.removeEventListener("focusout", onOut);
+    };
+  }, []);
+
+  const off = hidden || typing;
   return (
     <div
       data-testid="mobile-sticky-cta"
-      data-hidden={hidden}
+      data-hidden={off}
       className={cn(
         "pb-safe fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-white via-white to-white/0 px-5 pt-5 transition-[transform,opacity] duration-300 lg:hidden",
-        hidden ? "invisible translate-y-full opacity-0" : "visible translate-y-0 opacity-100",
+        off ? "invisible translate-y-full opacity-0" : "visible translate-y-0 opacity-100",
       )}
     >
+      {/* 문구는 메인 CTA A/B 안을 따른다. 누르면 이미 고른 유형·입력 상태를 유지한 채 신청 폼으로 */}
       <ApplyCta source="sticky" size="lg" className="w-full" />
     </div>
   );

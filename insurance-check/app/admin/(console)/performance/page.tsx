@@ -125,7 +125,7 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
       </section>
 
       <Alert tone="info" title="집계 원칙">
-        광고 플랫폼 전환은 <code>form_submit_success</code>(유효 제출)만 사용합니다. 계약 단계는 관리자가 상세 화면에서 입력한 값만 반영하며, 보험사·GA
+        광고 플랫폼 전환은 <code>lead_submit_success</code>(유효 제출)만 사용합니다. 계약 단계는 관리자가 상세 화면에서 입력한 값만 반영하며, 보험사·GA
         시스템 연동 자료는 승인된 경우에만 별도로 추가해야 합니다. 이벤트에는 이름·연락처·메모·건강정보가 포함되지 않습니다.
       </Alert>
     </div>

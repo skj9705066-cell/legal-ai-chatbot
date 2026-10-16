@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPhoneInput, looksLikeRrn, maskPhone, normalizePhone, sanitizeTag, validateCoverageInput, validateLeadInput } from "@/lib/validation";
+import { formatPhoneInput, looksLikeRrn, maskPhone, normalizePhone, requiresThirdPartyConsent, sanitizeTag, validateCoverageInput, validateLeadInput } from "@/lib/validation";
 
 const valid = {
   serviceType: "unclaimed",
@@ -26,6 +26,30 @@ describe("phone", () => {
 });
 
 describe("validateLeadInput", () => {
+  it("accepts name/phone/type only: preferred time defaults to anytime, memo optional", () => {
+    const r = validateLeadInput({ serviceType: "hidden", name: "홍길동", phone: "010-1234-5678", privacyConsent: true });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.preferredTime).toBe("anytime");
+      expect(r.value.memo).toBe("");
+      expect(r.value.marketingConsent).toBe(false);
+      expect(r.value.thirdPartyConsent).toBe(false);
+    }
+  });
+  it("requires third-party consent only when provision is configured", () => {
+    expect(requiresThirdPartyConsent(undefined)).toBe(false);
+    expect(requiresThirdPartyConsent("")).toBe(false);
+    expect(requiresThirdPartyConsent("none")).toBe(false);
+    expect(requiresThirdPartyConsent("○○보험대리점")).toBe(true);
+    const missing = validateLeadInput(valid, { requireThirdParty: true });
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) expect(missing.errors.thirdPartyConsent).toBeTruthy();
+    const given = validateLeadInput({ ...valid, thirdPartyConsent: true }, { requireThirdParty: true });
+    expect(given.ok && given.value.thirdPartyConsent).toBe(true);
+    // 제3자 제공이 없는 운영에서는 보내와도 기록하지 않는다
+    const ignored = validateLeadInput({ ...valid, thirdPartyConsent: true });
+    expect(ignored.ok && ignored.value.thirdPartyConsent).toBe(false);
+  });
   it("accepts a valid lead and defaults marketing consent to false", () => {
     const r = validateLeadInput(valid);
     expect(r.ok).toBe(true);

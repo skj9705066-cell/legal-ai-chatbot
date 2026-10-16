@@ -4,37 +4,38 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, Loader2, Lock, PencilLine } from "lucide-react";
 import type { PublicConfig } from "@/lib/config";
-import { PREFERRED_TIMES, PREFERRED_TIME_LABEL, SERVICE_TYPES, type PreferredTime, type ServiceType } from "@/lib/types";
+import { SERVICE_TYPES, type ServiceType } from "@/lib/types";
 import { SERVICE_CONTENT } from "@/lib/content";
-import { formatPhoneInput, LIMITS, validateLeadInput, type FieldErrors } from "@/lib/validation";
-import { claimConsentRows, CLAIM_CONSENT_FOOTNOTE, marketingConsentRows } from "@/lib/consent-text";
+import { formatPhoneInput, LIMITS, requiresThirdPartyConsent, validateLeadInput, type FieldErrors } from "@/lib/validation";
+import { claimConsentRows, CLAIM_CONSENT_FOOTNOTE, marketingConsentRows, thirdPartyConsentRows } from "@/lib/consent-text";
 import { getAttribution, saveReceipt, track, trackOnce } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
-import { FieldError, Input, Label, Textarea } from "@/components/ui/field";
+import { FieldError, Input, Label } from "@/components/ui/field";
 import { ConsentBox } from "@/components/apply/ConsentBox";
 import { OfficialLink } from "@/components/site/OfficialLink";
 import { SERVICE_ICON } from "./ServiceIcons";
 import { useApply } from "./ApplyContext";
 
-type Field = "serviceType" | "name" | "phone" | "preferredTime" | "memo" | "privacyConsent";
+type Field = "serviceType" | "name" | "phone" | "privacyConsent" | "thirdPartyConsent";
 
-/** 한 화면에 한 가지 질문만. 각 단계는 자기 항목만 검증하고 넘어간다. */
+/**
+ * 초기 신청은 최소 정보만: 점검 유형 → 이름·연락처 → 동의. (희망 시간·메모는 상담 때 확인)
+ * 한 화면에 한 가지 질문만, 각 단계는 자기 항목만 검증하고 넘어간다.
+ */
 const STEPS: { label: string; title: string; description?: string; fields: Field[] }[] = [
-  { label: "점검 유형", title: "어떤 점검을 원하세요?", fields: ["serviceType"] },
-  { label: "연락처", title: "연락받으실 분을 알려주세요", description: "희망하신 시간에 이 번호로 연락드려요.", fields: ["name", "phone"] },
-  { label: "상담 시간", title: "언제 연락드리면 편하세요?", fields: ["preferredTime", "memo"] },
-  { label: "동의·확인", title: "마지막으로 확인해 주세요", fields: ["privacyConsent"] },
+  { label: "점검 유형", title: "어떤 보험금이 궁금하신가요?", fields: ["serviceType"] },
+  { label: "연락처", title: "연락받으실 분을 알려주세요", description: "남겨주신 번호로 담당자가 연락드려요.", fields: ["name", "phone"] },
+  { label: "동의·확인", title: "마지막으로 확인해 주세요", fields: ["privacyConsent", "thirdPartyConsent"] },
 ];
 
 const FIELD_DOM_ID: Record<Field, string> = {
   serviceType: "apply-type-unclaimed",
   name: "apply-name",
   phone: "apply-phone",
-  preferredTime: `apply-time-${PREFERRED_TIMES[0]}`,
-  memo: "apply-memo",
   privacyConsent: "apply-privacy",
+  thirdPartyConsent: "apply-third-party",
 };
 
 const stepOf = (f: Field) => STEPS.findIndex((s) => s.fields.includes(f));
@@ -48,9 +49,8 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   const [serviceType, setServiceType] = useState<ServiceType | "">("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [preferredTime, setPreferredTime] = useState<PreferredTime | "">("");
-  const [memo, setMemo] = useState("");
   const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [thirdPartyConsent, setThirdPartyConsent] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [website, setWebsite] = useState(""); // honeypot
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -64,7 +64,9 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
 
   const disabled = !config.submissionEnabled;
   const busy = status !== "idle";
-  const payload = { serviceType, name, phone, preferredTime, memo, privacyConsent, marketingConsent };
+  const needThirdParty = requiresThirdPartyConsent(config.operator.thirdPartyProvision);
+  const payload = { serviceType, name, phone, privacyConsent, marketingConsent, thirdPartyConsent };
+  const validate = () => validateLeadInput(payload, { requireThirdParty: needThirdParty });
 
   useEffect(() => {
     mountedAt.current = Date.now();
@@ -111,7 +113,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   const clearError = (k: Field) => setErrors((e) => (e[k] ? { ...e, [k]: undefined } : e));
 
   function errorsFor(fields: Field[]): FieldErrors {
-    const v = validateLeadInput(payload);
+    const v = validate();
     if (v.ok) return {};
     return Object.fromEntries(fields.filter((f) => v.errors[f]).map((f) => [f, v.errors[f]]));
   }
@@ -128,7 +130,8 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   }
 
   async function submit() {
-    const v = validateLeadInput(payload);
+    track("form_submit_attempt", { serviceType: serviceType || null });
+    const v = validate();
     if (!v.ok) {
       setErrors(v.errors);
       const first = (Object.keys(FIELD_DOM_ID) as Field[]).find((f) => v.errors[f]);
@@ -162,16 +165,18 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
         }
         setServerError(data?.error ?? "신청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
         setStatus("idle");
+        track("lead_submit_error", { serviceType: v.value.serviceType });
         return;
       }
       setStatus("success");
       saveReceipt({ refNo: data.refNo, receiptToken: data.receiptToken, serviceType: v.value.serviceType, demo: !!data.demo, coverage: "offered" });
       // 광고 전환의 유일한 기준 이벤트. 개인정보 없이 점검 유형만 전달.
-      track("form_submit_success", { serviceType: v.value.serviceType });
+      track("lead_submit_success", { serviceType: v.value.serviceType });
       router.push("/apply/complete");
     } catch {
       setServerError("네트워크 연결을 확인한 뒤 다시 시도해 주세요. 입력하신 내용은 그대로 남아 있어요.");
       setStatus("idle");
+      track("lead_submit_error", { serviceType: v.value.serviceType });
     }
   }
 
@@ -209,7 +214,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
           </span>
           <span className="text-navy-500">{current.label}</span>
         </p>
-        <ol className="mt-3 grid grid-cols-4 gap-1.5" aria-label="신청 진행 단계">
+        <ol className="mt-3 grid grid-cols-3 gap-1.5" aria-label="신청 진행 단계">
           {STEPS.map((s, i) => (
             <li key={s.label} aria-current={i === step ? "step" : undefined}>
               <span className={cn("block h-1.5 rounded-full transition-colors duration-300", i <= step ? "bg-blue" : "bg-navy-100")} />
@@ -343,75 +348,12 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
         )}
 
         {step === 2 && (
-          <div className="space-y-8">
-            <div role="radiogroup" aria-label="상담 희망 시간" aria-describedby={errors.preferredTime ? "apply-time-error" : undefined}>
-              <p className="mb-3 text-[16px] font-semibold text-navy">상담 희망 시간</p>
-              <div className="grid grid-cols-2 gap-2.5">
-                {PREFERRED_TIMES.map((t) => {
-                  const checked = preferredTime === t;
-                  const [main, sub] = PREFERRED_TIME_LABEL[t].split(" (");
-                  return (
-                    <label
-                      key={t}
-                      className={cn(
-                        "flex min-h-[64px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 px-2 py-3 text-center transition-colors has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-blue/20",
-                        checked ? "border-blue bg-blue-50/60" : errors.preferredTime ? "border-danger" : "border-navy-100 hover:border-navy-200",
-                      )}
-                    >
-                      <input
-                        id={`apply-time-${t}`}
-                        type="radio"
-                        name="preferredTime"
-                        value={t}
-                        checked={checked}
-                        onChange={() => {
-                          setPreferredTime(t);
-                          clearError("preferredTime");
-                        }}
-                        className="sr-only"
-                      />
-                      <span className={cn("text-[16px] font-semibold", checked ? "text-blue-700" : "text-ink")}>{main}</span>
-                      {sub && <span className="mt-0.5 text-[14px] text-navy-500">{sub.replace(")", "")}</span>}
-                    </label>
-                  );
-                })}
-              </div>
-              <FieldError id="apply-time-error">{errors.preferredTime}</FieldError>
-            </div>
-            <div>
-              <Label htmlFor="apply-memo">문의 내용</Label>
-              <Textarea
-                id="apply-memo"
-                name="memo"
-                value={memo}
-                maxLength={LIMITS.memoMax}
-                invalid={!!errors.memo}
-                aria-describedby={`apply-memo-help${errors.memo ? " apply-memo-error" : ""}`}
-                onChange={(e) => {
-                  setMemo(e.target.value);
-                  clearError("memo");
-                }}
-                placeholder="예) 작년에 통원 치료를 받았는데 청구를 안 했어요"
-              />
-              <div className="mt-2 flex justify-between gap-3 text-[14px] text-navy-500">
-                <p id="apply-memo-help">병명·병력, 주민등록번호 같은 민감한 정보는 적지 마세요.</p>
-                <p aria-hidden="true" className="shrink-0 tabular-nums">
-                  {memo.length}/{LIMITS.memoMax}
-                </p>
-              </div>
-              <FieldError id="apply-memo-error">{errors.memo}</FieldError>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
           <div className="space-y-6">
             <dl className="divide-y divide-navy-100 rounded-2xl bg-navy-50 px-5">
               {[
                 { label: "점검 유형", value: serviceType ? SERVICE_CONTENT[serviceType].cardTitle : "-", go: 0 },
                 { label: "이름", value: name || "-", go: 1 },
                 { label: "연락처", value: phone || "-", go: 1 },
-                { label: "상담 시간", value: preferredTime ? PREFERRED_TIME_LABEL[preferredTime] : "-", go: 2 },
               ].map((r) => (
                 <div key={r.label} className="flex items-center gap-3 py-4">
                   <div className="min-w-0 flex-1">
@@ -445,6 +387,20 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
                 footnote={CLAIM_CONSENT_FOOTNOTE}
                 error={errors.privacyConsent}
               />
+              {needThirdParty && (
+                <ConsentBox
+                  id="apply-third-party"
+                  required
+                  title="개인정보 제3자 제공 동의"
+                  checked={thirdPartyConsent}
+                  onChange={(v) => {
+                    setThirdPartyConsent(v);
+                    clearError("thirdPartyConsent");
+                  }}
+                  rows={thirdPartyConsentRows(config.operator)}
+                  error={errors.thirdPartyConsent}
+                />
+              )}
               <ConsentBox
                 id="apply-marketing"
                 required={false}
@@ -456,7 +412,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
             </div>
             <p className="flex gap-2 text-[14px] leading-relaxed text-navy-500">
               <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              보험 상품 권유를 위한 동의는 받지 않아요. 보장 분석 상담은 신청이 끝난 뒤 원하시는 경우에만 따로 동의받습니다.
+              선택 동의는 하지 않아도 신청할 수 있어요. 보장 분석 상담은 신청이 끝난 뒤 원하시는 경우에만 따로 동의받습니다.
             </p>
           </div>
         )}
@@ -467,14 +423,21 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
           <input id="apply-website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
         </div>
 
-        <div className="mt-9 flex gap-2.5">
+        {/* 마지막 단계는 신청 버튼 문구가 길어 좁은 화면에서 세로로 쌓는다(신청 버튼이 위·전체 너비) */}
+        <div className={cn("mt-9 flex gap-2.5", isLast && "flex-col-reverse sm:flex-row")}>
           {step > 0 && (
-            <Button type="button" variant="outline" size="lg" className="w-[30%] min-w-[96px] px-3" onClick={() => goTo(step - 1)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className={cn("min-w-[96px] px-3", isLast ? "w-full sm:w-[30%]" : "w-[30%]")}
+              onClick={() => goTo(step - 1)}
+            >
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
               이전
             </Button>
           )}
-          <Button type="submit" size="lg" className="flex-1" aria-disabled={busy || disabled}>
+          <Button type="submit" size="lg" className="min-w-0 flex-1" aria-disabled={busy || disabled}>
             {status === "submitting" ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
@@ -483,7 +446,10 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
             ) : status === "success" ? (
               "신청 완료 — 이동 중…"
             ) : isLast ? (
-              "무료 점검 신청하기"
+              <>
+                무료 점검 상담 신청하기
+                <ArrowRight className="h-5 w-5" aria-hidden="true" />
+              </>
             ) : (
               <>
                 다음

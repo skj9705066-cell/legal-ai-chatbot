@@ -102,6 +102,8 @@ export interface Lead {
   attribution: Attribution;
   claimStatus: ClaimStatus;
   marketingConsent: boolean;
+  /** 제3자 제공 동의(제3자 제공이 설정된 운영에서만 받는다) */
+  thirdPartyConsent: boolean;
   privacyConsentVersion: string;
   coverageConsent: boolean;
   coverageConsentAt: string | null;
@@ -167,12 +169,21 @@ export interface PrivacyRequest {
   note: string;
 }
 
+/**
+ * 1st-party 퍼널 이벤트(익명). 광고 전환은 lead_submit_success(서버 저장 성공 후에만) 하나.
+ * 클릭 이벤트는 전환이 아니다.
+ */
 export const FUNNEL_EVENTS = [
-  "page_view",
+  "landing_view",
   "hero_cta_click",
-  "service_type_select",
+  "stats_cta_click",
+  "scenario_card_click",
+  "check_type_select",
   "form_start",
-  "form_submit_success",
+  "form_submit_attempt",
+  "lead_submit_success",
+  "lead_submit_error",
+  "faq_open",
   "official_lookup_click",
   "coverage_offer_view",
   "coverage_opt_in",

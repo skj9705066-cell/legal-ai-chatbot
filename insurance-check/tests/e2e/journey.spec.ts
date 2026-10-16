@@ -9,21 +9,21 @@ async function submitLead(page: Page, phone: string, utm = "") {
     if (req.url().endsWith("/api/events")) events.push(req.postData() ?? "");
   });
   await page.goto(`/${utm}`);
-  await page.locator('#services input[value="hidden"]').check({ force: true });
-  await page.getByRole("button", { name: "선택한 보험금 무료 점검 상담 신청하기" }).click();
+  // 유형 카드를 누르면 중간 화면 없이 바로 신청 폼(이름 입력)으로 간다
+  await page.locator("[data-testid=type-hidden]").click();
   await expect(page.locator("#apply-name")).toBeFocused();
   await page.fill("#apply-name", "테스트");
   await page.fill("#apply-phone", phone);
-  await page.getByRole("button", { name: "다음" }).click();
-  await page.locator("#apply-time-weekday_afternoon").check({ force: true });
-  await page.fill("#apply-memo", "만기 보험금 확인 문의");
-  await page.getByRole("button", { name: "다음" }).click();
+  await page.getByRole("button", { name: "다음", exact: true }).click();
   await expect(page.getByRole("definition").filter({ hasText: "숨은·만기·휴면보험금" })).toBeVisible();
+  // 선택 동의(마케팅)는 기본 해제 상태이고, 하지 않아도 신청된다
+  await expect(page.locator("#apply-marketing")).not.toBeChecked();
   await page.locator("#apply-privacy").check();
   await page.waitForTimeout(2100); // 봇 차단용 최소 체류시간
-  await page.getByRole("button", { name: "무료 점검 신청하기" }).click();
+  await page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click();
   await expect(page).toHaveURL(/\/apply\/complete$/);
-  await expect(page.getByRole("heading", { name: "보험금 점검 신청이 접수되었습니다" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "무료 점검 상담 신청이 접수되었습니다." })).toBeVisible();
+  await expect(page.getByTestId("contact-info")).toBeVisible();
   return events;
 }
 
@@ -50,10 +50,10 @@ test("A: claim → coverage offer → separate consent → coverage complete", a
   // 이벤트 페이로드에 개인정보가 없어야 한다
   await page.waitForTimeout(300);
   const joined = events.join("\n");
-  expect(joined).toContain("form_submit_success");
+  for (const ev of ["landing_view", "check_type_select", "form_start", "form_submit_attempt", "lead_submit_success"]) expect(joined).toContain(ev);
   expect(joined).toContain("coverage_opt_in");
   expect(joined).toContain('"utmSource":"e2e"');
-  for (const pii of ["테스트", "9000", "만기 보험금"]) expect(joined).not.toContain(pii);
+  for (const pii of ["테스트", "9000"]) expect(joined).not.toContain(pii);
 });
 
 test("B: decline coverage → claim-only completion, no sales opt-in", async ({ page }) => {

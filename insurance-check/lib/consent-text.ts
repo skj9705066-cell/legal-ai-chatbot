@@ -13,7 +13,7 @@ export function claimConsentRows(o: OperatorInfo): ConsentRow[] {
     { label: "수집 목적", value: "보험금 점검(청구 방법) 안내를 위한 상담 연락 및 신청 이력 관리" },
     {
       label: "수집 항목",
-      value: "이름, 휴대전화번호, 점검 유형, 상담 희망 시간, 상담 메모(선택), 유입 경로(광고 캠페인 정보)",
+      value: "이름, 휴대전화번호, 점검 유형, 유입 경로(광고 캠페인 정보)",
     },
     { label: "보유 기간", value: orSetting(o.retentionClaim, "보유기간") + " (기간 경과 또는 삭제 요청 시 지체 없이 파기)" },
     { label: "처리 주체", value: orSetting(o.privacyController, "개인정보 처리 주체") },
@@ -24,6 +24,15 @@ export function claimConsentRows(o: OperatorInfo): ConsentRow[] {
 
 export const CLAIM_CONSENT_FOOTNOTE =
   "주민등록번호, 상세 병력 등 건강정보, 보험증권 원본은 수집하지 않습니다. 이 동의에는 보험 상품 권유가 포함되지 않습니다.";
+
+/** 제3자 제공이 실제로 있는 경우에만 쓰는 별도 동의 문구 */
+export function thirdPartyConsentRows(o: OperatorInfo): ConsentRow[] {
+  return [
+    { label: "제공 내용", value: thirdPartyText(o.thirdPartyProvision) },
+    { label: "제공 항목", value: "이름, 휴대전화번호, 점검 유형" },
+    { label: "거부 권리", value: "동의를 거부할 수 있으며, 거부 시 제3자 제공이 필요한 상담 신청이 제한됩니다." },
+  ];
+}
 
 export function marketingConsentRows(o: OperatorInfo): ConsentRow[] {
   return [

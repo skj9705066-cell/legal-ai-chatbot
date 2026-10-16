@@ -8,7 +8,7 @@ import type { Attribution, FunnelEventName, ServiceType } from "./types";
  * 2) 광고/분석 태그(dataLayer → GA4): 운영 모드 + 측정 ID + 방문자 동의가 모두 있을 때만.
  * 3) 어떤 경로로도 이름·연락처·메모·건강정보를 이벤트 파라미터로 보내지 않는다.
  *    → 파라미터는 아래 SafeParams 타입(점검 유형)만 허용.
- * 4) 광고 전환은 form_submit_success 하나뿐. 클릭은 전환이 아니다.
+ * 4) 광고 전환은 lead_submit_success(서버 저장 성공 후) 하나뿐. 클릭은 전환이 아니다.
  */
 
 const SID_KEY = "ic.sid";
@@ -119,7 +119,7 @@ export function track(name: FunnelEventName, params: SafeParams = {}): void {
       event: name,
       service_type: params.serviceType ?? undefined,
       // 광고 플랫폼 전환은 이 플래그가 true인 이벤트만 사용하도록 태그를 구성한다.
-      is_conversion: name === "form_submit_success",
+      is_conversion: name === "lead_submit_success",
     });
   }
 }
