@@ -88,11 +88,17 @@ jobs:
         id: preflight
         if: steps.target.outputs.app == 'ic'
         continue-on-error: true
-        run: node scripts/preview-preflight.mjs "$E2E_BASE_URL" | tee preflight.txt
+        run: |
+          set +e
+          node scripts/preview-preflight.mjs "$E2E_BASE_URL" > preflight.txt 2>&1; code=$?
+          cat preflight.txt
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit $code
 
       - name: 점검 유형 3종 클릭·키보드·오류 화면 (제출 없음)
         id: clicks
-        if: always() && steps.target.outputs.app == 'ic'
+        # 배포 보호에 막히면(코드 3) 브라우저가 Vercel 로그인 화면에 머물러 의미 없는 시간 초과만 나므로 건너뛴다
+        if: always() && steps.target.outputs.app == 'ic' && steps.preflight.outputs.code != '3'
         continue-on-error: true
         run: npx playwright test apply-flow --grep @preview
 
@@ -109,7 +115,7 @@ jobs:
             echo "### insurance-check Preview E2E"
             echo "- 대상: $E2E_BASE_URL"
             echo "- 사전 점검: ${{ steps.preflight.outcome }}"
-            echo "- 유형 3종 클릭(제출 없음): ${{ steps.clicks.outcome }}"
+            echo "- 유형 3종 클릭(제출 없음): ${{ steps.clicks.outcome || 'skipped' }}"
             echo "- 신청→DB→CRM: ${{ steps.db.outcome || 'skipped' }}"
             echo '```'; cat preflight.txt 2>/dev/null; echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
@@ -126,6 +132,7 @@ jobs:
       - name: 실패 판정
         if: always() && steps.target.outputs.app == 'ic'
         run: |
-          [ "${{ steps.preflight.outcome }}" = "success" ] || { echo "사전 점검 실패: Preview가 테스트 신청 가능 상태가 아님"; exit 1; }
+          [ "${{ steps.preflight.outputs.code }}" != "3" ] || { echo "Vercel 배포 보호에 막힘: 저장소 Secrets에 VERCEL_AUTOMATION_BYPASS_SECRET 필요(테스트 미실행)"; exit 1; }
+          [ "${{ steps.preflight.outcome }}" = "success" ] || { echo "사전 점검 실패: Preview가 테스트 신청 가능 상태가 아님(위 사전 점검 출력 참고)"; exit 1; }
           [ "${{ steps.clicks.outcome }}" = "success" ] || { echo "유형 클릭 테스트 실패"; exit 1; }
           [ "${{ steps.db.outcome }}" = "success" ] || { echo "신청→DB→CRM 테스트 실패"; exit 1; }
