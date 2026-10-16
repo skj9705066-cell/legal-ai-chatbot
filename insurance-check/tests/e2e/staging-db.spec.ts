@@ -126,4 +126,9 @@ test("관리자 CRM: 저장된 신청 조회 — 테스트 표시·마스킹·�
   // 연락처 원문은 권한자만, 서버에서 복호화 (열람은 감사로그에 기록)
   await page.getByRole("button", { name: /원문 보기/ }).click();
   await expect(page.getByText(PHONE_DIGITS)).toBeVisible();
+  // CSV: 마스킹 번호 + 테스트 표시, 원문 번호 없음
+  const csv = await (await page.request.get(`/api/admin/export?q=${encodeURIComponent(refNo)}`)).text();
+  expect(csv).toContain(refNo);
+  expect(csv).toContain("테스트(지표 제외)");
+  expect(csv).not.toContain(PHONE_DIGITS);
 });

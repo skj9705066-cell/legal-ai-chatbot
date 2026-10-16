@@ -238,6 +238,8 @@ export const supabaseRepository: Repository = {
     if (f.coverageStatus) q = q.eq("coverage_status", f.coverageStatus);
     if (f.privacyStatus) q = q.eq("privacy_status", f.privacyStatus);
     if (f.duplicatesOnly) q = q.not("duplicate_of", "is", null);
+    if (f.tests === "exclude") q = q.eq("is_test", false);
+    if (f.tests === "only") q = q.eq("is_test", true);
     if (f.salesOnly) {
       q = q
         .eq("coverage_consent", true)

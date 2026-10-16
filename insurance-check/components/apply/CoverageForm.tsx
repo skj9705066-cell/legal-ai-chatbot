@@ -29,6 +29,8 @@ export function CoverageForm({ config }: { config: PublicConfig }) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const alertRef = useRef<HTMLDivElement>(null);
+  // 연타 시 요청이 여러 번 나가지 않도록 즉시 잠근다(busy state는 다음 렌더링에 반영됨)
+  const inFlight = useRef(false);
 
   if (receipt === undefined) return <LoadingView />;
   if (receipt === null) return <MissingReceiptView />;
@@ -59,6 +61,8 @@ export function CoverageForm({ config }: { config: PublicConfig }) {
       document.getElementById(domId)?.focus();
       return;
     }
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     try {
       const res = await fetch("/api/leads/coverage", {
@@ -71,6 +75,7 @@ export function CoverageForm({ config }: { config: PublicConfig }) {
         if (data?.fieldErrors) setErrors(data.fieldErrors);
         setServerError(data?.error ?? "추가 신청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
         setBusy(false);
+        inFlight.current = false;
         requestAnimationFrame(() => alertRef.current?.focus());
         return;
       }
@@ -80,6 +85,7 @@ export function CoverageForm({ config }: { config: PublicConfig }) {
     } catch {
       setServerError("네트워크 연결을 확인한 뒤 다시 시도해 주세요.");
       setBusy(false);
+      inFlight.current = false;
       requestAnimationFrame(() => alertRef.current?.focus());
     }
   }

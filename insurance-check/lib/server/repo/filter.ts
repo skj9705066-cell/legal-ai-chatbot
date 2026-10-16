@@ -9,6 +9,8 @@ export function applyLeadFilter(rows: LeadRow[], f: LeadFilter): LeadRow[] {
     if (f.privacyStatus && l.privacyStatus !== f.privacyStatus) return false;
     if (f.duplicatesOnly && !l.duplicateOf) return false;
     if (f.salesOnly && !isSalesEligible(l)) return false;
+    if (f.tests === "exclude" && l.isTest) return false;
+    if (f.tests === "only" && !l.isTest) return false;
     if (f.phoneHash) return l.phoneHash === f.phoneHash;
     if (f.q) {
       const q = f.q.toLowerCase();

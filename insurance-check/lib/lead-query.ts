@@ -18,6 +18,8 @@ export interface LeadQuery {
   privacyStatus?: PrivacyStatus;
   duplicatesOnly?: boolean;
   salesOnly?: boolean;
+  /** 테스트 신청 포함 여부(test=include|exclude|only). 영업 대상 목록은 지정하지 않으면 제외 */
+  tests?: "include" | "exclude" | "only";
   sort?: "newest" | "oldest" | "next_contact";
 }
 
@@ -40,6 +42,8 @@ export function parseLeadQuery(sp: Record<string, string | string[] | undefined>
     privacyStatus: oneOf(PRIVACY_STATUSES, get("privacy")),
     duplicatesOnly: get("dup") === "1",
     salesOnly: get("view") === "sales",
+    // 테스트 신청이 실제 영업 대상에 섞이지 않도록 영업 대상 목록은 기본으로 제외한다
+    tests: oneOf(["include", "exclude", "only"] as const, get("test")) ?? (get("view") === "sales" ? "exclude" : undefined),
     sort: oneOf(["newest", "oldest", "next_contact"] as const, get("sort")),
   };
 }
@@ -57,6 +61,7 @@ export function describeLeadQuery(f: LeadQuery): string {
   if (f.privacyStatus) parts.push(`개인정보=${f.privacyStatus}`);
   if (f.duplicatesOnly) parts.push("중복만");
   if (f.salesOnly) parts.push("영업 대상");
+  if (f.tests && f.tests !== "include") parts.push(`테스트=${f.tests}`);
   if (f.sort && f.sort !== "newest") parts.push(`정렬=${f.sort}`);
   return parts.length ? parts.join(", ") : "전체";
 }

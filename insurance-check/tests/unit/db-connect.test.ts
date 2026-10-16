@@ -181,3 +181,19 @@ describe("supabase-js with new-format keys (네트워크 없이 요청 헤더만
     expect(seen[0].apikey).toBe(fakeKey);
   });
 });
+
+describe("test leads never mix into the sales list by default", () => {
+  it("sales view excludes tests unless explicitly included", () => {
+    expect(parseLeadQuery({ view: "sales" }).tests).toBe("exclude");
+    expect(parseLeadQuery({ view: "sales", test: "include" }).tests).toBe("include");
+    expect(parseLeadQuery({}).tests).toBeUndefined(); // 상담 DB 기본: 모두 표시(배지로 구분)
+    expect(parseLeadQuery({ test: "bogus" }).tests).toBeUndefined();
+  });
+  it("demo store filter honours include / exclude / only", async () => {
+    const { applyLeadFilter } = await import("@/lib/server/repo/filter");
+    const rows = (await repo().listLeads({ limit: 1000 })).slice(0, 4).map((r, i) => ({ ...r, isTest: i % 2 === 0 }));
+    expect(applyLeadFilter(rows, { tests: "exclude" }).every((r) => !r.isTest)).toBe(true);
+    expect(applyLeadFilter(rows, { tests: "only" }).every((r) => r.isTest)).toBe(true);
+    expect(applyLeadFilter(rows, { tests: "include" })).toHaveLength(rows.length);
+  });
+});

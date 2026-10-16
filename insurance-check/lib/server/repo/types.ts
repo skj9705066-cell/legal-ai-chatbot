@@ -56,6 +56,8 @@ export interface LeadFilter {
   duplicatesOnly?: boolean;
   /** 보장 분석 영업 대상: 별도 동의 O + 철회·삭제 요청 없음 */
   salesOnly?: boolean;
+  /** 테스트 신청(is_test) 포함 여부. 영업 대상 목록은 기본 제외 */
+  tests?: "include" | "exclude" | "only";
   sort?: LeadSort;
   limit?: number;
 }

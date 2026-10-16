@@ -63,6 +63,8 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   const [status, setStatus] = useState<Status>("idle");
   const mountedAt = useRef(0);
   const idemKey = useRef("");
+  // 전송 중 잠금. busy(state)는 다음 렌더링 전까지 반영되지 않아 연타 시 요청이 여러 번 나갈 수 있으므로 ref로 즉시 막는다
+  const inFlight = useRef(false);
   const cardRef = useRef<HTMLFormElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const stepChanged = useRef(false);
@@ -167,6 +169,8 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
       }
       return;
     }
+    if (inFlight.current) return;
+    inFlight.current = true;
     setServerError(null);
     setStatus("submitting");
     try {
@@ -190,6 +194,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
         }
         setServerError(data?.error ?? "신청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
         setStatus("idle");
+        inFlight.current = false;
         track("lead_submit_error", { serviceType: v.value.serviceType });
         return;
       }
@@ -201,6 +206,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
     } catch {
       setServerError("네트워크 연결을 확인한 뒤 다시 시도해 주세요. 입력하신 내용은 그대로 남아 있어요.");
       setStatus("idle");
+      inFlight.current = false;
       track("lead_submit_error", { serviceType: v.value.serviceType });
     }
   }
@@ -291,9 +297,12 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
               return (
                 <label
                   key={t}
+                  // 접수가 잠긴 상태(fieldset disabled)에서는 눌러도 선택되지 않으므로, 선택 가능한 것처럼 보이지 않게 한다
+                  aria-disabled={disabled || undefined}
                   className={cn(
-                    "flex min-h-[76px] cursor-pointer items-center gap-4 rounded-2xl border-2 bg-white px-4 py-3 transition-colors has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-blue/20 sm:px-5",
-                    checked ? "border-blue bg-blue-50/60" : errors.serviceType ? "border-danger" : "border-navy-100 hover:border-navy-200",
+                    "flex min-h-[76px] items-center gap-4 rounded-2xl border-2 bg-white px-4 py-3 transition-colors has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-blue/20 sm:px-5",
+                    disabled ? "cursor-not-allowed border-navy-100 opacity-55" : "cursor-pointer",
+                    !disabled && (checked ? "border-blue bg-blue-50/60" : errors.serviceType ? "border-danger" : "border-navy-100 hover:border-navy-200"),
                   )}
                 >
                   <input

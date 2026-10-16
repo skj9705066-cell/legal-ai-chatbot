@@ -38,7 +38,10 @@ npm run dev                     # http://localhost:3100  ·  관리자: http://l
 | `npm run dev` / `build` / `start` | 개발 / 빌드(배포 게이트 포함) / 실행 (포트 3100) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` | 단위 테스트 (vitest) — 검증·마스킹·암호화·세션·CSV·영업대상 규칙 |
+| `npm run lint` | ESLint (Next.js core-web-vitals + TypeScript 규칙). `next build`도 같은 규칙으로 검사한다 |
 | `npm run test:e2e` | E2E (Playwright, 서버 실행 중이어야 함) — 사용자 여정·관리자 권한·axe 접근성·반응형 |
+| (포함) `apply-flow.spec.ts` | 세 유형 카드 실제 클릭·탭 → 다음·이전 → 제출 → 완료 → 보장 분석(동의/거절/건너뜀) → CRM → CSV, 입력 오류·연타·네트워크 오류·새로고침·뒤로가기 |
+| (포함) `crm.spec.ts` | 관리자 전 메뉴, 화면 이동 중 필터·목록 중복 없음, 편집 저장 유지, 테스트 신청 필터·영업 대상 제외, 로그아웃 |
 | `DEMO_ADMIN_PASSWORD=… npm run verify:deployed` | 배포 사이트 점검(`tests/e2e/release-check.spec.ts`) — 사례 3개 우선·2개 접힘, 사례별 유형 자동 선택, 심사·지급 문구, 모바일 2단계 폼, 데모 신청 → CRM 조회. `E2E_BASE_URL`로 대상 변경. 운영 모드면 신청 테스트는 건너뜀 |
 | `npm run check:deploy` | 운영 배포 필수 항목·승인 기록 점검 |
 
@@ -60,6 +63,8 @@ E2E는 레이트리밋(IP당 10분 5건)에 걸리지 않도록 **서버를 새�
 `VERCEL_ENV=preview` 배포에서만 테스트 모드로 동작한다(APP_MODE 값과 무관). Production 배포(`VERCEL_ENV=production`)에서는 이 값이 있어도 무시되고,
 `APP_MODE=staging`도 운영 기준으로 잠긴다. 접수가 잠겨 있으면 Preview·로컬에서만 폼 아래에 **미완료 설정의 변수 이름**을 보여 준다(값은 표시 안 함,
 Production에서는 표시 안 함). 테스트 신청은 `is_test=true`로 저장되어 CRM에 '테스트' 배지, CSV에 '테스트 신청' 열, 운영 지표 제외.
+CRM 상세 필터의 '테스트 신청'(포함/제외/테스트만)으로 구분하며, **보장 분석 영업 대상 목록은 테스트 신청을 기본으로 제외**한다.
+`STAGING_ADMIN_EMAIL`·`STAGING_ADMIN_PASSWORD`를 주면 `apply-flow`·`crm`·`staging-db` 스펙을 테스트 모드 배포(실제 DB)에도 그대로 돌릴 수 있다.
 
 **DB 자동 점검** (`lib/server/db-check.ts`, 관리자 → 환경설정에서 결과·다시 점검): 실제 키로 데이터를 바꾸지 않고 확인한다 —
 키 종류(서버 키가 비밀키인지, 공개 키 자리에 비밀키가 없는지), 공개 키로 신청·직원 조회/수정 차단, 서버 키로도 신청 삭제·감사로그 수정 불가,
