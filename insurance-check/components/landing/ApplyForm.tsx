@@ -157,6 +157,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   }
 
   async function submit() {
+    if (disabled) return; // 접수 잠김: 전송하지 않는다
     track("form_submit_attempt", { serviceType: serviceType || null });
     const v = validate();
     if (!v.ok) {
@@ -213,9 +214,10 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (busy || disabled) return;
+    if (busy) return;
+    // 접수가 잠겨 있어도 유형 선택·단계 이동은 된다. 실제 전송만 막는다(서버도 잠김 상태면 503으로 거절)
     if (step < STEPS.length - 1) next();
-    else void submit();
+    else if (!disabled) void submit();
   }
 
   const current = STEPS[step];
@@ -287,7 +289,8 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
         {serverError && <Alert tone="error" role="alert" className="mt-6" title={serverError} />}
       </div>
 
-      <fieldset key={step} disabled={disabled || busy} className="step-in mt-7">
+      {/* 접수 잠금(disabled)은 연락처 입력·신청 버튼에만 건다. 유형 선택과 다음·이전은 잠금과 무관하게 동작해야 한다 */}
+      <fieldset key={step} disabled={busy} className="step-in mt-7">
         <legend className="sr-only">{current.title}</legend>
 
         {step === 0 && (
@@ -297,12 +300,9 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
               return (
                 <label
                   key={t}
-                  // 접수가 잠긴 상태(fieldset disabled)에서는 눌러도 선택되지 않으므로, 선택 가능한 것처럼 보이지 않게 한다
-                  aria-disabled={disabled || undefined}
                   className={cn(
-                    "flex min-h-[76px] items-center gap-4 rounded-2xl border-2 bg-white px-4 py-3 transition-colors has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-blue/20 sm:px-5",
-                    disabled ? "cursor-not-allowed border-navy-100 opacity-55" : "cursor-pointer",
-                    !disabled && (checked ? "border-blue bg-blue-50/60" : errors.serviceType ? "border-danger" : "border-navy-100 hover:border-navy-200"),
+                    "flex min-h-[76px] cursor-pointer items-center gap-4 rounded-2xl border-2 bg-white px-4 py-3 transition-colors has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-blue/20 sm:px-5",
+                    checked ? "border-blue bg-blue-50/60" : errors.serviceType ? "border-danger" : "border-navy-100 hover:border-navy-200",
                   )}
                 >
                   <input
@@ -359,91 +359,94 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
                 </button>
               </div>
             )}
-            <div>
-              <Label htmlFor="apply-name" required>
-                이름
-              </Label>
-              <Input
-                id="apply-name"
-                name="name"
-                autoComplete="name"
-                value={name}
-                maxLength={LIMITS.nameMax}
-                invalid={!!errors.name}
-                aria-required="true"
-                aria-describedby={errors.name ? "apply-name-error" : undefined}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  clearError("name");
-                }}
-                placeholder="이름을 입력해 주세요"
-              />
-              <FieldError id="apply-name-error">{errors.name}</FieldError>
-            </div>
-            <div>
-              <Label htmlFor="apply-phone" required>
-                휴대전화번호
-              </Label>
-              <Input
-                id="apply-phone"
-                name="phone"
-                type="tel"
-                inputMode="numeric"
-                autoComplete="tel-national"
-                value={phone}
-                invalid={!!errors.phone}
-                aria-required="true"
-                aria-describedby={errors.phone ? "apply-phone-error" : undefined}
-                onChange={(e) => {
-                  setPhone(formatPhoneInput(e.target.value));
-                  clearError("phone");
-                }}
-                placeholder="010-0000-0000"
-              />
-              <FieldError id="apply-phone-error">{errors.phone}</FieldError>
-            </div>
-
-            <div className="space-y-3 pt-1" data-testid="apply-consents">
-              <ConsentBox
-                id="apply-privacy"
-                required
-                title="개인정보 수집·이용 동의"
-                checked={privacyConsent}
-                onChange={(v) => {
-                  setPrivacyConsent(v);
-                  clearError("privacyConsent");
-                }}
-                rows={claimConsentRows(config.operator)}
-                footnote={CLAIM_CONSENT_FOOTNOTE}
-                error={errors.privacyConsent}
-              />
-              {needThirdParty && (
-                <ConsentBox
-                  id="apply-third-party"
-                  required
-                  title="개인정보 제3자 제공 동의"
-                  checked={thirdPartyConsent}
-                  onChange={(v) => {
-                    setThirdPartyConsent(v);
-                    clearError("thirdPartyConsent");
+            {/* 접수 잠김: 연락처·동의 입력을 받지 않는다(유형 '변경'·'이전'은 위·아래에서 그대로 동작) */}
+            <fieldset disabled={disabled} className="min-w-0 space-y-6" data-testid="apply-contact-fields">
+              <div>
+                <Label htmlFor="apply-name" required>
+                  이름
+                </Label>
+                <Input
+                  id="apply-name"
+                  name="name"
+                  autoComplete="name"
+                  value={name}
+                  maxLength={LIMITS.nameMax}
+                  invalid={!!errors.name}
+                  aria-required="true"
+                  aria-describedby={errors.name ? "apply-name-error" : undefined}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    clearError("name");
                   }}
-                  rows={thirdPartyConsentRows(config.operator)}
-                  error={errors.thirdPartyConsent}
+                  placeholder="이름을 입력해 주세요"
                 />
-              )}
-              <ConsentBox
-                id="apply-marketing"
-                required={false}
-                title="광고성 정보 수신 동의 (문자)"
-                checked={marketingConsent}
-                onChange={setMarketingConsent}
-                rows={marketingConsentRows(config.operator)}
-              />
-            </div>
-            <p className="flex gap-2 text-[14px] leading-relaxed text-navy-600">
-              <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              선택 동의는 하지 않아도 신청할 수 있어요. 보장 분석 상담은 신청이 끝난 뒤 원하시는 경우에만 따로 동의받습니다.
-            </p>
+                <FieldError id="apply-name-error">{errors.name}</FieldError>
+              </div>
+              <div>
+                <Label htmlFor="apply-phone" required>
+                  휴대전화번호
+                </Label>
+                <Input
+                  id="apply-phone"
+                  name="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  value={phone}
+                  invalid={!!errors.phone}
+                  aria-required="true"
+                  aria-describedby={errors.phone ? "apply-phone-error" : undefined}
+                  onChange={(e) => {
+                    setPhone(formatPhoneInput(e.target.value));
+                    clearError("phone");
+                  }}
+                  placeholder="010-0000-0000"
+                />
+                <FieldError id="apply-phone-error">{errors.phone}</FieldError>
+              </div>
+
+              <div className="space-y-3 pt-1" data-testid="apply-consents">
+                <ConsentBox
+                  id="apply-privacy"
+                  required
+                  title="개인정보 수집·이용 동의"
+                  checked={privacyConsent}
+                  onChange={(v) => {
+                    setPrivacyConsent(v);
+                    clearError("privacyConsent");
+                  }}
+                  rows={claimConsentRows(config.operator)}
+                  footnote={CLAIM_CONSENT_FOOTNOTE}
+                  error={errors.privacyConsent}
+                />
+                {needThirdParty && (
+                  <ConsentBox
+                    id="apply-third-party"
+                    required
+                    title="개인정보 제3자 제공 동의"
+                    checked={thirdPartyConsent}
+                    onChange={(v) => {
+                      setThirdPartyConsent(v);
+                      clearError("thirdPartyConsent");
+                    }}
+                    rows={thirdPartyConsentRows(config.operator)}
+                    error={errors.thirdPartyConsent}
+                  />
+                )}
+                <ConsentBox
+                  id="apply-marketing"
+                  required={false}
+                  title="광고성 정보 수신 동의 (문자)"
+                  checked={marketingConsent}
+                  onChange={setMarketingConsent}
+                  rows={marketingConsentRows(config.operator)}
+                />
+              </div>
+              <p className="flex gap-2 text-[14px] leading-relaxed text-navy-600">
+                <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                선택 동의는 하지 않아도 신청할 수 있어요. 보장 분석 상담은 신청이 끝난 뒤 원하시는 경우에만 따로 동의받습니다.
+              </p>
+            </fieldset>
           </div>
         )}
 
@@ -467,7 +470,14 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
               이전
             </Button>
           )}
-          <Button type="submit" size="lg" className={cn("min-w-0", isLast ? "w-full sm:w-auto sm:flex-1" : "flex-1")} aria-disabled={busy || disabled}>
+          <Button
+            type="submit"
+            size="lg"
+            className={cn("min-w-0", isLast ? "w-full sm:w-auto sm:flex-1" : "flex-1")}
+            // 잠김일 때 막는 것은 마지막 '신청하기'뿐. 1단계 '다음'은 항상 누를 수 있다
+            disabled={isLast && disabled}
+            aria-disabled={busy || (isLast && disabled)}
+          >
             {status === "submitting" ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
