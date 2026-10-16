@@ -18,7 +18,7 @@ function Highlighted({ line }: { line: string }) {
 export function Hero() {
   return (
     <section aria-labelledby="hero-title" className="relative overflow-hidden bg-[linear-gradient(180deg,#FFFFFF_0%,#F3F7FC_100%)]">
-      <div className="container grid items-center gap-10 pb-14 pt-9 sm:pt-14 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12 lg:pb-24 lg:pt-20">
+      <div className="container grid items-center gap-10 pb-10 pt-7 sm:pb-14 sm:pt-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12 lg:pb-20 lg:pt-16">
         <div className="animate-fade-up">
           <p className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1.5 text-[14px] font-semibold text-navy-600 shadow-ring">
             <span className="h-1.5 w-1.5 rounded-full bg-mint" aria-hidden="true" />
@@ -34,7 +34,7 @@ export function Hero() {
               </span>
             ))}
           </h1>
-          <p className="mt-5 text-[19px] font-bold leading-[1.55] tracking-[-0.02em] text-ink sm:text-[22px] lg:mt-6 lg:text-[23px]" data-testid="hero-subtitle">
+          <p className="mt-4 text-[19px] font-bold leading-[1.55] tracking-[-0.02em] text-ink sm:text-[22px] lg:mt-6 lg:text-[23px]" data-testid="hero-subtitle">
             {HERO.subLines.map((l) => (
               <span key={l} className="block">
                 {l}
@@ -43,7 +43,7 @@ export function Hero() {
           </p>
           <p className="mt-3 max-w-[540px] text-pretty text-[16px] leading-[1.7] text-navy-600 sm:text-[17px] lg:text-[18px]">{HERO.description}</p>
 
-          <div id="hero-cta" className="mt-8 lg:mt-10">
+          <div id="hero-cta" className="mt-7 lg:mt-10">
             <ApplyCta source="hero" target="types" size="xl" className="h-[62px] w-full text-[18px] sm:w-auto sm:min-w-[320px]" />
           </div>
 
@@ -57,8 +57,8 @@ export function Hero() {
           </ul>
         </div>
 
-        {/* 모바일: 목업 상단만 보여 주어 카피·CTA가 먼저 보이게 */}
-        <div className="animate-fade-up [animation-delay:140ms] max-lg:max-h-[380px] max-lg:overflow-hidden max-lg:[mask-image:linear-gradient(to_bottom,black_72%,transparent)]">
+        {/* 장식용 목업은 데스크톱에서만 — 모바일은 카피·CTA 다음 바로 통계로 이어진다 */}
+        <div className="hidden animate-fade-up [animation-delay:140ms] lg:block">
           <HeroVisual />
         </div>
       </div>

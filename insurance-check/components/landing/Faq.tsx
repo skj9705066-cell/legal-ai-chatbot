@@ -55,7 +55,7 @@ export function Faq({ contactPhone }: { contactPhone: string | null }) {
                     aria-expanded={isOpen}
                     aria-controls={`faq-a-${i}`}
                     onClick={() => setOpen(isOpen ? null : i)}
-                    className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-5 text-left text-[17px] font-semibold leading-snug text-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue sm:px-6 sm:text-[18px]"
+                    className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left text-[16.5px] sm:py-5 font-semibold leading-snug text-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue sm:px-6 sm:text-[18px]"
                   >
                     {f.q}
                     <Plus

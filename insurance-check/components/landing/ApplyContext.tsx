@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 import type { ServiceType } from "@/lib/types";
 import { track } from "@/lib/analytics";
 
-export type CtaSource = "hero" | "stats" | "type_card" | "process" | "final" | "sticky" | "header";
+export type CtaSource = "hero" | "stats" | "type_card" | "cases" | "process" | "final" | "sticky" | "header";
 
 export interface ApplyRequest {
   n: number;

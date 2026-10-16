@@ -3,16 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { BadgeCheck, Info, SendHorizontal } from "lucide-react";
 import { REVIEW_CATEGORY_LABEL, type OperatingMetrics, type PublicReview } from "@/lib/types";
-import { CHAT_GALLERY as G } from "@/lib/content";
-import { buildGallery } from "@/lib/chat-gallery";
+import { REAL_REVIEWS as G } from "@/lib/content";
 import { toBubbles } from "@/lib/reviews";
 import { cn } from "@/lib/utils";
 import { Reveal } from "@/components/motion/Reveal";
-import { LogoMark } from "@/components/site/Logo";
-import { ApplyCta } from "./ApplyCta";
 import { Carousel } from "./Carousel";
-
-type Scenario = (typeof G.scenarios)[number];
 
 /** 카드마다 대화창 톤·세로 위치를 조금씩 달리해 반복감을 줄인다 */
 const THEMES = [
@@ -51,21 +46,6 @@ function CustomerBubble({ text, i }: { text: string; i: number }) {
         <span className="sr-only">고객: </span>
         {text}
       </p>
-    </li>
-  );
-}
-
-function CounselorBubble({ text, i }: { text: string; i: number }) {
-  return (
-    <li className="chat-msg flex items-start gap-2" style={{ ["--d" as string]: `${i * 260}ms` }}>
-      <LogoMark className="mt-0.5 h-8 w-8 shrink-0 rounded-[11px]" />
-      <div className="min-w-0 max-w-[80%]">
-        <p className="mb-1 text-[12.5px] font-semibold text-navy-600">{G.counselorName}</p>
-        <p className="break-keep rounded-[18px] rounded-tl-[6px] bg-white px-3.5 py-2.5 text-[15.5px] leading-[1.6] text-ink ring-1 ring-navy-100">
-          <span className="sr-only">상담: </span>
-          {text}
-        </p>
-      </div>
     </li>
   );
 }
@@ -121,21 +101,6 @@ function ChatFrame({
   );
 }
 
-function ExampleCard({ s, index }: { s: Scenario; index: number }) {
-  return (
-    <ChatFrame
-      topic={s.topic}
-      sub={REVIEW_CATEGORY_LABEL[s.category]}
-      chip={<span className="shrink-0 rounded-full bg-navy-100 px-2 py-0.5 text-[12px] font-semibold text-navy-600">{G.exampleChip}</span>}
-      theme={THEMES[index % THEMES.length]}
-      footer="예시 화면입니다"
-      testId="chat-example"
-    >
-      {s.messages.map((m, i) => (m.from === "customer" ? <CustomerBubble key={i} text={m.text} i={i} /> : <CounselorBubble key={i} text={m.text} i={i} />))}
-    </ChatFrame>
-  );
-}
-
 function RealCard({ r, index }: { r: PublicReview; index: number }) {
   const bubbles = toBubbles(r.content);
   return (
@@ -179,30 +144,29 @@ function RealCard({ r, index }: { r: PublicReview; index: number }) {
 }
 
 /**
- * 보험금 점검 대화 갤러리. 기본은 보험금을 찾게 되는 상황 예시 대화 5개(제목 아래 '예시 대화', 카드마다 '상황 예시' 표시)이고,
- * 고객 동의 + 공개 승인된 실제 후기가 생기면 같은 유형의 예시 카드 자리를 대신한다.
+ * 실제 고객 후기(카카오톡 메시지 원문·동의 캡처) 갤러리.
+ * 고객 동의 + 관리자 공개 승인된 후기만, 없으면 아무것도 렌더링하지 않는다(가상 후기·대화를 만들지 않음).
+ * 데스크톱 3장 / 모바일 1장 캐러셀, 자동 넘김.
  */
-export function ChatGallery({ reviews, metrics }: { reviews: PublicReview[]; metrics: Partial<OperatingMetrics> | null }) {
-  const slots = buildGallery(G.scenarios, reviews);
-  const exampleCount = slots.filter((s) => s.kind === "example").length;
-  const realCount = slots.length - exampleCount;
+export function RealReviews({ reviews, metrics }: { reviews: PublicReview[]; metrics: Partial<OperatingMetrics> | null }) {
   const metricKeys = metrics ? (Object.keys(G.metricLabel) as (keyof OperatingMetrics)[]).filter((k) => metrics[k]) : [];
+  if (!reviews.length && !metricKeys.length) return null;
 
   return (
-    <section id="reviews" aria-labelledby="reviews-title" className="bg-navy-50 py-20 sm:py-24 lg:py-32">
+    <section id="reviews" aria-labelledby="reviews-title" className="bg-navy-50 py-14 sm:py-20 lg:py-24">
       <div className="container">
         <Reveal>
           <p className="text-[15px] font-bold text-blue-700">{G.eyebrow}</p>
-          <h2 id="reviews-title" className="mt-2.5 text-balance text-[28px] font-extrabold leading-[1.32] tracking-[-0.03em] text-navy sm:text-[34px] lg:text-[40px]">
+          <h2 id="reviews-title" className="mt-2.5 text-balance text-[26px] font-extrabold leading-[1.32] tracking-[-0.03em] text-navy sm:text-[32px] lg:text-[38px]">
             {G.title}
           </h2>
-          <p className="mt-4 max-w-2xl text-pretty text-[17px] leading-[1.7] text-navy-600 lg:text-[18px]" data-testid="reviews-subtitle">
-            {exampleCount ? G.subtitle : G.allRealSubtitle}
+          <p className="mt-3 max-w-2xl text-pretty text-[16px] leading-[1.65] text-navy-600 lg:text-[17px]" data-testid="reviews-subtitle">
+            {G.subtitle}
           </p>
         </Reveal>
 
         {metricKeys.length > 0 && (
-          <div className="mt-8 rounded-[24px] bg-white p-6 ring-1 ring-navy-100 sm:p-8" data-testid="operating-metrics">
+          <div className="mt-7 rounded-[24px] bg-white p-6 ring-1 ring-navy-100 sm:p-8" data-testid="operating-metrics">
             <h3 className="text-[17px] font-bold text-navy">{G.metricsTitle}</h3>
             <dl className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
               {metricKeys.map((k) => (
@@ -216,43 +180,23 @@ export function ChatGallery({ reviews, metrics }: { reviews: PublicReview[]; met
           </div>
         )}
 
-        {/* 실제 후기와 예시가 섞여 있을 때만 구분 안내 */}
-        {exampleCount > 0 && realCount > 0 && (
-          <p className="mt-9 inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-[14.5px] text-navy-600 ring-1 ring-navy-100" data-testid="example-label">
-            <Info className="h-[18px] w-[18px] shrink-0 text-blue" aria-hidden="true" />
-            {G.mixedLabelNote}
-          </p>
+        {reviews.length > 0 && (
+          <>
+            <div className="mt-8">
+              <Carousel
+                id="chat-track"
+                label="실제 고객 후기 (좌우로 넘겨 보세요)"
+                autoplayMs={5000}
+                slideClassName={(i) => THEMES[i % THEMES.length].offset}
+                slides={reviews.map((r, i) => ({ key: r.id, label: `${REVIEW_CATEGORY_LABEL[r.category]} 후기`, node: <RealCard r={r} index={i} /> }))}
+              />
+            </div>
+            <p className="mt-5 flex gap-2 text-[14px] leading-relaxed text-navy-600">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              {G.note}
+            </p>
+          </>
         )}
-
-        <div className={exampleCount > 0 && realCount > 0 ? "mt-5" : "mt-10"}>
-          <Carousel
-            id="chat-track"
-            label="보험금 점검 대화 카드 (좌우로 넘겨 보세요)"
-            autoplayMs={5000}
-            slideClassName={(i) => THEMES[i % THEMES.length].offset}
-            slides={slots.map((slot, i) =>
-              slot.kind === "example"
-                ? { key: `ex-${slot.scenario.id}`, label: `${slot.scenario.topic} (상황 예시)`, node: <ExampleCard s={slot.scenario} index={i} /> }
-                : { key: `rv-${slot.review.id}`, label: `${REVIEW_CATEGORY_LABEL[slot.review.category]} (실제 후기)`, node: <RealCard r={slot.review} index={i} /> },
-            )}
-          />
-        </div>
-
-        {realCount > 0 && (
-          <p className="mt-5 flex gap-2 text-[15px] leading-relaxed text-navy-600">
-            <Info className="mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden="true" />
-            {G.realNote}
-          </p>
-        )}
-
-        <div id="gallery-cta" className="mt-14 text-center lg:mt-16">
-          <p className="text-balance text-[22px] font-extrabold leading-[1.4] tracking-[-0.03em] text-navy sm:text-[26px] lg:text-[30px]">{G.ctaTitle}</p>
-          <div className="mt-6">
-            <ApplyCta source="stats" target="types" size="xl" className="h-[62px] w-full text-[18px] sm:w-auto sm:min-w-[320px]">
-              {G.ctaButton}
-            </ApplyCta>
-          </div>
-        </div>
       </div>
     </section>
   );

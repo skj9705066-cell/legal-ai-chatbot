@@ -23,14 +23,14 @@ export function SectionHeading({
         tabIndex={-1}
         className={cn(
           "focus:outline-none",
-          "mt-2.5 text-balance text-[28px] font-extrabold leading-[1.32] tracking-[-0.03em] sm:text-[34px] lg:text-[40px]",
+          "mt-2.5 text-balance text-[26px] font-extrabold leading-[1.32] tracking-[-0.03em] sm:text-[32px] lg:text-[38px]",
           tone === "dark" ? "text-white" : "text-navy",
         )}
       >
         {title}
       </h2>
       {description && (
-        <p className={cn("mt-4 text-pretty text-[17px] leading-[1.7] lg:text-[18px]", tone === "dark" ? "text-navy-300" : "text-navy-600")}>
+        <p className={cn("mt-3 text-pretty text-[16px] leading-[1.65] lg:text-[17px]", tone === "dark" ? "text-navy-300" : "text-navy-600")}>
           {description}
         </p>
       )}
@@ -54,7 +54,7 @@ export function Section({
       id={id}
       aria-labelledby={`${id}-title`}
       className={cn(
-        "py-20 sm:py-24 lg:py-32",
+        "py-14 sm:py-20 lg:py-24",
         tone === "tint" && "bg-navy-50",
         tone === "navy" && "bg-navy text-white",
         className,

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { canTransition, isAnonymizedDisplayName, parseImageDataUrl, publicMetrics, toBubbles, toPublicReviews, validateReviewInput } from "@/lib/reviews";
-import { buildGallery } from "@/lib/chat-gallery";
 import type { Review } from "@/lib/types";
 
 const base: Review = {
@@ -126,28 +125,5 @@ describe("실제 운영 지표 공개 기준", () => {
       completedConsultations: 90,
       verifiedPayoutCases: 3,
     });
-  });
-});
-
-describe("대화 갤러리 구성", () => {
-  const scenarios = [
-    { id: "surgery", category: "medical_claim" as const },
-    { id: "old", category: "history_lookup" as const },
-    { id: "parents", category: "coverage_consult" as const },
-  ];
-  const pub = (id: string, category: Review["category"]) => toPublicReviews([{ ...base, id, category }])[0];
-
-  it("실제 후기가 없으면 예시만 보여 준다", () => {
-    expect(buildGallery(scenarios, []).map((s) => s.kind)).toEqual(["example", "example", "example"]);
-  });
-
-  it("같은 유형의 예시 자리를 실제 후기가 대신하고, 남는 실제 후기는 앞에 붙는다", () => {
-    const slots = buildGallery(scenarios, [pub("a", "history_lookup"), pub("b", "maturity_dormant")]);
-    expect(slots.map((s) => (s.kind === "real" ? `real:${s.review.id}` : `ex:${s.scenario.id}`))).toEqual([
-      "real:b",
-      "ex:surgery",
-      "real:a",
-      "ex:parents",
-    ]);
   });
 });
