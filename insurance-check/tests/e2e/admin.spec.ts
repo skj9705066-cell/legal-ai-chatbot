@@ -4,6 +4,8 @@ import AxeBuilder from "@axe-core/playwright";
 const PASSWORD = process.env.DEMO_ADMIN_PASSWORD || "demo-admin-local";
 
 async function login(page: Page, role: "admin" | "counselor" | "viewer") {
+  // 관리자 로그인 레이트리밋(IP당 15분 10회)이 테스트끼리 섞이지 않게 테스트마다 다른 IP 키(로컬 전용 — Vercel에서는 덮어써짐)
+  await page.setExtraHTTPHeaders({ "x-real-ip": `admin-${test.info().testId}` });
   await page.goto("/admin/login");
   await page.selectOption("#login-role", role);
   await page.fill("#login-password", PASSWORD);

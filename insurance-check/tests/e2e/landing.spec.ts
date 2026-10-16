@@ -326,6 +326,8 @@ test("trust right before the form: what you get, no-guarantee note, operator inf
 });
 
 async function seedReviews(page: import("@playwright/test").Page, n: number) {
+  // 관리자 로그인 레이트리밋이 다른 테스트와 섞이지 않게(로컬 전용 — Vercel에서는 덮어써짐)
+  await page.setExtraHTTPHeaders({ "x-real-ip": `reviews-${test.info().testId}` });
   const origin = { Origin: "http://localhost:3100" };
   const login = await page.request.post("/api/admin/login", {
     data: { role: "admin", password: process.env.DEMO_ADMIN_PASSWORD || "demo-admin-local" },

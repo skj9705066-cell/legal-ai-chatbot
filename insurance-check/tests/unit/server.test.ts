@@ -1,7 +1,7 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { csvCell } from "@/lib/server/csv";
 import { isSalesEligible } from "@/lib/server/repo/filter";
-import { signSession, verifySession, can } from "@/lib/session";
+import { signSession, verifySession, can, SESSION_TTL_SECONDS } from "@/lib/session";
 
 beforeAll(() => {
   process.env.APP_MODE = "demo";
@@ -30,6 +30,16 @@ describe("sales eligibility", () => {
 
 describe("session tokens", () => {
   const secret = "x".repeat(40);
+  afterEach(() => vi.useRealTimers());
+  it("expires after the session lifetime (세션 만료)", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-16T00:00:00Z"));
+    const t = await signSession({ sub: "u1", name: "관리자", role: "admin" }, secret);
+    vi.setSystemTime(new Date(Date.parse("2026-10-16T00:00:00Z") + (SESSION_TTL_SECONDS - 60) * 1000));
+    expect(await verifySession(t, secret)).not.toBeNull();
+    vi.setSystemTime(new Date(Date.parse("2026-10-16T00:00:00Z") + (SESSION_TTL_SECONDS + 1) * 1000));
+    expect(await verifySession(t, secret)).toBeNull();
+  });
   it("round-trips and rejects tampering / wrong secret", async () => {
     const t = await signSession({ sub: "u1", name: "관리자", role: "admin" }, secret);
     expect((await verifySession(t, secret))?.role).toBe("admin");

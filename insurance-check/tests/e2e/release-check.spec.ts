@@ -131,6 +131,8 @@ test("⑥ 신청 저장 → 관리자 CRM 조회 (데모 모드)", async ({ page
   await expect(page.getByTestId("demo-receipt-note")).toBeVisible();
   const refNo = (await page.locator("strong.font-mono").first().textContent())!.trim();
 
+  // 관리자 로그인 레이트리밋이 다른 테스트와 섞이지 않게(로컬 전용 — Vercel에서는 덮어써짐)
+  await page.setExtraHTTPHeaders({ "x-real-ip": `release-${test.info().testId}` });
   await page.goto("/admin/login");
   await page.selectOption("#login-role", "admin");
   await page.fill("#login-password", PASSWORD);

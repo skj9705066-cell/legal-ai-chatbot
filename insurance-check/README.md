@@ -82,6 +82,16 @@ DB 내부 설정(RLS·트리거·규칙)은 SQL Editor에서 `supabase/verify.sq
 `E2E_STAGING=1 E2E_BASE_URL=<주소> STAGING_ADMIN_EMAIL=… STAGING_ADMIN_PASSWORD=… npx playwright test staging-db --project=desktop`
 (DB 점검 통과 → 배너·태그 없음 → 사례 버튼 신청 → 같은 제출 키 재전송 1건 → CRM 조회·마스킹·동의 기록·연락처 복호화). 테스트 데이터만 사용(이름 '테스트검증', 010-0000-04xx).
 
+**실제 Preview 자동 검증** (`.github/workflows/insurance-check-preview-e2e.yml`): Vercel이 Preview 배포를 마치면 GitHub Actions가 그 주소로
+사전 점검(`scripts/preview-preflight.mjs` — 모드·잠김·미완료 설정 이름) → 실제 신청·DB·CRM(`staging-db`, `crm`) → 유형·입력·동의(`apply-flow @preview`, PC+모바일)
+→ 화면 크기 5종·오류·권한(`viewports`, `errors`)을 돌린다. Production 배포·운영 주소는 대상에서 제외한다.
+필요한 저장소 Secrets: `VERCEL_AUTOMATION_BYPASS_SECRET`(Vercel → Deployment Protection → Protection Bypass for Automation),
+`STAGING_ADMIN_EMAIL`, `STAGING_ADMIN_PASSWORD`. 없으면 Vercel 로그인 화면(HTTP 302)에서 멈추고 그 사실만 보고한다.
+
+**접수 잠금 원칙**: 잠금(`submissionEnabled=false`)은 **실제 전송만** 막는다. 유형 선택·입력·동의·이전/다음·신청 버튼 같은 화면 조작에 연결하지 않는다
+(과거 잠금을 fieldset `disabled`로 걸어 Preview에서 카드·입력칸이 눌리지 않는 문제가 두 번 있었다 — `apply-flow`의 '입력'·'잠김' 테스트가 재발을 막는다).
+잠긴 상태에서 올바르게 입력하고 신청하면 "지금은 신청을 접수할 수 없어요" 안내만 띄우고 아무것도 보내지 않는다. 서버도 잠김이면 503.
+
 ## 디자인 시스템
 
 | 토큰 | 값 | 용도 |
