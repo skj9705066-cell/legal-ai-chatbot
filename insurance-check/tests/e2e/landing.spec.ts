@@ -219,37 +219,37 @@ test("every CTA goes to the same form; a picked type is kept and never asked twi
   expect(page.url()).not.toContain("cont.insure.or.kr");
 });
 
-test("claim cases: 5 situational examples (not real cases), 3 first, process strip, compliance notes, CTAs into the form", async ({ page, isMobile }) => {
+test("claim cases: copy, 3 first + '다른 사례 보기', per-card steps, situational-example label, CTAs keep the type", async ({ page, isMobile }) => {
+  const events: string[] = [];
+  await page.addInitScript(() => Object.defineProperty(navigator, "sendBeacon", { value: undefined }));
+  page.on("request", (req) => {
+    if (req.url().endsWith("/api/events")) events.push(req.postData() ?? "");
+  });
   await page.goto("/");
   await page.addStyleTag({ content: "html{scroll-behavior:auto!important}" });
   const sec = page.locator("#claim-cases");
-  await expect(sec.getByRole("heading", { level: 2 })).toHaveText("이런 보험금도 확인해 보셨나요?");
-  await expect(sec).toContainText("놓치기 쉬운 상황과 확인 과정을 살펴보세요.");
+  await expect(sec.getByRole("heading", { level: 2 })).toHaveText("실손보험만 받고 끝인 줄 아셨나요?");
+  await expect(sec).toContainText("수술비 특약부터 오래된 만기보험금까지, 놓치기 쉬운 확인 항목을 살펴보세요.");
   const cards = sec.getByTestId("claim-case");
-  await expect(cards).toHaveCount(5);
-  // 공감도 높은 병원비 → 수술비 특약 → 만기보험금이 먼저 (빈도 순위 표기 없음)
-  const quotes = await cards.locator("h3").allInnerTexts();
-  expect(quotes.map((q) => q.replace(/[“”"]/g, ""))).toEqual([
-    "금액이 작아서 병원비 청구를 그냥 넘겼어요",
-    "수술 후 실손보험만 청구했어요",
-    "만기가 지난 보험이 있었던 것 같아요",
-    "진단을 받았는데 진단비는 생각 못 했어요",
-    "중간에 받을 돈이 있는 줄 몰랐어요",
+  // 공감도 높은 3개만 먼저 (병원비 → 수술비 특약 → 만기보험금)
+  await expect(cards).toHaveCount(3);
+  const quotes = async () => (await cards.locator("h3").allInnerTexts()).map((q) => q.replace(/[“”"]/g, ""));
+  expect(await quotes()).toEqual([
+    "병원비가 얼마 안 나와서 그냥 넘어갔어요.",
+    "수술했을 때 실손보험만 받으면 끝인 줄 알았어요.",
+    "오래전에 가입한 보험이라 만기된 줄도 몰랐어요.",
   ]);
-  for (const k of ["실손의료비(통원·약제비)", "수술비 특약(수술보험금)", "만기보험금", "진단비 특약(진단보험금)", "중도·휴면보험금"]) await expect(sec.getByText(k, { exact: true })).toHaveCount(1);
-  await expect(cards.filter({ hasText: "상황별 모범 절차 예시" })).toHaveCount(5);
-  await expect(cards.filter({ hasText: "확인할 것" })).toHaveCount(5);
-  for (const st of ["확인", "청구·신청", "보험사 심사·지급"]) await expect(sec.getByText(st, { exact: true })).toHaveCount(5);
-  // 지급 금액·순위·후기·보장 표현 없음
-  const text = await sec.innerText();
-  expect(text).not.toMatch(/\d[\d,]*\s*(만\s*)?원/);
-  for (const f of ["1위", "순위", "가장 많이", "받았어요", "찾았어요", "보장합니다", "지급됩니다"]) expect(text).not.toContain(f);
-  const notes = page.getByTestId("claim-cases-notes");
-  await expect(notes).toContainText("실제 고객 사례가 아닌 상황별 예시");
-  await expect(notes).toContainText("약관과 보험사 심사");
-  await expect(notes).toContainText("소멸시효");
-  await expect(notes).toContainText("만기·중도·휴면보험금에 관한 것으로, 청구하지 않은 병원비·수술비·진단비와는 별개");
-  // 첫 화면: 데스크톱 3장 / 모바일 1장(다음 카드가 살짝 보임). 나머지는 넘겨서 확인
+  for (const [k, steps] of [
+    ["실손의료보험", ["진료 내역 확인", "청구 서류 준비", "보험사 심사 및 지급 여부 결정"]],
+    ["수술비 특약", ["과거 수술 이력 확인", "가입 특약 확인", "보험사 심사 및 지급 여부 결정"]],
+    ["만기보험금", ["공식 숨은보험금 조회", "미수령 금액 확인", "보험사 지급 신청"]],
+  ] as const) {
+    const card = cards.filter({ has: page.getByText(k, { exact: true }) });
+    await expect(card).toHaveCount(1);
+    await expect(card.getByRole("listitem")).toHaveText(steps.map((st) => new RegExp(`${st}$`))); // 앞의 숫자는 장식(aria-hidden)
+  }
+  await expect(cards.filter({ hasText: "상황별 확인 절차 예시" })).toHaveCount(3);
+  await expect(sec.getByRole("button", { name: "나도 해당되는지 확인하기" })).toHaveCount(3);
   const track = page.locator("#claim-cases-track");
   await track.scrollIntoViewIfNeeded();
   const fully = () =>
@@ -262,22 +262,38 @@ test("claim cases: 5 situational examples (not real cases), 3 first, process str
         })
         .filter((i) => i >= 0);
     });
+  // 데스크톱 3열 격자 / 모바일 가로 캐러셀(첫 카드 + 다음 카드 살짝)
   await expect.poll(fully).toEqual(isMobile ? [0] : [0, 1, 2]);
-  const next = sec.getByRole("button", { name: "사례 카드 오른쪽으로 넘기기" });
-  for (let i = 0; i < (isMobile ? 4 : 2); i++) {
-    await next.click();
-    await page.waitForTimeout(700);
-  }
-  await expect.poll(fully).toEqual(isMobile ? [4] : [2, 3, 4]);
-  await expect(next).toBeDisabled();
-  // 카드 CTA → 해당 점검 유형으로 신청 폼 연락처 단계
-  await page.getByTestId("claim-case-cta-dormant").click();
+  // '다른 사례 보기' → 진단비 특약·중도/휴면 2개가 더 나온다
+  const more = sec.getByRole("button", { name: "다른 사례 보기 (2)" });
+  await expect(more).toHaveAttribute("aria-expanded", "false");
+  await more.click();
+  await expect(cards).toHaveCount(5);
+  expect((await quotes()).slice(3)).toEqual(["진단을 받았는데 진단비는 생각 못 했어요.", "중간에 받을 돈이 있는 줄 몰랐어요."]);
+  await expect(sec.getByRole("button", { name: "다른 사례 접기" })).toHaveAttribute("aria-expanded", "true");
+  if (isMobile) await expect.poll(fully).toEqual([3]); // 새로 나온 첫 카드로 이동
+  else await expect.poll(fully).toEqual([0, 1, 2, 3, 4]); // 격자 2줄
+  // 지급 금액·순위·후기·보장 표현 없음 / '실제 고객 사례'로 표현하지 않음
+  const text = await sec.innerText();
+  expect(text).not.toMatch(/\d[\d,]*\s*(만\s*)?원/);
+  for (const f of ["1위", "순위", "가장 많이", "받았어요", "찾았어요", "보장합니다", "지급됩니다", "실제 지급 후기입니다"]) expect(text).not.toContain(f);
+  const notes = page.getByTestId("claim-cases-notes");
+  await expect(notes).toContainText("실제 지급 후기나 고객 사례가 아닌 상황별 확인 절차 예시");
+  await expect(notes).toContainText("약관과 보험사 심사");
+  await expect(notes).toContainText("소멸시효");
+  await expect(notes).toContainText("만기·중도·휴면보험금에 관한 것으로, 청구하지 않은 병원비·수술비·진단비와는 별개");
+  // 카드 CTA → 해당 유형이 선택된 상태로 신청 폼(연락처·동의 한 화면)
+  await page.getByTestId("claim-case-cta-surgery-rider").click();
   await expect(page.locator("#apply-name")).toBeFocused();
+  await expect(page.getByTestId("apply-picked-type")).toContainText("병원비·수술비");
+  await page.getByTestId("claim-case-cta-maturity").click();
   await expect(page.getByTestId("apply-picked-type")).toContainText("숨은·만기보험금");
   // 하단 CTA → 같은 폼(고른 유형 유지)
   await page.locator("#claim-cases-cta").getByRole("button", { name: "혹시 나도 해당될까요? 무료 점검 시작하기" }).click();
-  await expect(page.locator("#apply")).toBeInViewport();
   await expect(page.getByTestId("apply-picked-type")).toContainText("숨은·만기보험금");
+  // 사례 CTA 클릭은 별도 이벤트로 측정(개인정보 없음)
+  await page.waitForTimeout(300);
+  expect(events.join("\n")).toContain("case_cta_click");
 });
 
 test("trust right before the form: what you get, no-guarantee note, operator info; FAQ 4 + more", async ({ page }) => {
@@ -292,8 +308,10 @@ test("trust right before the form: what you get, no-guarantee note, operator inf
   await expect(trust).toContainText("공식 숨은보험금 조회 서비스는 별도로 무료 이용할 수 있습니다.");
   // 운영 주체 정보: 설정되지 않은 값은 지어내지 않고 '[설정 필요]'로 표시
   const op = page.getByTestId("apply-operator");
-  for (const l of ["운영 주체", "소속 보험대리점", "담당 설계사", "연락처"]) await expect(op.getByText(l, { exact: true })).toBeVisible();
-  await expect(op).toContainText("[설정 필요: 운영 주체]");
+  for (const l of ["운영 주체", "소속 보험대리점", "담당 설계사", "고객 문의", "광고 심의", "개인정보"]) await expect(op.getByText(l, { exact: true })).toBeVisible();
+  // 확인되지 않은 정보는 지어내지 않고 '[설정 필요]'로 표시
+  for (const t of ["[설정 필요: 운영 주체]", "[설정 필요: GA 등록번호]", "[설정 필요: 설계사 등록번호]", "[설정 필요: 광고 심의필 번호]"]) await expect(op).toContainText(t);
+  await expect(op.getByRole("link", { name: "개인정보 처리방침" })).toHaveAttribute("href", "/privacy");
   await expect(page.locator("#apply").getByRole("heading", { level: 2 })).toHaveText("이제 내 보험도 확인해 볼까요?");
   await expect(page.locator("#apply")).toContainText("확인하고 싶은 항목을 선택하고 무료 상담을 신청하세요.");
 
@@ -373,8 +391,10 @@ test("real reviews appear only when approved; max 5; desktop 3-up / mobile 1-up;
   await expect(page.locator("#reviews")).toHaveCount(0);
 });
 
-test("wizard: 3 steps (type → name/phone → consent), per-step validation, optional consents unchecked", async ({ page }) => {
+test("wizard: 2 steps (type → name/phone + consents on one screen), validation, optional consents unchecked, hidden honeypot", async ({ page }) => {
   await page.goto("/#apply");
+  await expect(page.getByText("1단계").first()).toBeVisible();
+  await expect(page.locator("#apply").getByText("/ 2")).toBeVisible();
   const next = page.getByRole("button", { name: "다음", exact: true });
   await next.click();
   await expect(page.getByText("점검 유형을 선택해 주세요.")).toBeVisible();
@@ -382,26 +402,39 @@ test("wizard: 3 steps (type → name/phone → consent), per-step validation, op
   await page.locator("#apply-type-hidden").check({ force: true });
   await expect(page.getByTestId("apply-type-desc")).toContainText("공식 조회 안내");
   await next.click();
+  // 2단계: 이름·연락처와 동의가 한 화면에 (희망 시간·메모·확인 화면 없음)
   await expect(page.getByRole("heading", { name: "연락받으실 분을 알려주세요" })).toBeFocused();
   await expect(page.locator("#apply-phone")).toHaveAttribute("inputmode", "numeric");
-  await page.fill("#apply-name", "데모");
-  await page.fill("#apply-phone", "0101234");
-  await next.click();
-  await expect(page.getByText("휴대전화번호 형식을 확인해 주세요")).toBeVisible();
-  await expect(page.locator("#apply-phone")).toBeFocused();
-  await page.fill("#apply-phone", "010-0000-0000");
-  await next.click();
-  // 희망 시간·메모 단계 없이 바로 동의
-  await expect(page.getByRole("heading", { name: "마지막으로 확인해 주세요" })).toBeVisible();
   await expect(page.locator("#apply-time-anytime")).toHaveCount(0);
   await expect(page.locator("#apply-memo")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "마지막으로 확인해 주세요" })).toHaveCount(0);
   await expect(page.locator("#apply-privacy")).not.toBeChecked();
   await expect(page.locator("#apply-marketing")).not.toBeChecked();
   // 데모(제3자 제공 없음)에서는 제3자 제공 동의를 받지 않는다
   await expect(page.locator("#apply-third-party")).toHaveCount(0);
-  // 마지막 단계의 긴 신청 버튼이 좁은 화면에서 가로 넘침을 만들지 않는다
+  // 스팸 방지 숨김 필드는 사람에게 보이지 않고 탭 이동·보조기기에서도 제외
+  const honeypot = page.locator("#apply-website");
+  await expect(honeypot).toHaveAttribute("tabindex", "-1");
+  const hp = await honeypot.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { right: r.right, hidden: !!el.closest("[aria-hidden='true']") };
+  });
+  expect(hp.right).toBeLessThan(0);
+  expect(hp.hidden).toBe(true);
+  // 신청 버튼이 좁은 화면에서 가로 넘침을 만들지 않는다
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
-  await page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click();
+  const submit = page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true });
+  // 신청·이전 버튼 모두 충분한 터치 영역(48px 이상)
+  for (const btn of [submit, page.getByRole("button", { name: "이전", exact: true })]) {
+    expect((await btn.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+  }
+  await page.fill("#apply-name", "데모");
+  await page.fill("#apply-phone", "0101234");
+  await submit.click();
+  await expect(page.getByText("휴대전화번호 형식을 확인해 주세요")).toBeVisible();
+  await expect(page.locator("#apply-phone")).toBeFocused();
+  await page.fill("#apply-phone", "010-0000-0000");
+  await submit.click();
   await expect(page.getByText("개인정보 수집·이용에 동의해야 신청할 수 있습니다.")).toBeVisible();
   await page.locator("#apply-privacy").locator("xpath=ancestor::div[contains(@class,'rounded-2xl')][1]").getByRole("button", { name: "내용 보기" }).click();
   await expect(page.getByText("수집 목적").first()).toBeVisible();

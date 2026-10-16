@@ -17,6 +17,7 @@ export function Carousel({
   autoplayMs = 0,
   slideClassName,
   itemLabel = "대화 카드",
+  desktopGrid = false,
 }: {
   id: string;
   label: string;
@@ -25,6 +26,8 @@ export function Carousel({
   slideClassName?: (i: number) => string;
   /** 이전·다음 버튼의 보조기기용 이름에 쓰는 카드 이름 */
   itemLabel?: string;
+  /** 데스크톱(lg↑)에서는 캐러셀 대신 3열 격자로 모두 보여준다(넘김 버튼 자동 숨김) */
+  desktopGrid?: boolean;
 }) {
   const track = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
@@ -65,6 +68,11 @@ export function Carousel({
     };
   }, [sync]);
 
+  // 카드 수가 바뀌면(예: '다른 사례 보기') 넘김 가능 여부를 다시 계산
+  useEffect(() => {
+    sync();
+  }, [slides.length, sync]);
+
   const go = useCallback(
     (i: number) => track.current?.scrollTo({ left: i * step(), behavior: reduced ? "auto" : "smooth" }),
     [reduced, step],
@@ -100,7 +108,10 @@ export function Carousel({
         data-testid={id}
         data-autoplay={running ? "running" : "stopped"}
         // relative: 카드 안의 sr-only(절대 위치) 글자가 스크롤 영역 밖으로 빠져 페이지 폭을 넓히지 않게 가둔다
-        className="relative -mx-1 flex snap-x snap-mandatory items-stretch gap-4 overflow-x-auto px-1 pb-3 pt-1 [scrollbar-width:none] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue/20 lg:items-start lg:gap-5 [&::-webkit-scrollbar]:hidden"
+        className={cn(
+          "relative -mx-1 flex snap-x snap-mandatory items-stretch gap-4 overflow-x-auto px-1 pb-3 pt-1 [scrollbar-width:none] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue/20 lg:items-start lg:gap-5 [&::-webkit-scrollbar]:hidden",
+          desktopGrid && "lg:grid lg:snap-none lg:grid-cols-3 lg:items-stretch lg:overflow-visible",
+        )}
       >
         {slides.map((s, i) => (
           <div
@@ -108,7 +119,7 @@ export function Carousel({
             role="group"
             aria-roledescription="slide"
             aria-label={`${i + 1} / ${slides.length} · ${s.label}`}
-            className={cn("w-full shrink-0 snap-start sm:w-[calc((100%-16px)/2)] lg:w-[calc((100%-40px)/3)]", slideClassName?.(i))}
+            className={cn("w-full shrink-0 snap-start sm:w-[calc((100%-16px)/2)] lg:w-[calc((100%-40px)/3)]", slideClassName?.(i), desktopGrid && "lg:w-auto")}
             data-testid={`${id}-slide`}
           >
             {s.node}

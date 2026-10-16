@@ -5,7 +5,7 @@ import type { FunnelEventName, ServiceType } from "@/lib/types";
 import { CTA_VARIANTS, type CtaVariant } from "@/lib/content";
 import { track } from "@/lib/analytics";
 
-export type CtaSource = "hero" | "stats" | "type_card" | "cases" | "reviews" | "process" | "final" | "sticky" | "header";
+export type CtaSource = "hero" | "stats" | "type_card" | "cases" | "claim_case" | "reviews" | "process" | "final" | "sticky" | "header";
 
 export interface ApplyRequest {
   n: number;
@@ -36,6 +36,7 @@ const CLICK_EVENT: Partial<Record<CtaSource, FunnelEventName>> = {
   hero: "hero_cta_click",
   stats: "stats_cta_click",
   cases: "scenario_card_click",
+  claim_case: "case_cta_click",
 };
 
 const VARIANT_KEY = "ic.ctaVariant";
