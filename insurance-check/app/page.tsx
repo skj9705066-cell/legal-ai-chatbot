@@ -37,7 +37,7 @@ export default async function LandingPage() {
         <ServiceTypes />
         <Process />
         <ApplySection config={config} />
-        <Trust operator={config.operator} />
+        <Trust />
         <Faq contactPhone={config.operator.contactPhone} />
         <FinalCta />
       </main>

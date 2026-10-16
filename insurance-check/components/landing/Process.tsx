@@ -1,15 +1,17 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ChevronDown, FileText, ShieldAlert } from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, Scale, ShieldAlert } from "lucide-react";
 import { SERVICE_TYPES, type ServiceType } from "@/lib/types";
-import { REFUND_COMPARISON, SERVICE_CONTENT } from "@/lib/content";
+import { PROCESS, REFUND_COMPARISON, SERVICE_CONTENT } from "@/lib/content";
+import { StepArt, type StepArtKind } from "@/components/illustrations/Art";
 import { cn } from "@/lib/utils";
 import { Alert } from "@/components/ui/alert";
 import { Reveal } from "@/components/motion/Reveal";
 import { useApply } from "./ApplyContext";
 import { ApplyCta } from "./ApplyCta";
-import { Section, SectionHeading } from "./Section";
+import { Disclosure } from "./Disclosure";
+import { Section } from "./Section";
 
 /** 모바일에서는 접어 두고(제목만), 데스크톱에서는 항상 펼친다 */
 function InfoBox({ icon, title, items, dot }: { icon: React.ReactNode; title: string; items: readonly string[]; dot: string }) {
@@ -47,7 +49,8 @@ const ACTOR_STYLE: Record<string, string> = {
   "공식 서비스": "bg-mint-50 text-mint-700",
 };
 
-export function Process() {
+/** 유형별 상세 절차·서류·유의사항 — '자세히 보기' 안에서만 보인다 */
+function ProcessDetail() {
   const { serviceType, selectType } = useApply();
   const active: ServiceType = serviceType ?? "unclaimed";
   const c = SERVICE_CONTENT[active];
@@ -69,16 +72,7 @@ export function Process() {
   };
 
   return (
-    <Section id="process" className="border-t border-navy-100">
-      <Reveal>
-      <SectionHeading
-        id="process"
-        eyebrow="점검 절차"
-        title="점검은 4단계로 진행돼요"
-        description="확인 방법과 순서를 안내해 드려요. 청구와 지급 결정은 고객님과 보험사 사이에서 이뤄집니다."
-      />
-      </Reveal>
-
+    <div className="pt-2">
       <div
         role="tablist"
         aria-label="점검 유형별 절차"
@@ -190,6 +184,47 @@ export function Process() {
           </ApplyCta>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 점검 절차 — 기본 화면은 그림 3단계(신청 → 상담 안내 → 보험사 확인)와 핵심 고지 한 줄.
+ * 유형별 4단계 상세 절차·준비 서류·유의사항은 '자세히 보기'에서 펼친다.
+ */
+export function Process() {
+  return (
+    <Section id="process" className="py-12">
+      <Reveal>
+        <h2 id="process-title" tabIndex={-1} className="text-[26px] font-extrabold leading-[1.3] tracking-[-0.03em] text-navy focus:outline-none sm:text-[32px] lg:text-[38px]">
+          {PROCESS.title}
+        </h2>
+      </Reveal>
+
+      <ol className="mt-7 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-x-1 sm:gap-x-4 lg:mt-10">
+        {PROCESS.steps.map((st, i) => (
+          <li key={st.title} className="contents">
+            <div className="flex flex-col items-center text-center">
+              <StepArt kind={st.art as StepArtKind} className="h-[60px] w-[60px] sm:h-[72px] sm:w-[72px]" />
+              <p className="mt-2.5 text-[16px] font-bold tracking-[-0.02em] text-navy sm:text-[18px]">
+                <span className="sr-only">{i + 1}단계: </span>
+                {st.title}
+              </p>
+              <p className="mt-0.5 text-[13.5px] leading-snug text-navy-600 sm:text-[15px]">{st.body}</p>
+            </div>
+            {i < PROCESS.steps.length - 1 && <ChevronRight className="mt-5 h-5 w-5 text-navy-300 sm:mt-6" aria-hidden="true" />}
+          </li>
+        ))}
+      </ol>
+
+      <p className="mt-6 flex items-center gap-2 rounded-2xl bg-navy-50 px-4 py-3.5 text-[15px] font-semibold text-navy" data-testid="process-key-notice">
+        <Scale className="h-5 w-5 shrink-0 text-blue" aria-hidden="true" />
+        {PROCESS.keyNotice}
+      </p>
+
+      <Disclosure label="유형별 절차·필요 서류 자세히 보기" className="mt-2" testId="process-more">
+        <ProcessDetail />
+      </Disclosure>
     </Section>
   );
 }

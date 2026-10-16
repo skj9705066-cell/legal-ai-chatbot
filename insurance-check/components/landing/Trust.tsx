@@ -1,86 +1,44 @@
-import { BadgeCheck, FileLock2, Landmark, Scale, UserRoundCheck } from "lucide-react";
+import { BadgeCheck, FileLock2, Landmark, Scale } from "lucide-react";
 import { OFFICIAL_LOOKUP } from "@/lib/content";
 import { OfficialLink } from "@/components/site/OfficialLink";
-import Link from "next/link";
-import type { OperatorInfo } from "@/lib/config";
-import { orSetting, isPlaceholder } from "@/lib/display";
-import { cn } from "@/lib/utils";
 import { Reveal } from "@/components/motion/Reveal";
-import { Section, SectionHeading } from "./Section";
 
 const ITEMS = [
-  { icon: BadgeCheck, title: "무료 점검 상담", body: "무료 점검 상담으로 확인할 사항을 안내해 드립니다." },
-  { icon: Scale, title: "지급은 보험사가 결정", body: "보험금 지급 여부와 금액은 가입 계약, 약관 및 보험사의 심사 결과에 따라 달라집니다." },
-  { icon: FileLock2, title: "동의한 상담만", body: "별도의 동의 없이 보장 분석 상담이나 마케팅 안내를 진행하지 않습니다." },
-  { icon: Landmark, title: "공식 조회도 가능", body: "숨은보험금은 공식 조회 서비스에서도 직접 확인할 수 있습니다." },
+  { icon: BadgeCheck, title: "무료 점검 상담" },
+  { icon: Scale, title: "지급은 보험사가 결정" },
+  { icon: FileLock2, title: "동의한 상담만" },
+  { icon: Landmark, title: "공식 조회도 가능" },
 ];
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+/**
+ * 신뢰 요소 — 아이콘 + 짧은 제목 4개와 공식 조회 안내 한 줄.
+ * 운영 주체·등록번호·개인정보 처리방침·철회 링크는 푸터에 항상 표시된다.
+ */
+export function Trust() {
   return (
-    <div className="flex flex-col gap-0.5 py-3.5 sm:flex-row sm:gap-4">
-      <dt className="shrink-0 text-[15px] text-navy-500 sm:w-36">{label}</dt>
-      <dd className={cn("text-[16px] font-semibold text-ink", isPlaceholder(value) && "font-medium text-caution")}>{value}</dd>
-    </div>
-  );
-}
-
-export function Trust({ operator }: { operator: OperatorInfo }) {
-  const o = operator;
-  return (
-    <Section id="trust">
-      <Reveal>
-        <SectionHeading id="trust" eyebrow="안심하고 이용하세요" title="신청 전에 꼭 알려드려요" />
-      </Reveal>
-      <div className="mt-7 grid grid-cols-2 gap-3 sm:gap-x-8 sm:gap-y-8 lg:mt-10 lg:grid-cols-4">
-        {ITEMS.map(({ icon: Icon, title, body }, i) => (
-          <Reveal key={title} delay={(i % 4) * 70} className="flex flex-col gap-2.5 rounded-2xl bg-navy-50 p-4 sm:flex-row sm:gap-4 sm:bg-transparent sm:p-0">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue sm:h-12 sm:w-12 sm:rounded-2xl">
-              <Icon className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={1.8} aria-hidden="true" />
-            </span>
-            <div>
-              <h3 className="text-[16px] font-bold tracking-[-0.015em] text-navy sm:text-[18px]">{title}</h3>
-              <p className="mt-1.5 text-[14.5px] leading-[1.55] text-navy-600 sm:text-[15.5px] sm:leading-[1.6]">{body}</p>
-            </div>
-          </Reveal>
-        ))}
+    <section id="trust" aria-labelledby="trust-title" className="bg-white py-12 sm:py-16 lg:py-20">
+      <div className="container">
+        <Reveal>
+          <h2 id="trust-title" className="text-[24px] font-extrabold leading-[1.3] tracking-[-0.03em] text-navy sm:text-[30px]">
+            안심하고 신청하세요
+          </h2>
+        </Reveal>
+        <ul className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
+          {ITEMS.map(({ icon: Icon, title }) => (
+            <li key={title} className="flex items-center gap-3 rounded-2xl bg-navy-50 px-3.5 py-3.5 sm:px-5 sm:py-5">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-blue shadow-card">
+                <Icon className="h-5 w-5" strokeWidth={1.9} aria-hidden="true" />
+              </span>
+              <h3 className="text-[15px] font-bold leading-snug tracking-[-0.02em] text-navy [word-break:keep-all] sm:text-[17px]">{title}</h3>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-[14px] leading-relaxed text-navy-600" data-testid="official-lookup-note">
+          숨은보험금은{" "}
+          <OfficialLink className="font-semibold text-blue-700 underline underline-offset-2">{OFFICIAL_LOOKUP.name}(cont.insure.or.kr)</OfficialLink>
+          에서 직접 무료 조회할 수 있어요. 이 사이트에 개인정보를 제출할 필요가 없습니다.
+        </p>
       </div>
-
-      <p className="mt-4 rounded-2xl bg-mint-50 px-4 py-3.5 text-[15px] leading-relaxed text-ink sm:px-5" data-testid="official-lookup-note">
-        공식 조회 서비스{" "}
-        <OfficialLink className="font-semibold text-blue-700 underline underline-offset-2">{OFFICIAL_LOOKUP.name}(cont.insure.or.kr)</OfficialLink>
-        은 본인인증만으로 직접 무료 조회할 수 있으며, 이용하려고 이 사이트에 개인정보를 제출할 필요가 없습니다.
-      </p>
-
-      <div className="mt-6 grid gap-3 sm:gap-5 lg:mt-10 lg:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-3xl border border-navy-100 p-5 sm:p-8">
-          <p className="flex items-center gap-2 text-[18px] font-bold text-navy">
-            <UserRoundCheck className="h-5 w-5 text-blue" aria-hidden="true" />
-            운영 주체 · 담당 설계사
-          </p>
-          <dl className="mt-3 divide-y divide-navy-100">
-            <InfoRow label="운영 주체" value={orSetting(o.operatorName, "운영 주체")} />
-            <InfoRow label="소속 보험대리점" value={`${orSetting(o.agencyName, "소속 GA")} (${orSetting(o.agencyRegNo, "GA 등록번호")})`} />
-            <InfoRow label="담당 설계사" value={`${orSetting(o.plannerName, "설계사 성명")} (${orSetting(o.plannerRegNo, "설계사 등록번호")})`} />
-            <InfoRow label="상담 연락처" value={`${orSetting(o.contactPhone, "대표 연락처")}${o.contactHours ? ` · ${o.contactHours}` : ""}`} />
-          </dl>
-        </div>
-        <div className="flex flex-col justify-between gap-4 rounded-3xl bg-navy-50 p-5 sm:gap-6 sm:p-8">
-          <div>
-            <p className="text-[18px] font-bold text-navy">개인정보는 이렇게 다뤄요</p>
-            <p className="mt-2.5 text-[16px] leading-[1.65] text-navy-600">
-              점검 신청과 보장 분석 상담은 각각 따로 동의받아 처리합니다. 동의 철회·삭제는 언제든 가능해요.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 text-[16px] font-semibold">
-            <Link href="/privacy" className="text-blue-700 underline-offset-4 hover:underline">
-              개인정보 처리방침 보기
-            </Link>
-            <Link href="/privacy/withdraw" className="text-blue-700 underline-offset-4 hover:underline">
-              동의 철회 · 삭제 요청
-            </Link>
-          </div>
-        </div>
-      </div>
-    </Section>
+    </section>
   );
 }

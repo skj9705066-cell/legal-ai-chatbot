@@ -15,7 +15,7 @@ import { Alert } from "@/components/ui/alert";
 import { FieldError, Input, Label } from "@/components/ui/field";
 import { ConsentBox } from "@/components/apply/ConsentBox";
 import { OfficialLink } from "@/components/site/OfficialLink";
-import { SERVICE_ICON } from "./ServiceIcons";
+import { TypeArt } from "@/components/illustrations/Art";
 import { useApply } from "./ApplyContext";
 
 type Field = "serviceType" | "name" | "phone" | "privacyConsent" | "thirdPartyConsent";
@@ -25,7 +25,7 @@ type Field = "serviceType" | "name" | "phone" | "privacyConsent" | "thirdPartyCo
  * 한 화면에 한 가지 질문만, 각 단계는 자기 항목만 검증하고 넘어간다.
  */
 const STEPS: { label: string; title: string; description?: string; fields: Field[] }[] = [
-  { label: "점검 유형", title: "어떤 보험금이 궁금하신가요?", fields: ["serviceType"] },
+  { label: "점검 유형", title: "점검 유형을 선택해 주세요", fields: ["serviceType"] },
   { label: "연락처", title: "연락받으실 분을 알려주세요", description: "남겨주신 번호로 담당자가 연락드려요.", fields: ["name", "phone"] },
   { label: "동의·확인", title: "마지막으로 확인해 주세요", fields: ["privacyConsent", "thirdPartyConsent"] },
 ];
@@ -197,7 +197,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
       onSubmit={onSubmit}
       onFocusCapture={() => trackOnce("form_start", { serviceType: serviceType || null })}
       aria-labelledby="apply-step-title"
-      className="scroll-mt-24 rounded-[28px] bg-white p-6 shadow-lift ring-1 ring-navy-100 sm:p-9"
+      className="scroll-mt-24 sm:rounded-[28px] sm:bg-white sm:p-9 sm:shadow-lift sm:ring-1 sm:ring-navy-100"
     >
       {config.mode === "demo" && (
         <p className="mb-6 flex items-center gap-2 rounded-xl bg-caution-50 px-3.5 py-2.5 text-[14px] font-medium text-caution">
@@ -210,15 +210,15 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
       <div>
         <p className="flex items-baseline justify-between text-[14px] font-semibold">
           <span className="text-blue">
-            {step + 1}단계 <span className="text-navy-500">/ {STEPS.length}</span>
+            {step + 1}단계 <span className="text-navy-600">/ {STEPS.length}</span>
           </span>
-          <span className="text-navy-500">{current.label}</span>
+          <span className="text-navy-600">{current.label}</span>
         </p>
         <ol className="mt-3 grid grid-cols-3 gap-1.5" aria-label="신청 진행 단계">
           {STEPS.map((s, i) => (
             <li key={s.label} aria-current={i === step ? "step" : undefined}>
               <span className={cn("block h-1.5 rounded-full transition-colors duration-300", i <= step ? "bg-blue" : "bg-navy-100")} />
-              <span className={cn("mt-2 hidden text-[14px] font-medium sm:block", i === step ? "text-navy" : "text-navy-500")}>
+              <span className={cn("mt-2 hidden text-[14px] font-medium sm:block", i === step ? "text-navy" : "text-navy-600")}>
                 {i < step && <Check className="mr-0.5 inline h-3.5 w-3.5 text-blue" aria-hidden="true" />}
                 {s.label}
                 <span className="sr-only">{i < step ? " (완료)" : i === step ? " (현재 단계)" : ""}</span>
@@ -256,13 +256,12 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
         {step === 0 && (
           <div role="radiogroup" aria-labelledby="apply-step-title" aria-describedby={errors.serviceType ? "apply-type-error" : undefined} className="grid gap-3">
             {SERVICE_TYPES.map((t) => {
-              const Icon = SERVICE_ICON[t];
               const checked = serviceType === t;
               return (
                 <label
                   key={t}
                   className={cn(
-                    "flex min-h-[76px] cursor-pointer items-center gap-4 rounded-2xl border-2 px-4 py-3.5 transition-colors has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-blue/20 sm:px-5",
+                    "flex min-h-[76px] cursor-pointer items-center gap-4 rounded-2xl border-2 bg-white px-4 py-3 transition-colors has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-blue/20 sm:px-5",
                     checked ? "border-blue bg-blue-50/60" : errors.serviceType ? "border-danger" : "border-navy-100 hover:border-navy-200",
                   )}
                 >
@@ -279,10 +278,8 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
                     }}
                     className="sr-only"
                   />
-                  <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", checked ? "bg-blue text-white" : "bg-navy-50 text-navy")}>
-                    <Icon className="h-[22px] w-[22px]" strokeWidth={1.8} aria-hidden="true" />
-                  </span>
-                  <span className="flex-1 text-[17px] font-semibold leading-snug text-ink">{SERVICE_CONTENT[t].cardTitle}</span>
+                  <TypeArt kind={t} idPrefix="form" className="h-12 w-12 shrink-0" />
+                  <span className="flex-1 text-[17px] font-semibold leading-snug text-ink">{SERVICE_CONTENT[t].pickTitle}</span>
                   <span
                     aria-hidden="true"
                     className={cn(
@@ -296,11 +293,32 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
               );
             })}
             <FieldError id="apply-type-error">{errors.serviceType}</FieldError>
+            {/* 선택하면 그 유형에서 무엇을 확인하는지 한 줄로 */}
+            <p aria-live="polite" className="text-[14.5px] leading-relaxed text-navy-600" data-testid="apply-type-desc">
+              {serviceType ? (
+                <>
+                  {SERVICE_CONTENT[serviceType].cardDesc}
+                  {SERVICE_CONTENT[serviceType].cardNote && <span className="mt-1 block font-medium text-caution">{SERVICE_CONTENT[serviceType].cardNote}</span>}
+                </>
+              ) : null}
+            </p>
           </div>
         )}
 
         {step === 1 && (
           <div className="space-y-6">
+            {serviceType && (
+              <div className="flex items-center gap-3 rounded-2xl bg-white px-3.5 py-3 ring-1 ring-navy-100 sm:bg-navy-50 sm:ring-0" data-testid="apply-picked-type">
+                <TypeArt kind={serviceType} idPrefix="picked" className="h-11 w-11 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15.5px] font-bold text-navy">{SERVICE_CONTENT[serviceType].pickTitle}</p>
+                  <p className="text-[13.5px] leading-snug text-navy-600">{SERVICE_CONTENT[serviceType].cardDesc}</p>
+                </div>
+                <button type="button" onClick={() => goTo(0)} className="shrink-0 rounded-lg px-2 py-2 text-[14px] font-semibold text-blue-700 hover:bg-white" aria-label="점검 유형 변경">
+                  변경
+                </button>
+              </div>
+            )}
             <div>
               <Label htmlFor="apply-name" required>
                 이름
@@ -349,7 +367,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
 
         {step === 2 && (
           <div className="space-y-6">
-            <dl className="divide-y divide-navy-100 rounded-2xl bg-navy-50 px-5">
+            <dl className="divide-y divide-navy-100 rounded-2xl bg-white px-5 ring-1 ring-navy-100 sm:bg-navy-50 sm:ring-0">
               {[
                 { label: "점검 유형", value: serviceType ? SERVICE_CONTENT[serviceType].cardTitle : "-", go: 0 },
                 { label: "이름", value: name || "-", go: 1 },
@@ -410,7 +428,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
                 rows={marketingConsentRows(config.operator)}
               />
             </div>
-            <p className="flex gap-2 text-[14px] leading-relaxed text-navy-500">
+            <p className="flex gap-2 text-[14px] leading-relaxed text-navy-600">
               <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               선택 동의는 하지 않아도 신청할 수 있어요. 보장 분석 상담은 신청이 끝난 뒤 원하시는 경우에만 따로 동의받습니다.
             </p>

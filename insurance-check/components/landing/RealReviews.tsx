@@ -149,21 +149,21 @@ function RealCard({ r, index }: { r: PublicReview; index: number }) {
  * 고객 동의 + 관리자 공개 승인된 후기만, 없으면 아무것도 렌더링하지 않는다(가상 후기·대화를 만들지 않음).
  * 데스크톱 3장 / 모바일 1장 캐러셀, 자동 넘김.
  */
+const MAX_REVIEWS = 3;
+
 export function RealReviews({ reviews, metrics }: { reviews: PublicReview[]; metrics: Partial<OperatingMetrics> | null }) {
   const metricKeys = metrics ? (Object.keys(G.metricLabel) as (keyof OperatingMetrics)[]).filter((k) => metrics[k]) : [];
   if (!reviews.length && !metricKeys.length) return null;
+  // 모바일 피로도를 줄이기 위해 최근 승인된 후기 몇 개만 보여준다
+  const shown = reviews.slice(0, MAX_REVIEWS);
 
   return (
-    <section id="reviews" aria-labelledby="reviews-title" className="bg-navy-50 py-14 sm:py-20 lg:py-24">
+    <section id="reviews" aria-labelledby="reviews-title" className="bg-navy-50 py-12 sm:py-20 lg:py-24">
       <div className="container">
         <Reveal>
-          <p className="text-[15px] font-bold text-blue-700">{G.eyebrow}</p>
-          <h2 id="reviews-title" className="mt-2.5 text-balance text-[26px] font-extrabold leading-[1.32] tracking-[-0.03em] text-navy sm:text-[32px] lg:text-[38px]">
+          <h2 id="reviews-title" className="text-balance text-[26px] font-extrabold leading-[1.32] tracking-[-0.03em] text-navy sm:text-[32px] lg:text-[38px]">
             {G.title}
           </h2>
-          <p className="mt-3 max-w-2xl text-pretty text-[16px] leading-[1.65] text-navy-600 lg:text-[17px]" data-testid="reviews-subtitle">
-            {G.subtitle}
-          </p>
         </Reveal>
 
         {metricKeys.length > 0 && (
@@ -181,7 +181,7 @@ export function RealReviews({ reviews, metrics }: { reviews: PublicReview[]; met
           </div>
         )}
 
-        {reviews.length > 0 && (
+        {shown.length > 0 && (
           <>
             <div className="mt-8">
               <Carousel
@@ -189,20 +189,17 @@ export function RealReviews({ reviews, metrics }: { reviews: PublicReview[]; met
                 label="실제 고객 후기 (좌우로 넘겨 보세요)"
                 autoplayMs={5000}
                 slideClassName={(i) => THEMES[i % THEMES.length].offset}
-                slides={reviews.map((r, i) => ({ key: r.id, label: `${REVIEW_CATEGORY_LABEL[r.category]} 후기`, node: <RealCard r={r} index={i} /> }))}
+                slides={shown.map((r, i) => ({ key: r.id, label: `${REVIEW_CATEGORY_LABEL[r.category]} 후기`, node: <RealCard r={r} index={i} /> }))}
               />
             </div>
-            <p className="mt-5 flex gap-2 text-[14px] leading-relaxed text-navy-600">
+            <p className="mt-4 flex gap-2 text-[13.5px] leading-relaxed text-navy-600">
               <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               {G.note}
             </p>
-            <div id="reviews-cta" className="mt-10 text-center">
-              <p className="text-balance text-[21px] font-extrabold leading-[1.45] tracking-[-0.025em] text-navy sm:text-[26px]">{G.ctaTitle}</p>
-              <div className="mt-5">
-                <ApplyCta source="reviews" size="xl" className="h-[60px] w-full text-[18px] sm:w-auto sm:min-w-[320px]">
-                  {G.ctaButton}
-                </ApplyCta>
-              </div>
+            <div id="reviews-cta" className="mt-6">
+              <ApplyCta source="reviews" size="xl" className="h-[58px] w-full text-[17px] sm:w-auto sm:min-w-[320px]">
+                {G.ctaButton}
+              </ApplyCta>
             </div>
           </>
         )}

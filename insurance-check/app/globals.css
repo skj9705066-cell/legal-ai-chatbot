@@ -158,3 +158,18 @@
     opacity 520ms cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0ms),
     transform 520ms cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0ms);
 }
+
+/* ── 히어로 일러스트: 아주 느리고 작은 떠 있는 움직임 (움직임 줄이기에서는 위 규칙으로 정지) ── */
+@keyframes hero-float {
+  from { transform: translateY(0) rotate(var(--r, 0deg)); }
+  to { transform: translateY(-7px) rotate(var(--r, 0deg)); }
+}
+.hero-float {
+  transform: rotate(var(--r, 0deg));
+  animation: hero-float 4.8s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+/* 가로 스와이프 목록: 스크롤바 숨김 */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
