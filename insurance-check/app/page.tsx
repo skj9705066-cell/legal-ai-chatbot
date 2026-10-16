@@ -6,6 +6,7 @@ import { ApplyProvider } from "@/components/landing/ApplyContext";
 import { Hero } from "@/components/landing/Hero";
 import { StatsSection } from "@/components/landing/StatsSection";
 import { StoryCards } from "@/components/landing/StoryScenes";
+import { ClaimCases } from "@/components/landing/ClaimCases";
 import { RealReviews } from "@/components/landing/RealReviews";
 import { getPublicMetrics, getPublicReviews } from "@/lib/server/reviews";
 import { Process } from "@/components/landing/Process";
@@ -31,6 +32,7 @@ export default async function LandingPage() {
             모든 CTA의 목적지는 같은 신청 폼이며, 고른 점검 유형을 유지한다 */}
         <StoryCards />
         <StatsSection />
+        <ClaimCases />
         <RealReviews reviews={reviews} metrics={metrics} />
         <Process />
         <ApplySection config={config} />
