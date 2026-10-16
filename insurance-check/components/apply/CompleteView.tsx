@@ -53,10 +53,15 @@ export function CompleteView({ contactPhone, contactHours }: { contactPhone: str
           <br />
           <span className="font-semibold text-navy">{SERVICE_CONTENT[receipt.serviceType].cardTitle}</span> 점검으로 접수했어요.
         </p>
-        <RefNo refNo={receipt.refNo} demo={receipt.demo} />
-        {receipt.demo && (
+        <RefNo refNo={receipt.refNo} trial={receipt.trial ?? null} />
+        {receipt.trial === "demo" && (
           <p className="mx-auto mt-3 max-w-sm rounded-xl bg-caution-50 px-4 py-3 text-[14px] leading-relaxed text-caution" data-testid="demo-receipt-note">
             데모 모드입니다. 실제 상담 신청으로 접수되지 않았으며, 데모 저장소에만 임시로 기록되어 서버가 다시 시작되면 사라집니다.
+          </p>
+        )}
+        {receipt.trial === "staging" && (
+          <p className="mx-auto mt-3 max-w-sm rounded-xl bg-caution-50 px-4 py-3 text-[14px] leading-relaxed text-caution" data-testid="test-receipt-note">
+            테스트 모드입니다. 실제 상담으로 진행되지 않으며, 테스트 신청으로 저장되어 운영 지표에서 제외됩니다.
           </p>
         )}
         <ol className="mx-auto mt-8 max-w-sm space-y-3.5 text-left">

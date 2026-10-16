@@ -31,6 +31,7 @@
     { "key": "APPROVAL_PRIVACY", "label": "소속 GA 개인정보 수집·이용 문구 및 처리 흐름 승인일" },
     { "key": "APPROVAL_COVERAGE_OFFER", "label": "보장 분석 추가 제안 화면·동의 문구 승인일" },
     { "key": "APPROVAL_THIRD_PARTY", "label": "개인정보 처리 주체·제3자 제공 여부 확정일" },
-    { "key": "APPROVAL_STATS_VERIFIED", "label": "통계 수치 원문(금융위원회 보도자료) 대조 완료일" }
+    { "key": "APPROVAL_STATS_VERIFIED", "label": "통계 수치 원문(금융위원회 보도자료) 대조 완료일" },
+    { "key": "APPROVAL_DB_VERIFIED", "label": "운영 DB 점검 확인일 (supabase/verify.sql 점검표 1~14번 모두 true)" }
   ]
 }

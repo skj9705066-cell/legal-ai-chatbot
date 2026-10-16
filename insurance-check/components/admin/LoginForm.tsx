@@ -7,7 +7,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/field";
 
-export function LoginForm({ mode, setupIssues }: { mode: "demo" | "production"; setupIssues: string[] }) {
+export function LoginForm({ mode, setupIssues }: { mode: "demo" | "staging" | "production"; setupIssues: string[] }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<StaffRole>("admin");
@@ -56,7 +56,7 @@ export function LoginForm({ mode, setupIssues }: { mode: "demo" | "production"; 
         </Alert>
       )}
       {error && <Alert tone="error" role="alert" title={error} />}
-      {mode === "production" ? (
+      {mode !== "demo" ? (
         <div>
           <label htmlFor="login-email" className="mb-2 block text-[15px] font-semibold text-navy">
             이메일

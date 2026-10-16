@@ -1,12 +1,13 @@
 import "server-only";
 import { createCipheriv, createDecipheriv, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { getAppMode } from "../config";
+import { usesDatabase } from "../config";
 
 /**
  * 연락처 보호:
  *  - phone_enc: AES-256-GCM 암호문 (원문 열람은 권한자 + 감사로그)
  *  - phone_hash: HMAC-SHA256 (중복 신청 감지·철회 요청 매칭용, 원문 복원 불가)
  * 데모 모드에서 키가 없으면 프로세스마다 임시 키를 만든다(재시작 시 데모 데이터와 함께 사라짐).
+ * 실제 DB를 쓰는 모드(테스트·운영)는 임시 키를 절대 쓰지 않는다 — 재시작 후 복호화가 불가능해지기 때문.
  */
 
 const g = globalThis as unknown as { __icEphemeral?: { pii: Buffer; app: string } };
@@ -24,14 +25,14 @@ function piiKey(): Buffer {
     const key = Buffer.from(raw, "base64");
     if (key.length === 32) return key;
   }
-  if (getAppMode() === "production") throw new Error("PII_ENCRYPTION_KEY is not configured");
+  if (usesDatabase()) throw new Error("PII_ENCRYPTION_KEY is not configured");
   return ephemeral().pii;
 }
 
 export function appSecret(): string {
   const s = process.env.APP_SECRET;
   if (s && s.length >= 32) return s;
-  if (getAppMode() === "production") throw new Error("APP_SECRET is not configured");
+  if (usesDatabase()) throw new Error("APP_SECRET is not configured");
   return ephemeral().app;
 }
 

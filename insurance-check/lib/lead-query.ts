@@ -43,3 +43,20 @@ export function parseLeadQuery(sp: Record<string, string | string[] | undefined>
     sort: oneOf(["newest", "oldest", "next_contact"] as const, get("sort")),
   };
 }
+
+/**
+ * 감사로그용 필터 설명. 감사로그는 지울 수 없으므로 검색어(이름·전화번호일 수 있음)는 내용을 남기지 않고
+ * "검색어 있음"으로만 적는다. 나머지는 검증된 목록 값만 쓴다.
+ */
+export function describeLeadQuery(f: LeadQuery): string {
+  const parts: string[] = [];
+  if (f.q) parts.push("검색어 있음(내용 미기록)");
+  if (f.serviceType) parts.push(`유형=${f.serviceType}`);
+  if (f.claimStatus) parts.push(`점검상태=${f.claimStatus}`);
+  if (f.coverageStatus) parts.push(`보장분석=${f.coverageStatus}`);
+  if (f.privacyStatus) parts.push(`개인정보=${f.privacyStatus}`);
+  if (f.duplicatesOnly) parts.push("중복만");
+  if (f.salesOnly) parts.push("영업 대상");
+  if (f.sort && f.sort !== "newest") parts.push(`정렬=${f.sort}`);
+  return parts.length ? parts.join(", ") : "전체";
+}

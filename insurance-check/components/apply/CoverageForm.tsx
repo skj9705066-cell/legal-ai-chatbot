@@ -95,7 +95,7 @@ export function CoverageForm({ config }: { config: PublicConfig }) {
       <p className="mt-3 text-[16px] leading-[1.7] text-navy-600">
         보험금 점검과는 별개의 상담이에요. 아래 내용을 확인하고 동의하시는 경우에만 신청됩니다.
       </p>
-      <RefNo refNo={receipt.refNo} demo={receipt.demo} />
+      <RefNo refNo={receipt.refNo} trial={receipt.trial ?? null} />
 
       <div ref={alertRef} tabIndex={-1} className="focus:outline-none">
         {serverError && <Alert tone="error" role="alert" className="mt-6" title={serverError} />}

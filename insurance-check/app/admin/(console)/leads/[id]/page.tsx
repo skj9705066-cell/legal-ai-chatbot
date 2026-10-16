@@ -77,9 +77,21 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
         <Card className="rounded-2xl p-6">
           <h2 className="text-[17px] font-bold text-navy">동의 내역</h2>
           <dl className="mt-2 divide-y divide-navy-100">
-            <Item label="개인정보(필수)">동의 · {lead.privacyConsentVersion}</Item>
-            <Item label="광고성 정보(선택)">{lead.marketingConsent ? "동의" : "미동의/철회"}</Item>
-            <Item label="제3자 제공">{lead.thirdPartyConsent ? "동의" : "해당 없음/미동의"}</Item>
+            {/* 동의 기록: 여부 · 문구 버전 · 시각 (이 기능 이전 신청은 시각이 없을 수 있음) */}
+            <Item label="개인정보(필수)">
+              동의 · {lead.privacyConsentVersion}
+              {lead.privacyConsentAt && ` · ${formatDateTime(lead.privacyConsentAt)}`}
+            </Item>
+            <Item label="광고성 정보(선택)">
+              {lead.marketingConsent
+                ? `동의${lead.marketingConsentVersion ? ` · ${lead.marketingConsentVersion}` : ""}${lead.marketingConsentAt ? ` · ${formatDateTime(lead.marketingConsentAt)}` : ""}`
+                : `미동의/철회${lead.marketingWithdrawnAt ? ` · 철회 ${formatDateTime(lead.marketingWithdrawnAt)}` : ""}`}
+            </Item>
+            <Item label="제3자 제공">
+              {lead.thirdPartyConsent
+                ? `동의${lead.thirdPartyConsentVersion ? ` · ${lead.thirdPartyConsentVersion}` : ""}${lead.thirdPartyConsentAt ? ` · ${formatDateTime(lead.thirdPartyConsentAt)}` : ""}`
+                : "해당 없음/미동의"}
+            </Item>
             <Item label="보장 분석(별도)">
               {lead.coverageConsent ? (
                 <>

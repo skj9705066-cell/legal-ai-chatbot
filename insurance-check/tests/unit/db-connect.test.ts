@@ -1,0 +1,119 @@
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { classifySupabaseKey } from "@/lib/supabase-keys";
+import { describeLeadQuery, parseLeadQuery } from "@/lib/lead-query";
+import { validateLeadInput } from "@/lib/validation";
+import { getAppMode, getReadiness, usesDatabase } from "@/lib/config";
+import { createPrivacyRequest, normalizeIdempotencyKey, submitLead } from "@/lib/server/service";
+import { repo } from "@/lib/server/repo";
+
+const jwt = (payload: object) => ["e30", Buffer.from(JSON.stringify(payload)).toString("base64url"), "sig"].join(".");
+const ATTR = { utmSource: "unit", utmMedium: null, utmCampaign: null, utmContent: null, utmTerm: null, referrer: null, landingPath: "/" };
+const input = (phone: string, extra: Record<string, unknown> = {}) => {
+  const v = validateLeadInput({ serviceType: "unclaimed", name: "단위시험", phone, privacyConsent: true, ...extra });
+  if (!v.ok) throw new Error("invalid test input");
+  return v.value;
+};
+
+beforeAll(() => {
+  process.env.APP_MODE = "demo";
+});
+afterEach(() => {
+  process.env.APP_MODE = "demo";
+});
+
+describe("supabase key kinds (값은 보지 않고 종류만 판별)", () => {
+  it("new-format keys", () => {
+    expect(classifySupabaseKey("sb_secret_abc")).toBe("secret");
+    expect(classifySupabaseKey("sb_publishable_abc")).toBe("publishable");
+  });
+  it("legacy JWT keys by role", () => {
+    expect(classifySupabaseKey(jwt({ role: "service_role" }))).toBe("secret");
+    expect(classifySupabaseKey(jwt({ role: "anon" }))).toBe("publishable");
+    expect(classifySupabaseKey(jwt({ role: "authenticated" }))).toBe("unknown");
+  });
+  it("empty / garbage", () => {
+    expect(classifySupabaseKey("")).toBe("unknown");
+    expect(classifySupabaseKey(undefined)).toBe("unknown");
+    expect(classifySupabaseKey("a.b.c")).toBe("unknown");
+  });
+});
+
+describe("app modes", () => {
+  it("unknown values fall back to demo; staging uses the database", () => {
+    process.env.APP_MODE = "prod";
+    expect(getAppMode()).toBe("demo");
+    process.env.APP_MODE = "staging";
+    expect(getAppMode()).toBe("staging");
+    expect(usesDatabase()).toBe(true);
+    process.env.APP_MODE = "demo";
+    expect(usesDatabase()).toBe(false);
+  });
+  it("staging requires infra + DB verification date, not operator/ad approvals", () => {
+    process.env.APP_MODE = "staging";
+    const r = getReadiness();
+    expect(r.mode).toBe("staging");
+    expect(r.ready).toBe(false); // 이 테스트 환경엔 인프라 값이 없다
+    expect(r.items.some((i) => i.key === "APPROVAL_DB_VERIFIED")).toBe(true);
+  });
+});
+
+describe("audit-safe export description", () => {
+  it("never records the search text (may be a name or phone number)", () => {
+    const d = describeLeadQuery(parseLeadQuery({ q: "01012345678", type: "hidden", claim: "new" }));
+    expect(d).not.toContain("0101234");
+    expect(d).toContain("검색어 있음");
+    expect(d).toContain("유형=hidden");
+    expect(describeLeadQuery(parseLeadQuery({ q: "홍길동" }))).not.toContain("홍길동");
+    expect(describeLeadQuery(parseLeadQuery({}))).toBe("전체");
+  });
+});
+
+describe("idempotency key", () => {
+  it("accepts UUID-like keys only", () => {
+    expect(normalizeIdempotencyKey("3f2b8c1e-1a2b-4c3d-9e8f-0123456789ab")).toBe("3f2b8c1e-1a2b-4c3d-9e8f-0123456789ab");
+    expect(normalizeIdempotencyKey("short")).toBeNull();
+    expect(normalizeIdempotencyKey("bad key with spaces")).toBeNull();
+    expect(normalizeIdempotencyKey(123)).toBeNull();
+  });
+});
+
+describe("lead save records consent and dedupes by key (demo store)", () => {
+  it("records consent time/version per item and encrypts the phone", async () => {
+    const { lead } = await submitLead(input("010-7000-0001", { marketingConsent: true }), ATTR, "unit-key-consent-0001");
+    const row = (await repo().getLead(lead.id))!;
+    expect(row.privacyConsentAt).toBe(row.createdAt);
+    expect(row.privacyConsentVersion).toMatch(/^claim-/);
+    expect(row.marketingConsent).toBe(true);
+    expect(row.marketingConsentAt).toBe(row.createdAt);
+    expect(row.marketingConsentVersion).toMatch(/^marketing-/);
+    expect(row.thirdPartyConsentAt).toBeNull();
+    expect(row.idempotencyKey).toBe("unit-key-consent-0001");
+    expect(row.phoneEnc).not.toContain("70000001");
+    expect(row.phoneMasked).toBe("010-****-0001");
+    expect("idempotencyKey" in lead).toBe(false); // 화면용 Lead에는 내보내지 않는다
+  });
+  it("no optional consent → no time/version", async () => {
+    const { lead } = await submitLead(input("010-7000-0002"), ATTR, null);
+    expect(lead.marketingConsent).toBe(false);
+    expect(lead.marketingConsentAt).toBeNull();
+    expect(lead.marketingConsentVersion).toBeNull();
+  });
+  it("same key twice → one lead, same reference number", async () => {
+    const key = "unit-key-replay-0003";
+    const first = await submitLead(input("010-7000-0003"), ATTR, key);
+    const second = await submitLead(input("010-7000-0003"), ATTR, key);
+    expect(first.replayed).toBe(false);
+    expect(second.replayed).toBe(true);
+    expect(second.lead.refNo).toBe(first.lead.refNo);
+    const all = await repo().listLeads({ q: first.lead.refNo });
+    expect(all).toHaveLength(1);
+  });
+  it("marketing withdrawal records the withdrawal time and keeps the consent history", async () => {
+    const { lead } = await submitLead(input("010-7000-0004", { marketingConsent: true }), ATTR, null);
+    await createPrivacyRequest({ type: "withdraw_marketing", name: "단위시험", phone: "01070000004" });
+    const row = (await repo().getLead(lead.id))!;
+    expect(row.marketingConsent).toBe(false);
+    expect(row.marketingWithdrawnAt).not.toBeNull();
+    expect(row.marketingConsentAt).not.toBeNull();
+  });
+});

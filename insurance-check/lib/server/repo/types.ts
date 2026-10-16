@@ -14,6 +14,16 @@ import type {
 export interface LeadRow extends Lead {
   phoneEnc: string;
   phoneHash: string;
+  /** 같은 제출의 재전송을 한 건으로 묶는 키(브라우저가 폼마다 생성). 서버 밖으로 내보내지 않는다 */
+  idempotencyKey: string | null;
+}
+
+/** 같은 idempotency 키로 이미 저장된 신청이 있을 때 저장소가 던진다(DB 고유 인덱스 위반) */
+export class DuplicateSubmissionError extends Error {
+  constructor() {
+    super("duplicate submission (idempotency key)");
+    this.name = "DuplicateSubmissionError";
+  }
 }
 
 export interface PrivacyRequestRow extends PrivacyRequest {
@@ -22,7 +32,7 @@ export interface PrivacyRequestRow extends PrivacyRequest {
 
 export function toLead(row: LeadRow): Lead {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { phoneEnc, phoneHash, ...lead } = row;
+  const { phoneEnc, phoneHash, idempotencyKey, ...lead } = row;
   return lead;
 }
 
@@ -50,11 +60,13 @@ export interface LeadFilter {
   limit?: number;
 }
 
-export type LeadRowPatch = Partial<Omit<LeadRow, "id" | "refNo" | "createdAt" | "isDemo">>;
+export type LeadRowPatch = Partial<Omit<LeadRow, "id" | "refNo" | "createdAt" | "isDemo" | "idempotencyKey">>;
 
 export interface Repository {
   kind: "demo" | "supabase";
+  /** 같은 idempotency 키가 이미 있으면 DuplicateSubmissionError */
   insertLead(row: LeadRow): Promise<void>;
+  findLeadByIdempotencyKey(key: string): Promise<LeadRow | null>;
   /** since 이후 같은 연락처로 들어온 가장 오래된 신청번호 */
   findRecentRefByPhoneHash(phoneHash: string, sinceIso: string): Promise<string | null>;
   getLead(id: string): Promise<LeadRow | null>;

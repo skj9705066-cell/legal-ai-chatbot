@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { OperatorInfo } from "@/lib/config";
+import { TRIAL_LABEL, type TrialMode } from "@/lib/types";
 import { SERVICE_DISCLAIMER, STATS_SOURCE } from "@/lib/content";
 import { orSetting, isPlaceholder } from "@/lib/display";
 import { cn } from "@/lib/utils";
@@ -15,7 +16,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function SiteFooter({ operator, demo }: { operator: OperatorInfo; demo: boolean }) {
+export function SiteFooter({ operator, trial }: { operator: OperatorInfo; trial: TrialMode }) {
   const o = operator;
   return (
     <footer className="border-t border-navy-100 bg-navy-50">
@@ -25,7 +26,7 @@ export function SiteFooter({ operator, demo }: { operator: OperatorInfo; demo: b
             <div className="flex items-center gap-2">
               <LogoMark className="h-8 w-8" />
               <p className="text-[17px] font-extrabold tracking-[-0.02em] text-navy">내보험 통합 점검</p>
-              {demo && <span className="rounded-full bg-caution-50 px-2 py-0.5 text-[13px] font-bold text-caution">데모</span>}
+              {trial && <span className="rounded-full bg-caution-50 px-2 py-0.5 text-[13px] font-bold text-caution">{TRIAL_LABEL[trial]}</span>}
             </div>
             <h2 className="sr-only">운영 주체 정보</h2>
             <dl className="mt-6 text-[15px] leading-relaxed">

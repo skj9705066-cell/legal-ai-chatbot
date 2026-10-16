@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, Loader2, Lock } from "lucide-react";
 import type { PublicConfig } from "@/lib/config";
-import { SERVICE_TYPES, type ServiceType } from "@/lib/types";
+import { SERVICE_TYPES, TRIAL_LABEL, trialMode, type ServiceType } from "@/lib/types";
 import { SERVICE_CONTENT } from "@/lib/content";
 import { formatPhoneInput, LIMITS, requiresThirdPartyConsent, validateLeadInput, type FieldErrors } from "@/lib/validation";
 import { claimConsentRows, CLAIM_CONSENT_FOOTNOTE, marketingConsentRows, thirdPartyConsentRows } from "@/lib/consent-text";
@@ -194,7 +194,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
         return;
       }
       setStatus("success");
-      saveReceipt({ refNo: data.refNo, receiptToken: data.receiptToken, serviceType: v.value.serviceType, demo: !!data.demo, coverage: "offered" });
+      saveReceipt({ refNo: data.refNo, receiptToken: data.receiptToken, serviceType: v.value.serviceType, trial: data.trial ?? null, coverage: "offered" });
       // 광고 전환의 유일한 기준 이벤트. 개인정보 없이 점검 유형만 전달.
       track("lead_submit_success", { serviceType: v.value.serviceType });
       router.push("/apply/complete");
@@ -224,10 +224,10 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
       aria-labelledby="apply-step-title"
       className="scroll-mt-24 sm:rounded-[28px] sm:bg-white sm:p-9 sm:shadow-lift sm:ring-1 sm:ring-navy-100"
     >
-      {config.mode === "demo" && (
+      {trialMode(config.mode) && (
         <p className="mb-6 flex items-center gap-2 rounded-xl bg-caution-50 px-3.5 py-2.5 text-[14px] font-medium text-caution">
           <Lock className="h-4 w-4 shrink-0" aria-hidden="true" />
-          데모 모드 · 실제 이름·연락처는 입력하지 마세요.
+          {TRIAL_LABEL[trialMode(config.mode)!]} 모드 · 실제 이름·연락처는 입력하지 마세요.
         </p>
       )}
 

@@ -46,15 +46,31 @@ E2E는 레이트리밋(IP당 10분 5건)에 걸리지 않도록 **서버를 새�
 
 ## 모드
 
-| | 데모 (`APP_MODE=demo`, 기본) | 운영 (`APP_MODE=production`) |
-|---|---|---|
-| 저장소 | 서버 메모리 (재시작 시 초기화) + **가짜 시드 데이터**(데모고객NN / 010-0000-NNNN) | Supabase Postgres (service role, 서버 전용) |
-| 표시 | 상단 '데모 모드' 배너, 폼·관리자·레코드에 '데모' 배지 | 없음 |
-| 신청 폼 | 시연용으로 동작 (실제 개인정보 입력 금지 안내) | 운영 정보·인프라·**GA 승인 기록이 모두 있어야** 열림. 하나라도 비면 잠김 |
-| 관리자 로그인 | `DEMO_ADMIN_PASSWORD` + 역할 선택(관리자/상담사/열람) | Supabase Auth 이메일·비밀번호 + `ic_staff` 역할 |
-| 운영 주체 정보 | 미설정 값은 `[설정 필요: …]`로 표시 (가짜 값 생성 안 함) | 필수 |
-| 분석 태그(GA4) | 로드 안 함 | 측정 ID + 방문자 동의 시에만 로드 |
-| 검색엔진 | noindex | index (`/admin`, `/api`, `/apply` 제외) |
+| | 데모 (`APP_MODE=demo`, 기본) | 테스트 (`APP_MODE=staging`) | 운영 (`APP_MODE=production`) |
+|---|---|---|---|
+| 저장소 | 서버 메모리 (재시작 시 초기화) + **가짜 시드 데이터**(데모고객NN / 010-0000-NNNN) | Supabase Postgres — 모든 신청을 **테스트 신청**(`is_test`, 운영 지표 제외)으로 저장 | Supabase Postgres (service role, 서버 전용) |
+| 표시 | 상단 '데모 모드' 배너, 폼·관리자·레코드에 '데모' 배지 | 상단 '테스트 모드' 배너, '테스트' 배지, 완료 화면 안내 | 없음 |
+| 신청 폼 | 시연용으로 동작 (실제 개인정보 입력 금지 안내) | 인프라 6개 + `APPROVAL_DB_VERIFIED` + **DB 자동 점검 통과** 시 접수 | 운영 정보·인프라·**GA 승인 기록이 모두 있어야** 열림 + DB 자동 점검 통과 |
+| 관리자 로그인 | `DEMO_ADMIN_PASSWORD` + 역할 선택(관리자/상담사/열람) | Supabase Auth 이메일·비밀번호 + `ic_staff` 역할 | 같음 |
+| 운영 주체 정보 | 미설정 값은 `[설정 필요: …]`로 표시 (가짜 값 생성 안 함) | 같음 (요구하지 않음) | 필수 |
+| 분석 태그(GA4·Meta) | 로드 안 함 | 로드 안 함 | 측정 ID + 방문자 동의 시에만 로드 |
+| 검색엔진 | noindex | noindex | index (`/admin`, `/api`, `/apply` 제외) |
+
+**DB 자동 점검** (`lib/server/db-check.ts`, 관리자 → 환경설정에서 결과·다시 점검): 실제 키로 데이터를 바꾸지 않고 확인한다 —
+키 종류(서버 키가 비밀키인지, 공개 키 자리에 비밀키가 없는지), 공개 키로 신청·직원 조회/수정 차단, 서버 키로도 신청 삭제·감사로그 수정 불가,
+02-hardening 칼럼 존재, 활성 관리자 1명 이상. 하나라도 실패하면 신청 API가 503으로 저장을 멈춘다(통과는 5분·실패는 30초 캐시).
+DB 내부 설정(RLS·트리거·규칙)은 SQL Editor에서 `supabase/verify.sql` 점검표로 사람이 확인하고 날짜를 `APPROVAL_DB_VERIFIED`에 적는다.
+
+**신청 저장 규칙**: 연락처는 서버에서 AES-256-GCM으로 암호화(`phone_enc`) + HMAC 해시(`phone_hash`, 중복 감지) + 마스킹(`phone_masked`)만 저장한다.
+동의는 항목별로 여부·문구 버전·시각(`privacy_consent_at`, `marketing_consent_*`, `third_party_consent_*`, 철회 시 `marketing_withdrawn_at`)을 남기고,
+브라우저가 폼마다 만든 제출 키(`idempotency_key`, DB 고유 인덱스)로 더블클릭·재전송을 한 건으로 묶는다.
+
+**비밀키 노출 방지**: `npm run build`(check-deploy)가 모든 모드에서 `NEXT_PUBLIC_` 변수에 비밀값으로 보이는 이름·값·Supabase 비밀키가 있거나,
+`SUPABASE_SERVICE_ROLE_KEY`에 공개 키 / `SUPABASE_ANON_KEY`에 비밀키가 들어 있으면 빌드를 중단한다. Supabase 접근 코드는 모두 `server-only`.
+
+**실제 DB 연결 E2E**: 테스트 모드 배포에서
+`E2E_STAGING=1 E2E_BASE_URL=<주소> STAGING_ADMIN_EMAIL=… STAGING_ADMIN_PASSWORD=… npx playwright test staging-db --project=desktop`
+(DB 점검 통과 → 배너·태그 없음 → 사례 버튼 신청 → 같은 제출 키 재전송 1건 → CRM 조회·마스킹·동의 기록·연락처 복호화). 테스트 데이터만 사용(이름 '테스트검증', 010-0000-04xx).
 
 ## 디자인 시스템
 

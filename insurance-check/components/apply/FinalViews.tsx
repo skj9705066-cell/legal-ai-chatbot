@@ -19,7 +19,7 @@ export function CoverageDoneView() {
       <p className="mt-3 text-[16px] leading-relaxed text-navy-600 sm:text-[17px]">
         보험금 점검 안내와 보장 분석 상담은 각각 진행돼요. 선택하신 방법과 시간에 담당 설계사가 연락드립니다.
       </p>
-      <RefNo refNo={receipt.refNo} demo={receipt.demo} />
+      <RefNo refNo={receipt.refNo} trial={receipt.trial ?? null} />
       <div className="mt-7 rounded-2xl bg-navy-50 p-5 text-left text-[15px] leading-relaxed text-navy-600">
         상담 후 보험 가입 의무는 없으며, 계약이나 환급을 보장하지 않습니다. 보장 분석 동의는 언제든{" "}
         <Link href="/privacy/withdraw" className="font-semibold text-blue-700 underline underline-offset-2">
@@ -47,7 +47,7 @@ export function ClaimOnlyDoneView() {
       <p className="mt-3 text-[16px] leading-relaxed text-navy-600 sm:text-[17px]">
         보장 분석이나 보험 상품 안내 연락은 드리지 않아요. 희망하신 시간에 보험금 점검 안내 연락만 드립니다.
       </p>
-      <RefNo refNo={receipt.refNo} demo={receipt.demo} />
+      <RefNo refNo={receipt.refNo} trial={receipt.trial ?? null} />
       <div className="mt-8 flex flex-col items-center gap-3">
         <OfficialLink className="text-[16px] font-semibold text-blue-700 underline-offset-4 hover:underline">기다리는 동안 숨은보험금 공식 조회하기</OfficialLink>
         <Link href="/" className={buttonVariants({ variant: "outline", size: "lg", className: "w-full sm:w-auto" })}>

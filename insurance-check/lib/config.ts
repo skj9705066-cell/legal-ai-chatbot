@@ -6,10 +6,20 @@ import requirements from "@/config/requirements.json";
  * 공개 가능한 값(운영 주체 표시 정보 등)만 내려간다. 비밀키는 절대 여기서 내보내지 않는다.
  */
 
-export type AppMode = "demo" | "production";
+/**
+ * demo: 서버 메모리 저장(가짜 데이터) · staging: 실제 DB에 '테스트 신청'으로 저장(배너 유지, 광고 태그 없음)
+ * production: 실제 운영. 값이 없거나 모르는 값이면 항상 demo.
+ */
+export type AppMode = "demo" | "staging" | "production";
 
 export function getAppMode(): AppMode {
-  return process.env.APP_MODE === "production" ? "production" : "demo";
+  const m = process.env.APP_MODE;
+  return m === "production" ? "production" : m === "staging" ? "staging" : "demo";
+}
+
+/** 실제 DB(Supabase)를 쓰는 모드인지 */
+export function usesDatabase(mode: AppMode = getAppMode()): boolean {
+  return mode !== "demo";
 }
 
 const env = (key: string): string | null => {
@@ -43,6 +53,11 @@ function checkValue(key: string, group: RequirementGroup): { ok: boolean; hint?:
   return { ok: true };
 }
 
+/** 테스트(staging) 모드에 필요한 항목: 인프라 전부 + 운영 DB 점검 확인일. 운영 주체·광고 승인은 운영 모드에서만 요구 */
+export function isStagingRequirement(i: Pick<ReadinessItem, "group" | "key">): boolean {
+  return i.group === "infra" || i.key === "APPROVAL_DB_VERIFIED";
+}
+
 export function getReadiness(): { mode: AppMode; items: ReadinessItem[]; ready: boolean } {
   const items: ReadinessItem[] = [];
   for (const group of ["operator", "infra", "approvals"] as const) {
@@ -50,7 +65,9 @@ export function getReadiness(): { mode: AppMode; items: ReadinessItem[]; ready: 
       items.push({ key: r.key, label: r.label, group, ...checkValue(r.key, group) });
     }
   }
-  return { mode: getAppMode(), items, ready: items.every((i) => i.ok) };
+  const mode = getAppMode();
+  const required = mode === "staging" ? items.filter(isStagingRequirement) : items;
+  return { mode, items, ready: required.every((i) => i.ok) };
 }
 
 export interface OperatorInfo {
@@ -109,8 +126,10 @@ export function getOperatorInfo(): OperatorInfo {
 
 /**
  * 데모 모드: 제출은 서버 메모리에만 저장되는 시연용으로 동작한다(화면에 '데모' 표시).
+ * 테스트 모드: 인프라 항목 + 운영 DB 점검 확인일이 있어야 제출이 열린다(화면에 '테스트' 표시).
  * 운영 모드: 운영 정보·인프라·승인 항목이 전부 갖춰져야 제출이 열린다.
  *            하나라도 비면 폼을 잠그고 운영자에게 설정을 요구한다.
+ * 실제 DB를 쓰는 모드는 접수 API가 DB 자동 점검(lib/server/db-check.ts)까지 통과해야 저장한다.
  */
 export function isSubmissionEnabled(): boolean {
   return getAppMode() === "demo" || getReadiness().ready;
@@ -135,3 +154,5 @@ function numericId(v: string | null): string | null {
 
 export const PRIVACY_CONSENT_VERSION = "claim-2026-10-16.v2"; // 수집 항목에서 희망 시간·메모 제외
 export const COVERAGE_CONSENT_VERSION = "coverage-2026-10-15.v1";
+export const MARKETING_CONSENT_VERSION = "marketing-2026-10-16.v1";
+export const THIRD_PARTY_CONSENT_VERSION = "third-party-2026-10-16.v1";

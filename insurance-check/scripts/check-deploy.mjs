@@ -4,6 +4,8 @@
  *  - APP_MODE=production 이면: 운영 정보·인프라·GA 승인 기록이 전부 있어야 빌드 진행 (하나라도 없으면 실패)
  *  - 데모 모드면: 경고만 출력하고 통과
  *  - --strict: 모드와 무관하게 운영 기준으로 검사 (배포 전 수동 점검용)
+ *  - 테스트(staging) 모드면: 인프라 항목 + 운영 DB 점검 확인일이 비어 있으면 경고(접수는 앱이 잠근다)
+ *  - 모든 모드: 비밀키가 브라우저로 나갈 수 있는 설정(NEXT_PUBLIC_ 변수)이나 키 뒤바뀜이 있으면 빌드 실패
  */
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -23,7 +25,42 @@ for (const f of [".env.production.local", ".env.local", ".env.production", ".env
 
 const req = JSON.parse(readFileSync(join(root, "config/requirements.json"), "utf8"));
 const strict = process.argv.includes("--strict");
-const mode = process.env.APP_MODE === "production" ? "production" : "demo";
+const mode = ["production", "staging"].includes(process.env.APP_MODE ?? "") ? process.env.APP_MODE : "demo";
+
+/* ── 비밀키 노출 방지 (모든 모드) ──
+ * NEXT_PUBLIC_ 변수는 빌드 시 브라우저 번들에 그대로 들어간다. 비밀키를 여기에 두면 누구나 볼 수 있다.
+ * 키 종류 판별 규칙은 lib/supabase-keys.ts와 같다(값은 출력하지 않는다). */
+function keyKind(k) {
+  k = (k ?? "").trim();
+  if (k.startsWith("sb_secret_")) return "secret";
+  if (k.startsWith("sb_publishable_")) return "publishable";
+  const parts = k.split(".");
+  if (parts.length === 3) {
+    try {
+      const role = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")).role;
+      if (role === "service_role") return "secret";
+      if (role === "anon") return "publishable";
+    } catch {
+      /* unknown */
+    }
+  }
+  return k ? "unknown" : "empty";
+}
+const exposure = [];
+const SECRET_NAMES = ["SUPABASE_SERVICE_ROLE_KEY", "APP_SECRET", "PII_ENCRYPTION_KEY", "DEMO_ADMIN_PASSWORD"];
+const secretValues = SECRET_NAMES.map((n) => (process.env[n] ?? "").trim()).filter((v) => v.length >= 8);
+for (const [name, value] of Object.entries(process.env)) {
+  if (!name.startsWith("NEXT_PUBLIC_")) continue;
+  if (/SERVICE_ROLE|SECRET|PRIVATE|PASSWORD|ENCRYPTION|PII/i.test(name)) exposure.push(`  - ${name}: 비밀값으로 보이는 이름의 변수를 NEXT_PUBLIC_으로 두면 브라우저에 노출됩니다`);
+  else if (secretValues.includes((value ?? "").trim())) exposure.push(`  - ${name}: 비밀키와 같은 값이 공개 변수에 들어 있습니다`);
+  else if (keyKind(value) === "secret") exposure.push(`  - ${name}: Supabase 비밀키(secret/service_role)가 공개 변수에 들어 있습니다`);
+}
+if (keyKind(process.env.SUPABASE_SERVICE_ROLE_KEY) === "publishable") exposure.push("  - SUPABASE_SERVICE_ROLE_KEY: 공개 키(publishable/anon)가 들어 있습니다 — secret 키를 넣으세요");
+if (keyKind(process.env.SUPABASE_ANON_KEY) === "secret") exposure.push("  - SUPABASE_ANON_KEY: 비밀키가 들어 있습니다 — publishable(공개) 키를 넣으세요");
+if (exposure.length) {
+  console.error(`\n[check-deploy] 비밀키 노출 위험 — 빌드를 중단합니다:\n${exposure.join("\n")}\n`);
+  process.exit(1);
+}
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function check(key, group) {
@@ -42,6 +79,14 @@ for (const group of ["approvals", "operator", "infra"]) {
     const problem = check(key, group);
     if (problem) failures.push(`  - [${group}] ${label} (${key}): ${problem}`);
   }
+}
+
+if (mode === "staging" && !strict) {
+  const STAGING = new Set([...req.infra.map((r) => r.key), "APPROVAL_DB_VERIFIED"]);
+  const missing = failures.filter((f) => [...STAGING].some((k) => f.includes(`(${k})`)));
+  console.log("[check-deploy] 테스트(staging) 모드 빌드입니다. 실제 DB에 '테스트 신청'으로 저장하며 광고 태그는 꺼집니다.");
+  if (missing.length) console.warn(`[check-deploy] 테스트 모드 필수 항목 미완료 — 신청 접수가 잠깁니다:\n${missing.join("\n")}`);
+  process.exit(0);
 }
 
 if (mode === "demo" && !strict) {

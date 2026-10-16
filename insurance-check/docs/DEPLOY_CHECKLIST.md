@@ -61,6 +61,15 @@
 - [ ] 삭제 요청의 본인 확인 절차(예: 신청 번호로 회신 전화)를 정했다
 - [ ] 감사로그는 수정·삭제가 막혀 있으므로 보유기간이 지난 감사로그 정리 절차(DB 소유자가 SQL Editor에서 트리거를 잠시 끄고 정리)를 정했다
 
+### 실제 DB 연결 (테스트 모드로 먼저 확인)
+- [ ] Supabase SQL Editor에서 `supabase/schema.sql`(01) → 02-hardening(동의 기록·중복키·지급 증빙 칼럼) 실행
+- [ ] `supabase/verify.sql` 점검표 1~14번 모두 true → 확인일을 `APPROVAL_DB_VERIFIED`에 입력
+- [ ] Supabase Authentication에서 신규 가입(Allow new users to sign up) 끄기 → 관리자 계정 생성 → `ic_staff`에 admin 등록
+- [ ] Vercel **Preview** 환경에만 `APP_MODE=staging` + 인프라 변수 + `APPROVAL_DB_VERIFIED` 설정 (Production은 `APP_MODE=demo` 유지)
+- [ ] 미리보기 배포의 관리자 → 환경설정에서 **운영 DB 자동 점검 '통과'** 확인
+- [ ] 테스트 데이터로 신청 → CRM 조회 확인 (`npx playwright test staging-db` — README '모드' 참고)
+- [ ] 위 코드가 배포된 뒤 02-hardening 하단 [D] 규칙(동의·지급 확인 시각 필수)을 SQL Editor에서 실행
+
 ### 보안·인프라
 - [ ] 기존 DB에는 `supabase/schema.sql`을 다시 실행해 `ic_reviews` 테이블과 `ic_leads.is_test`·`ic_leads.third_party_consent` 컬럼을 추가했다
       (이전 구조의 `ic_reviews`(claim_type 컬럼)를 이미 만들었다면, 등록된 후기가 없는 상태에서 `drop table public.ic_reviews;` 후 다시 실행)

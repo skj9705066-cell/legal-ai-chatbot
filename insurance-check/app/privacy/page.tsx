@@ -31,7 +31,7 @@ export default function PrivacyPage() {
         <p className="mt-2 text-[14px] text-navy-500">
           시행일: <span className={cn(!o.privacyPolicyEffectiveDate && "font-medium text-caution")}>{orSetting(o.privacyPolicyEffectiveDate, "시행일")}</span>
         </p>
-        {config.mode === "demo" && (
+        {config.mode !== "production" && (
           <p className="mt-4 rounded-xl bg-caution-50 p-4 text-[13.5px] leading-relaxed text-caution">
             데모용 초안입니다. 실제 운영 전 소속 보험대리점(GA)의 개인정보 처리 승인과 법률 검토를 거쳐 확정해야 합니다.
           </p>
