@@ -59,11 +59,13 @@
 - [ ] 동의 문구를 바꿨다면 `lib/config.ts`의 `*_CONSENT_VERSION`을 올렸다
 - [ ] 보유기간 경과 데이터 파기 작업(`supabase/schema.sql` 하단 예시)을 스케줄링했다
 - [ ] 삭제 요청의 본인 확인 절차(예: 신청 번호로 회신 전화)를 정했다
+- [ ] 감사로그는 수정·삭제가 막혀 있으므로 보유기간이 지난 감사로그 정리 절차(DB 소유자가 SQL Editor에서 트리거를 잠시 끄고 정리)를 정했다
 
 ### 보안·인프라
 - [ ] 기존 DB에는 `supabase/schema.sql`을 다시 실행해 `ic_reviews` 테이블과 `ic_leads.is_test`·`ic_leads.third_party_consent` 컬럼을 추가했다
       (이전 구조의 `ic_reviews`(claim_type 컬럼)를 이미 만들었다면, 등록된 후기가 없는 상태에서 `drop table public.ic_reviews;` 후 다시 실행)
-- [ ] `supabase/schema.sql` 실행 후 `select * from pg_policies where tablename like 'ic_%';` 결과가 **0행**
+- [ ] `supabase/schema.sql` 실행 후 `supabase/verify.sql`(읽기 전용)의 기대 결과를 모두 확인했다 — RLS 6개 ON, 정책 0행, 공개 역할 권한 0행,
+      service_role 최소 권한, 감사로그 트리거 2개, 필수 정합성 규칙 누락 0행
 - [ ] service role 키는 서버 환경변수에만 있다 (`NEXT_PUBLIC_` 접두사 없음, 클라이언트 번들에 없음)
 - [ ] `ic_staff`에 실제 담당자만 등록, 역할 최소 권한(CSV 내보내기는 admin만)
 - [ ] Supabase Auth 비밀번호 정책·MFA 설정

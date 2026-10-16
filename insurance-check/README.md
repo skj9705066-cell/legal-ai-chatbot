@@ -197,7 +197,7 @@ E2E는 레이트리밋(IP당 10분 5건)에 걸리지 않도록 **서버를 새�
 - 보장 분석 동의는 신청 직후 발급된 **서명된 영수증 토큰**(2시간)으로만 가능 — 타인 신청에 동의를 붙일 수 없음
 - 철회 요청 응답은 일치 여부와 무관하게 동일 (타인 신청 여부 탐색 방지)
 - 보안 헤더: CSP(프로덕션 `unsafe-eval` 제거), HSTS, frame-ancestors none, nosniff
-- RLS: 모든 `ic_*` 테이블 RLS ON + 공개 정책 없음 (`supabase/schema.sql`), 감사로그는 append-only 트리거
+- RLS: 모든 `ic_*` 테이블 RLS ON + 공개 정책 없음 (`supabase/schema.sql`), service_role도 필요한 권한만(신청 삭제 불가·감사로그는 추가/조회만), 감사로그는 수정·삭제·TRUNCATE 금지 트리거, 동의·파기·후기 공개 규칙은 DB 제약으로도 강제
 
 ## 이벤트 측정
 
@@ -262,7 +262,8 @@ lib/content.ts            모든 랜딩 문구 (준법 검토 대상)
 lib/config.ts             모드·운영 정보·운영 준비 상태 (서버 전용)
 lib/server/*              저장소(demo/supabase)·서비스 규칙·암호화·인증·CSV·퍼널·알림(미연결)
 config/requirements.json  운영 필수 환경변수 목록 (앱·배포 스크립트 공용)
-supabase/schema.sql       운영 DB 스키마 + RLS
+supabase/schema.sql       운영 DB 스키마 + RLS + 권한 + 정합성 규칙 (전체를 한 번에 실행, 재실행 안전)
+supabase/verify.sql       스키마 적용 후 점검 쿼리 (읽기 전용)
 docs/DEPLOY_CHECKLIST.md  운영 전 승인·설정 체크리스트
 ```
 
