@@ -20,11 +20,23 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # 이벤트 기록(값·비밀 없음): Vercel이 보낸 배포 상태와 환경 이름을 남겨 조건이 맞는지 확인할 수 있게 한다
+  event-info:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "state=${{ github.event.deployment_status.state }}"
+          echo "environment=${{ github.event.deployment.environment }}"
+          echo "production_environment=${{ github.event.deployment.production_environment }}"
+          echo "url=${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}"
+          echo "sha=${{ github.event.deployment.sha }}"
+
+  # Production 배포는 어떤 경우에도 대상이 아니다(환경 이름·production 표시·운영 주소 세 겹으로 거른다)
   preview-e2e:
     if: >-
       github.event.deployment_status.state == 'success' &&
-      contains(github.event.deployment.environment, 'Preview') &&
-      contains(github.event.deployment.environment, 'insurance-check')
+      github.event.deployment.production_environment != true &&
+      !contains(github.event.deployment.environment, 'production')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     defaults:
@@ -42,7 +54,8 @@ jobs:
         with:
           ref: ${{ github.event.deployment.sha }}
 
-      - name: 대상 확인 (Production 주소면 중단)
+      - name: 대상 확인 (Production 주소면 중단, 다른 앱의 Preview면 건너뜀)
+        id: target
         run: |
           host=$(node -e 'console.log(new URL(process.env.E2E_BASE_URL).host)')
           echo "대상: $host (환경: ${{ github.event.deployment.environment }}, 커밋: ${{ github.event.deployment.sha }})"
@@ -50,25 +63,36 @@ jobs:
           for v in VERCEL_AUTOMATION_BYPASS_SECRET STAGING_ADMIN_EMAIL STAGING_ADMIN_PASSWORD; do
             if [ -n "${!v}" ]; then echo "$v: 설정됨"; else echo "$v: 없음"; fi
           done
+          # 같은 저장소의 다른 Vercel 프로젝트(Preview)일 수 있어 화면으로 앱을 판별한다
+          code=$(curl -s -o page.html -w '%{http_code}' -H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" "$E2E_BASE_URL" || true)
+          if [ "$code" = "200" ] && ! grep -q "내보험 통합 점검" page.html; then
+            echo "내보험 통합 점검 앱이 아닙니다(HTTP $code). 건너뜁니다."; echo "app=other" >> "$GITHUB_OUTPUT"
+          else
+            echo "앱 판별: HTTP $code"; echo "app=ic" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: actions/setup-node@v4
+        if: steps.target.outputs.app == 'ic'
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: insurance-check/package-lock.json
 
       - run: npm ci
+        if: steps.target.outputs.app == 'ic'
 
       - run: npx playwright install --with-deps chromium
+        if: steps.target.outputs.app == 'ic'
 
       - name: 사전 점검 (모드·잠김·미완료 설정)
         id: preflight
+        if: steps.target.outputs.app == 'ic'
         continue-on-error: true
         run: node scripts/preview-preflight.mjs "$E2E_BASE_URL" | tee preflight.txt
 
       - name: 점검 유형 3종 클릭·키보드·오류 화면 (제출 없음)
         id: clicks
-        if: always()
+        if: always() && steps.target.outputs.app == 'ic'
         continue-on-error: true
         run: npx playwright test apply-flow --grep @preview
 
@@ -79,7 +103,7 @@ jobs:
         run: npx playwright test staging-db crm --project=desktop
 
       - name: 결과 요약
-        if: always()
+        if: always() && steps.target.outputs.app == 'ic'
         run: |
           {
             echo "### insurance-check Preview E2E"
@@ -92,7 +116,7 @@ jobs:
           cat preflight.txt 2>/dev/null || true
 
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.target.outputs.app == 'ic'
         with:
           name: preview-e2e-results
           path: insurance-check/test-results
@@ -100,7 +124,7 @@ jobs:
           retention-days: 7
 
       - name: 실패 판정
-        if: always()
+        if: always() && steps.target.outputs.app == 'ic'
         run: |
           [ "${{ steps.preflight.outcome }}" = "success" ] || { echo "사전 점검 실패: Preview가 테스트 신청 가능 상태가 아님"; exit 1; }
           [ "${{ steps.clicks.outcome }}" = "success" ] || { echo "유형 클릭 테스트 실패"; exit 1; }
