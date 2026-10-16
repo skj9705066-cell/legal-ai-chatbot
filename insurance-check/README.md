@@ -56,6 +56,11 @@ E2E는 레이트리밋(IP당 10분 5건)에 걸리지 않도록 **서버를 새�
 | 분석 태그(GA4·Meta) | 로드 안 함 | 로드 안 함 | 측정 ID + 방문자 동의 시에만 로드 |
 | 검색엔진 | noindex | noindex | index (`/admin`, `/api`, `/apply` 제외) |
 
+**Preview 전용 테스트 신청**: Vercel 환경변수 `PREVIEW_TEST_SUBMISSIONS=1`을 **Preview에만** 넣으면, Vercel이 자동으로 주는
+`VERCEL_ENV=preview` 배포에서만 테스트 모드로 동작한다(APP_MODE 값과 무관). Production 배포(`VERCEL_ENV=production`)에서는 이 값이 있어도 무시되고,
+`APP_MODE=staging`도 운영 기준으로 잠긴다. 접수가 잠겨 있으면 Preview·로컬에서만 폼 아래에 **미완료 설정의 변수 이름**을 보여 준다(값은 표시 안 함,
+Production에서는 표시 안 함). 테스트 신청은 `is_test=true`로 저장되어 CRM에 '테스트' 배지, CSV에 '테스트 신청' 열, 운영 지표 제외.
+
 **DB 자동 점검** (`lib/server/db-check.ts`, 관리자 → 환경설정에서 결과·다시 점검): 실제 키로 데이터를 바꾸지 않고 확인한다 —
 키 종류(서버 키가 비밀키인지, 공개 키 자리에 비밀키가 없는지), 공개 키로 신청·직원 조회/수정 차단, 서버 키로도 신청 삭제·감사로그 수정 불가,
 02-hardening 칼럼 존재, 활성 관리자 1명 이상. 하나라도 실패하면 신청 API가 503으로 저장을 멈춘다(통과는 5분·실패는 30초 캐시).

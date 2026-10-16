@@ -25,7 +25,19 @@ for (const f of [".env.production.local", ".env.local", ".env.production", ".env
 
 const req = JSON.parse(readFileSync(join(root, "config/requirements.json"), "utf8"));
 const strict = process.argv.includes("--strict");
-const mode = ["production", "staging"].includes(process.env.APP_MODE ?? "") ? process.env.APP_MODE : "demo";
+// 모드 규칙은 lib/config.ts getAppMode()와 같다:
+//  Vercel Preview + PREVIEW_TEST_SUBMISSIONS=1 → staging / APP_MODE=staging은 Vercel Production 배포에서 production으로 취급
+const deployEnv = process.env.VERCEL_ENV;
+const mode =
+  deployEnv === "preview" && process.env.PREVIEW_TEST_SUBMISSIONS === "1"
+    ? "staging"
+    : process.env.APP_MODE === "production"
+      ? "production"
+      : process.env.APP_MODE === "staging"
+        ? deployEnv === "production"
+          ? "production"
+          : "staging"
+        : "demo";
 
 /* ── 비밀키 노출 방지 (모든 모드) ──
  * NEXT_PUBLIC_ 변수는 빌드 시 브라우저 번들에 그대로 들어간다. 비밀키를 여기에 두면 누구나 볼 수 있다.

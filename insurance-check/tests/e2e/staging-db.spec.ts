@@ -5,6 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
  *   E2E_STAGING=1 E2E_BASE_URL=<테스트 배포 주소> STAGING_ADMIN_EMAIL=… STAGING_ADMIN_PASSWORD=… npx playwright test staging-db --project=desktop
  * 테스트 데이터만 쓴다: 이름 '테스트검증', 휴대전화 010-0000-04xx(가입자에게 배정되지 않는 번호대).
  * 저장된 신청은 모두 '테스트 신청'(운영 지표 제외)으로 기록된다.
+ * 신청 API는 IP당 10분 5건 제한이 있어, 이 파일은 정확히 5건만 보낸다(UI 신청 1 + 검증 2 + 재전송 2). 다시 돌릴 땐 10분 뒤에.
  */
 
 const ON = process.env.E2E_STAGING === "1";
@@ -64,6 +65,27 @@ test("신청 저장: 사례 버튼 → 유형 자동 선택 → 테스트 데이
   await expect(page.getByTestId("test-receipt-note")).toBeVisible();
   refNo = (await page.locator("strong.font-mono").first().textContent())!.trim();
   expect(refNo).toMatch(/^IC-\d{6}-[A-Z0-9]{5}$/);
+
+  // 보장 분석 상담 동의: 신청과 분리된 별도 화면의 선택 항목, 기본 해제. 동의 없이는 진행되지 않는다(실제 동의는 하지 않음)
+  await page.getByRole("link", { name: "무료 보장 분석 상담 신청" }).click();
+  await expect(page).toHaveURL(/\/apply\/coverage$/);
+  await expect(page.locator("#cov-consent")).not.toBeChecked();
+  await page.getByRole("button", { name: "동의하고 보장 분석 신청" }).click();
+  await expect(page.getByText("보장 분석 상담을 위한 별도 동의가 필요합니다.")).toBeVisible();
+  await expect(page).toHaveURL(/\/apply\/coverage$/);
+});
+
+test("테스트 모드에서도 서버 검증 유지: 필수 동의·형식·봇 차단", async ({ page, baseURL }) => {
+  await page.goto("/");
+  const headers = { origin: baseURL!, referer: `${baseURL}/` };
+  const base = { serviceType: "unclaimed", name: NAME, phone: `010-0000-07${suffix}`, elapsedMs: 3000, website: "" };
+  const noConsent = await page.request.post("/api/leads", { data: { ...base }, headers });
+  expect(noConsent.status()).toBe(422);
+  expect((await noConsent.json()).fieldErrors).toHaveProperty("privacyConsent");
+  const bot = await page.request.post("/api/leads", { data: { ...base, privacyConsent: true, website: "x" }, headers });
+  expect(bot.status()).toBe(400);
+  const foreign = await page.request.post("/api/leads", { data: { ...base, privacyConsent: true }, headers: { origin: "https://evil.example" } });
+  expect(foreign.status()).toBe(403);
 });
 
 test("같은 제출 키로 다시 보내면 새로 저장하지 않고 같은 신청번호", async ({ page, baseURL }) => {

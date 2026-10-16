@@ -65,7 +65,8 @@
 - [ ] Supabase SQL Editor에서 `supabase/schema.sql`(01) → 02-hardening(동의 기록·중복키·지급 증빙 칼럼) 실행
 - [ ] `supabase/verify.sql` 점검표 1~14번 모두 true → 확인일을 `APPROVAL_DB_VERIFIED`에 입력
 - [ ] Supabase Authentication에서 신규 가입(Allow new users to sign up) 끄기 → 관리자 계정 생성 → `ic_staff`에 admin 등록
-- [ ] Vercel **Preview** 환경에만 `APP_MODE=staging` + 인프라 변수 + `APPROVAL_DB_VERIFIED` 설정 (Production은 `APP_MODE=demo` 유지)
+- [ ] Vercel **Preview** 환경에만 `PREVIEW_TEST_SUBMISSIONS=1` + 인프라 변수 + `APPROVAL_DB_VERIFIED` 설정 (Production의 `APP_MODE`·승인 값은 건드리지 않음)
+- [ ] 미리보기 화면에 '현재 신청 접수를 준비하고 있어요'가 보이면 그 아래 '[테스트 환경 진단]'에 나온 변수를 채운 뒤 Redeploy
 - [ ] 미리보기 배포의 관리자 → 환경설정에서 **운영 DB 자동 점검 '통과'** 확인
 - [ ] 테스트 데이터로 신청 → CRM 조회 확인 (`npx playwright test staging-db` — README '모드' 참고)
 - [ ] 위 코드가 배포된 뒤 02-hardening 하단 [D] 규칙(동의·지급 확인 시각 필수)을 SQL Editor에서 실행

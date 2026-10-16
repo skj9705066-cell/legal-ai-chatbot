@@ -270,6 +270,12 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
           <OfficialLink className="font-semibold text-blue underline underline-offset-2" />할 수 있어요.
         </Alert>
       )}
+      {disabled && config.lockedBy && config.lockedBy.length > 0 && (
+        // Preview·로컬 전용 진단(운영 배포에서는 lockedBy가 항상 null). 변수 이름만 보여 주고 값은 보여 주지 않는다
+        <p className="mt-3 rounded-xl bg-navy-50 px-3.5 py-2.5 text-[13px] leading-relaxed text-navy-600" data-testid="lock-diagnostics">
+          [테스트 환경 진단 · {config.mode}] 미완료 설정: <code className="break-all">{config.lockedBy.join(", ")}</code>
+        </p>
+      )}
 
       <div aria-live="assertive">
         {serverError && <Alert tone="error" role="alert" className="mt-6" title={serverError} />}

@@ -19,6 +19,8 @@ beforeAll(() => {
 });
 afterEach(() => {
   process.env.APP_MODE = "demo";
+  delete process.env.VERCEL_ENV;
+  delete process.env.PREVIEW_TEST_SUBMISSIONS;
 });
 
 describe("supabase key kinds (값은 보지 않고 종류만 판별)", () => {
@@ -54,6 +56,47 @@ describe("app modes", () => {
     expect(r.mode).toBe("staging");
     expect(r.ready).toBe(false); // 이 테스트 환경엔 인프라 값이 없다
     expect(r.items.some((i) => i.key === "APPROVAL_DB_VERIFIED")).toBe(true);
+  });
+});
+
+describe("Preview-only test submissions (PREVIEW_TEST_SUBMISSIONS)", () => {
+  it("turns on test mode only on Vercel Preview deployments", () => {
+    process.env.APP_MODE = "production";
+    process.env.PREVIEW_TEST_SUBMISSIONS = "1";
+    process.env.VERCEL_ENV = "preview";
+    expect(getAppMode()).toBe("staging");
+  });
+  it("is ignored on Vercel Production — the production gate stays", () => {
+    process.env.PREVIEW_TEST_SUBMISSIONS = "1";
+    process.env.VERCEL_ENV = "production";
+    process.env.APP_MODE = "production";
+    expect(getAppMode()).toBe("production");
+    process.env.APP_MODE = "demo";
+    expect(getAppMode()).toBe("demo");
+  });
+  it("is ignored outside Vercel and when not exactly '1'", () => {
+    process.env.APP_MODE = "production";
+    process.env.PREVIEW_TEST_SUBMISSIONS = "1";
+    expect(getAppMode()).toBe("production"); // VERCEL_ENV 없음(로컬)
+    process.env.VERCEL_ENV = "preview";
+    process.env.PREVIEW_TEST_SUBMISSIONS = "true";
+    expect(getAppMode()).toBe("production");
+  });
+  it("APP_MODE=staging never opens test mode on a Vercel Production deployment", () => {
+    process.env.APP_MODE = "staging";
+    process.env.VERCEL_ENV = "production";
+    expect(getAppMode()).toBe("production");
+    expect(getReadiness().ready).toBe(false); // 운영 필수 항목이 없으니 잠김
+  });
+  it("lock diagnostics list missing variable names on Preview but never on Production", async () => {
+    const { getPublicConfig } = await import("@/lib/config");
+    process.env.APP_MODE = "production";
+    process.env.VERCEL_ENV = "preview";
+    const preview = getPublicConfig();
+    expect(preview.submissionEnabled).toBe(false);
+    expect(preview.lockedBy).toContain("SUPABASE_URL");
+    process.env.VERCEL_ENV = "production";
+    expect(getPublicConfig().lockedBy).toBeNull();
   });
 });
 

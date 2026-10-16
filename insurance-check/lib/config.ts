@@ -12,9 +12,28 @@ import requirements from "@/config/requirements.json";
  */
 export type AppMode = "demo" | "staging" | "production";
 
+/** Vercel이 배포마다 자동으로 넣는 환경(VERCEL_ENV). Vercel 밖(로컬 등)이면 null */
+export type DeployEnv = "production" | "preview" | "development" | null;
+export function getDeployEnv(): DeployEnv {
+  const v = process.env.VERCEL_ENV;
+  return v === "production" || v === "preview" || v === "development" ? v : null;
+}
+
+/**
+ * 모드 결정 규칙
+ *  1) Vercel **Preview** 배포 + PREVIEW_TEST_SUBMISSIONS=1 → 테스트 모드(staging).
+ *     APP_MODE 값과 관계없이 Preview에서만 켜지고, Production 배포에서는 이 값이 있어도 무시된다.
+ *  2) APP_MODE=production → 운영 모드
+ *  3) APP_MODE=staging → 테스트 모드. 단 Vercel Production 배포에서는 테스트 모드로 열지 않고 운영 기준(잠금)으로 본다.
+ *  4) 그 밖(비어 있음·오타 포함) → 데모 모드
+ */
 export function getAppMode(): AppMode {
   const m = process.env.APP_MODE;
-  return m === "production" ? "production" : m === "staging" ? "staging" : "demo";
+  const deploy = getDeployEnv();
+  if (deploy === "preview" && process.env.PREVIEW_TEST_SUBMISSIONS === "1") return "staging";
+  if (m === "production") return "production";
+  if (m === "staging") return deploy === "production" ? "production" : "staging";
+  return "demo";
 }
 
 /** 실제 DB(Supabase)를 쓰는 모드인지 */
@@ -95,6 +114,11 @@ export interface OperatorInfo {
 export interface PublicConfig {
   mode: AppMode;
   submissionEnabled: boolean;
+  /**
+   * 접수가 잠긴 이유(미완료 설정의 변수 이름만, 값은 없음). Vercel Production 배포에서는 항상 null —
+   * Preview·로컬에서 설정 누락을 찾기 위한 진단용이다.
+   */
+  lockedBy: string[] | null;
   operator: OperatorInfo;
   gaMeasurementId: string | null;
   /** Meta 픽셀 ID(숫자). 운영 모드 + 값이 있을 때만 */
@@ -140,11 +164,19 @@ export function getPublicConfig(): PublicConfig {
   return {
     mode,
     submissionEnabled: isSubmissionEnabled(),
+    lockedBy: lockDiagnostics(),
     operator: getOperatorInfo(),
     // 광고·분석 태그는 운영 모드에서만. 데모 트래픽이 광고 통계를 오염시키지 않게 한다.
     gaMeasurementId: mode === "production" ? env("NEXT_PUBLIC_GA_MEASUREMENT_ID") : null,
     metaPixelId: mode === "production" ? numericId(env("NEXT_PUBLIC_META_PIXEL_ID")) : null,
   };
+}
+
+function lockDiagnostics(): string[] | null {
+  if (getDeployEnv() === "production" || isSubmissionEnabled()) return null;
+  const { mode, items } = getReadiness();
+  const required = mode === "staging" ? items.filter(isStagingRequirement) : items;
+  return required.filter((i) => !i.ok).map((i) => `${i.key}${i.hint && i.hint !== "미설정" ? `(${i.hint})` : ""}`);
 }
 
 /** 픽셀 ID는 숫자만 허용(스크립트에 그대로 들어가므로 형식이 다르면 로드하지 않는다) */

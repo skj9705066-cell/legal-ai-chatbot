@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { CheckCircle2, CircleDashed } from "lucide-react";
 import Link from "next/link";
-import { getReadiness, isStagingRequirement } from "@/lib/config";
+import { getDeployEnv, getReadiness, isStagingRequirement } from "@/lib/config";
 import { getDbCheck } from "@/lib/server/db-check";
 import { getStaffSession } from "@/lib/server/auth";
 import { notifyStatus } from "@/lib/server/notify";
@@ -36,6 +36,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <div className="rounded-2xl bg-white shadow-card ring-1 ring-navy-100 p-4">
           <p className="text-[13px] text-navy-600">현재 모드</p>
           <p className="mt-1 text-[18px] font-extrabold text-navy">{MODE_LABEL[mode]}</p>
+          <p className="mt-0.5 text-[13px] text-navy-600" data-testid="deploy-env">
+            배포 환경: {getDeployEnv() ?? "Vercel 밖(로컬)"}
+            {getDeployEnv() === "preview" && process.env.PREVIEW_TEST_SUBMISSIONS === "1" && " · Preview 테스트 신청 켜짐"}
+          </p>
         </div>
         <div className="rounded-2xl bg-white shadow-card ring-1 ring-navy-100 p-4">
           <p className="text-[13px] text-navy-600">운영 준비</p>

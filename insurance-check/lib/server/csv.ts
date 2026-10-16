@@ -33,6 +33,7 @@ export function leadsToCsv(leads: Lead[]): string {
     "담당자",
     "개인정보 요청 상태",
     "중복(최초 신청번호)",
+    "테스트 신청",
   ];
   const rows = leads.map((l) => [
     l.refNo,
@@ -51,6 +52,7 @@ export function leadsToCsv(leads: Lead[]): string {
     l.assignee,
     PRIVACY_STATUS_LABEL[l.privacyStatus],
     l.duplicateOf,
+    l.isTest ? "테스트(지표 제외)" : "",
   ]);
   // Excel 한글 깨짐 방지 BOM
   return "﻿" + [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
