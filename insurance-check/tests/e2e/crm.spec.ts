@@ -6,6 +6,9 @@ import { adminLogin } from "./helpers";
  * 권한별 제한(상담사·열람)은 admin.spec.ts에서 확인한다.
  */
 
+/** 실제 DB(테스트 배포) 대상 실행 — 기존 신청을 고치는 테스트는 건너뛰고 읽기 전용 점검만 한다 */
+const REAL_DB = process.env.E2E_STAGING === "1";
+
 async function login(page: Page, key: string) {
   // 관리자 로그인 레이트리밋(IP당 15분 10회)이 다른 테스트와 섞이지 않게(로컬 전용 — Vercel에서는 덮어써짐)
   await page.setExtraHTTPHeaders({ "x-real-ip": `crm-${key}` });
@@ -66,6 +69,7 @@ test("모든 메뉴가 열리고, 화면 이동·뒤로가기 중 필터·목록
 
 test("상태·다음 연락 일정·담당자·메모 저장 → 새로고침해도 유지, 감사로그 기록", async ({ page, isMobile }) => {
   test.skip(isMobile, "편집은 데스크톱에서 1회");
+  test.skip(REAL_DB, "실제 DB에서는 기존 신청을 수정하지 않는다");
   await login(page, "edit");
   await page.goto("/admin?claim=new");
   const firstLink = page.locator("tbody a").first();
@@ -93,6 +97,7 @@ test("상태·다음 연락 일정·담당자·메모 저장 → 새로고침해
 
 test("테스트 신청: 배지·필터로 구분되고, 영업 대상 목록에는 기본으로 섞이지 않는다", async ({ page, isMobile }) => {
   test.skip(isMobile, "데스크톱에서 1회");
+  test.skip(REAL_DB, "실제 DB에서는 기존 신청을 수정하지 않는다");
   await login(page, "tests");
   await page.goto("/admin?view=sales&test=include");
   const firstLink = page.locator("tbody a").first();

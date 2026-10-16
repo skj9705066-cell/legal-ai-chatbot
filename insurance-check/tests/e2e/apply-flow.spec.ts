@@ -6,6 +6,7 @@ import { adminLogin } from "./helpers";
  * A 랜딩 → B 무료 점검 CTA → C 유형 카드 선택 → D 다음 → E 정보 입력 → F 필수 동의 → H 제출 → I 응답 → K 완료 화면
  * → G 보장 분석(별도·선택) → L CRM 조회 → M CSV. 세 유형 모두. 가상 이름·테스트 번호(010-0000-xxxx)만 사용.
  * DB(Supabase) 저장 자체는 staging-db.spec.ts가 테스트 모드 배포에서 확인한다.
+ * '@preview' 표시 테스트는 신청을 보내지 않아 실제 Preview에서도 그대로 돌린다(.github/workflows/insurance-check-preview-e2e.yml).
  */
 
 const TYPES = [
@@ -32,7 +33,7 @@ async function openFormFromHero(page: Page) {
   await expect(page.locator("#apply").getByText(/1단계\s*\/\s*2/)).toBeVisible();
 }
 
-test("C·D: 세 유형 카드 모두 눌러서 선택되고, 다음·이전·유형 변경 시 입력값이 유지된다", async ({ page, isMobile }) => {
+test("C·D: 세 유형 카드 모두 눌러서 선택되고, 다음·이전·유형 변경 시 입력값이 유지된다 @preview", async ({ page, isMobile }) => {
   await openFormFromHero(page);
   const next = page.locator("#apply").getByRole("button", { name: "다음", exact: true });
   for (const t of TYPES) {
@@ -58,7 +59,7 @@ test("C·D: 세 유형 카드 모두 눌러서 선택되고, 다음·이전·유
   await expect(page.locator("#apply-type-hidden")).toBeChecked();
 });
 
-test("C: 키보드만으로 유형 선택 (화살표 이동 + 다음)", async ({ page, isMobile }) => {
+test("C: 키보드만으로 유형 선택 (화살표 이동 + 다음) @preview", async ({ page, isMobile }) => {
   test.skip(isMobile, "키보드 시나리오는 데스크톱");
   await page.goto("/#apply");
   await page.locator("#apply-type-unclaimed").focus();
@@ -124,7 +125,7 @@ for (const [i, t] of TYPES.entries()) {
   });
 }
 
-test("오류: 필수 입력 누락 · 잘못된 연락처 · 동의 누락은 제출되지 않는다", async ({ page, isMobile }) => {
+test("오류: 필수 입력 누락 · 잘못된 연락처 · 동의 누락은 제출되지 않는다 @preview", async ({ page, isMobile }) => {
   await isolate(page, "invalid", isMobile);
   const posts: string[] = [];
   page.on("request", (r) => r.url().endsWith("/api/leads") && r.method() === "POST" && posts.push(r.url()));
