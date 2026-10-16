@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "verify:deployed": "E2E_BASE_URL=${E2E_BASE_URL:-https://insurance-check-demo.vercel.app} playwright test release-check",
     "check:deploy": "node scripts/check-deploy.mjs --strict",
     "setup:demo": "node scripts/setup-demo-env.mjs"
   },
