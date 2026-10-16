@@ -5,7 +5,7 @@ import type { FunnelEventName, ServiceType } from "@/lib/types";
 import { CTA_VARIANTS, type CtaVariant } from "@/lib/content";
 import { track } from "@/lib/analytics";
 
-export type CtaSource = "hero" | "stats" | "type_card" | "cases" | "reviews" | "process" | "final" | "sticky" | "header";
+export type CtaSource = "hero" | "stats" | "type_card" | "cases" | "reviews" | "action" | "process" | "final" | "sticky" | "header";
 
 export interface ApplyRequest {
   n: number;
@@ -15,6 +15,8 @@ export interface ApplyRequest {
 interface ApplyCtx {
   serviceType: ServiceType | null;
   selectType: (t: ServiceType) => void;
+  /** '잘 모르겠어요'처럼 유형이 정해지지 않은 선택 — 신청 폼에서 고르게 한다 */
+  clearType: () => void;
   /** 신청 폼(단 하나)으로 이동. 폼이 request를 보고 단계·포커스를 맞춘다. 유형을 안 넘기면 이미 고른 유형을 유지한다. */
   startApply: (source: CtaSource, t?: ServiceType) => void;
   /** 점검 유형 선택 영역으로 이동. 선택한 유형은 같은 신청 폼에 반영된다. */
@@ -73,6 +75,8 @@ export function ApplyProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const clearType = useCallback(() => setServiceType(null), []);
+
   const startApply = useCallback(
     (source: CtaSource, t?: ServiceType) => {
       const ev = CLICK_EVENT[source];
@@ -93,8 +97,8 @@ export function ApplyProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ serviceType, selectType, startApply, goToTypes, request, ctaVariant, ctaLabel: CTA_VARIANTS[ctaVariant] }),
-    [serviceType, selectType, startApply, goToTypes, request, ctaVariant],
+    () => ({ serviceType, selectType, clearType, startApply, goToTypes, request, ctaVariant, ctaLabel: CTA_VARIANTS[ctaVariant] }),
+    [serviceType, selectType, clearType, startApply, goToTypes, request, ctaVariant],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

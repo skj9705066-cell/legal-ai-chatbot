@@ -5,10 +5,9 @@ import { DemoBanner } from "@/components/site/DemoBanner";
 import { ApplyProvider } from "@/components/landing/ApplyContext";
 import { Hero } from "@/components/landing/Hero";
 import { StatsSection } from "@/components/landing/StatsSection";
-import { CasesSection } from "@/components/landing/CasesSection";
+import { ActionScene, EmpathyScene, PickScene } from "@/components/landing/StoryScenes";
 import { RealReviews } from "@/components/landing/RealReviews";
 import { getPublicMetrics, getPublicReviews } from "@/lib/server/reviews";
-import { ServiceTypes } from "@/components/landing/ServiceTypes";
 import { Process } from "@/components/landing/Process";
 import { ApplySection } from "@/components/landing/ApplySection";
 import { Trust } from "@/components/landing/Trust";
@@ -29,12 +28,12 @@ export default async function LandingPage() {
       <SiteHeader demo={demo} />
       <main id="main">
         <Hero />
-        {/* 광고 유입 동선: 호기심(히어로) → 사회적 증거(공식 통계) → 자기 연관성(공감 카드) → (실제 후기: 동의·승인된 것만)
-            → 행동(유형 선택 → 신청). 공감 카드·유형 카드는 바로 신청 폼으로 이어진다 */}
+        {/* 스토리텔링: 기억(히어로) → 공감 → 새로운 사실(공식 통계) → 나에게 해당? → 행동. 한 장면 = 메시지 하나 */}
+        <EmpathyScene />
         <StatsSection />
-        <CasesSection />
+        <PickScene />
+        <ActionScene />
         <RealReviews reviews={reviews} metrics={metrics} />
-        <ServiceTypes />
         <Process />
         <ApplySection config={config} />
         <Trust />

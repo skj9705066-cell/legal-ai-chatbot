@@ -3,35 +3,39 @@ import AxeBuilder from "@axe-core/playwright";
 
 const FORBIDDEN = ["모든 고객", "대상자로 선정", "금융위원회 인증", "100% 환급", "무조건", "80만 명", "방금 신청", "명이 신청", "님이 신청", "찾았어요", "찾았네요", "받았어요"];
 
-test("hero, stats with source and compliance copy", async ({ page }) => {
+test("story scene 1 (memory question) and scene 3 (official stat) with source and compliance copy", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("나도 모르게 놓친 보험금,있을까요?");
-  await expect(page.getByTestId("hero-subtitle")).toHaveText("병원비부터 오래된 보험까지,확인할 사항을 알아보세요.");
-  await expect(page.locator("#hero-cta").getByRole("button", { name: "나도 무료 점검 시작하기" })).toBeVisible();
-  await expect(page.getByTestId("hero-cta-note")).toContainText("보험금 지급 여부는 보험사 심사에 따라 달라요");
-  // 핵심 숫자 2개가 먼저: 남은 규모 → 2025년 지급 건수
+  // 장면 1: 성공 사례가 아니라 기억을 떠올리게 하는 질문
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("예전에 병원 다녀오셨죠?");
+  await expect(page.getByTestId("hero-question")).toHaveText("그때 보험금은 모두 확인하셨나요?");
+  await expect(page.getByTestId("hero-subtitle")).toHaveText("실손보험만 청구했거나, 가입한 다른 보장을 확인하지 않았을 수도 있어요.");
+  await expect(page.locator("#hero-cta").getByRole("button", { name: "내 보험도 한번 확인하기" })).toBeVisible();
+  await expect(page.getByTestId("hero-cta-note")).toHaveText("무료 점검 상담 · 보험금 지급 여부는 개별 확인 필요");
+  // 장면 3: 숨은보험금 공식 통계 하나 + 미청구 병원비와 별개임을 표시
   const stats = page.locator("#stats");
-  await expect(stats.getByRole("heading", { level: 2 })).toHaveText("아직 찾아가지 않은 숨은보험금");
+  await expect(stats.getByRole("heading", { level: 2 })).toHaveText("오래전에 가입한 보험도 확인해 보세요.");
+  await expect(page.getByTestId("fact-desc")).toHaveText("만기·중도·휴면보험금처럼 지급 시기가 지났지만 찾아가지 않은 보험금이 있을 수 있습니다.");
+  await expect(stats).toContainText("2025년 말 기준");
+  await expect(stats.getByRole("heading", { name: "숨은보험금", exact: true })).toBeVisible();
   await expect(stats).toContainText("약 10조 3,000억원");
-  await expect(stats.getByRole("heading", { level: 3 })).toHaveText("2025년 약 80만 건 지급");
-  await expect(page.getByTestId("stat-refund-count")).toBeVisible();
-  // 사회적 증거 표시: 전국 공식 집계 · 이 서비스 실적 아님 · 건수(사람 수 아님) · 출처/발표일 · 개인별 환급 아님 — 항상 보인다
-  await expect(page.getByTestId("proof-notes")).toContainText("사람 수 아님");
   await expect(page.getByTestId("proof-notes")).toContainText("이 서비스 실적 아님");
+  await expect(page.getByTestId("proof-notes")).toContainText("미청구 병원비·수술비와는 별개 통계");
   await expect(stats.locator('a[href="https://www.fsc.go.kr/po010103/87270"]')).toBeVisible();
   await expect(stats.getByText("2026년 7월 7일 발표", { exact: false })).toBeVisible();
   await expect(stats.getByText("개인별 환급을 뜻하지 않아요", { exact: false })).toBeVisible();
-  // 보조 통계·정의·유의사항 전문은 '통계 자세히 보기'에
-  await expect(page.getByTestId("stat-refund-amount")).not.toBeVisible();
+  // 지급 건수·지급액·정의·유의사항 전문은 '통계 자세히 보기'에
+  await expect(page.getByTestId("stat-refund-count")).not.toBeVisible();
   await stats.getByRole("button", { name: "통계 자세히 보기" }).click();
+  await expect(page.getByTestId("stat-refund-count")).toBeVisible();
   await expect(page.getByTestId("stat-refund-amount")).toBeVisible();
+  await expect(stats.getByRole("heading", { name: "2025년 약 80만 건 지급" })).toHaveCount(1);
   await expect(stats).toContainText("약 3조 2,470억원");
+  await expect(stats.getByText("사람 수가 아닙니다", { exact: false })).toBeVisible();
   await expect(stats.getByText("개인별 환급 가능 여부나 환급 금액을 의미하거나 보장하지 않습니다", { exact: false })).toBeVisible();
   await expect(stats).toContainText("청구하지 않은 보험금은 이 통계에 포함되지 않습니다");
   await expect(stats).toContainText("실시간으로 변하는 수치가 아닙니다");
   // 근거를 확인하지 못한 평균 환급액은 노출하지 않는다
   await expect(page.locator("body")).not.toContainText("404만");
-  await expect(page.locator("#proof-cta").getByRole("button", { name: "내 보험에서 확인할 항목 알아보기" })).toBeVisible();
   const text = await page.locator("body").innerText();
   for (const f of FORBIDDEN) expect(text, `forbidden phrase: ${f}`).not.toContain(f);
   for (const f of ["즉시 조회", "환급 대상 확인 완료", "보험금을 찾아드립니다"]) expect(text).not.toContain(f);
@@ -49,24 +53,26 @@ test("mobile first screen: headline, illustration and CTA all fit above the fold
   }
 });
 
-test("CTA copy A/B: ?cta=b swaps the main CTA label and persists in the session; default is A", async ({ page }) => {
+test("CTA copy A/B: ?cta=b swaps the main CTA labels and persists in the session; default is the story copy", async ({ page }) => {
   await page.goto("/?cta=b");
   const hero = page.locator("#hero-cta").getByRole("button");
   await expect(hero).toHaveText("혹시 놓친 보험금 확인하기");
   await expect(hero).toHaveAttribute("data-cta-variant", "b");
+  await expect(page.locator("#action-cta").getByRole("button")).toHaveText("혹시 놓친 보험금 확인하기");
   await page.goto("/");
   await expect(hero).toHaveText("혹시 놓친 보험금 확인하기");
   await page.goto("/?cta=zzz");
   await expect(hero).toHaveText("혹시 놓친 보험금 확인하기");
   await page.evaluate(() => sessionStorage.clear());
   await page.goto("/");
-  await expect(hero).toHaveText("나도 무료 점검 시작하기");
+  await expect(hero).toHaveText("내 보험도 한번 확인하기");
+  await expect(page.locator("#action-cta").getByRole("button")).toHaveText("나도 무료 점검 시작하기");
 });
 
 test("no external lookup CTA in the main flow; official link kept in trust note, FAQ and footer", async ({ page }) => {
   await page.goto("/");
   const ext = 'a[href*="cont.insure.or.kr"]';
-  for (const sel of ["header", "#hero-cta", "#stats", "#proof", "#cases", "#reviews", "#services", "#process", "#apply", "#final-cta"]) {
+  for (const sel of ["header", "#hero-cta", "#empathy", "#stats", "#proof", "#services", "#action", "#reviews", "#process", "#apply", "#final-cta"]) {
     await expect(page.locator(`${sel} ${ext}`), `external CTA in ${sel}`).toHaveCount(0);
   }
   await expect(page.locator(`footer ${ext}`)).toBeVisible();
@@ -119,30 +125,34 @@ test("reduced motion shows the final figures without animation", async ({ page }
   await expect(page.locator('[data-testid="stat-main"] .odo')).toHaveAttribute("data-state", "done");
 });
 
-test("page order: hero → stats → empathy cards → types → process → apply; no fabricated chats", async ({ page }) => {
+test("story order: memory → empathy → official fact → 'is it me?' → action → process → apply; no fabricated chats", async ({ page }) => {
   await page.goto("/");
-  const ids = ["hero-cta", "stats", "cases", "services", "process", "apply", "trust", "faq", "final-cta"];
+  const ids = ["hero-cta", "empathy", "stats", "services", "action", "process", "apply", "trust", "faq", "final-cta"];
   const order = await page.evaluate((list) => list.map((id) => document.getElementById(id)!.getBoundingClientRect().top + window.scrollY), ids);
   expect([...order].sort((x, y) => x - y)).toEqual(order);
 
-  // 공감 카드: 일러스트 + 제목 + 한 문장. 성공담·금액·사진 없음
-  const cases = page.locator("#cases");
-  await expect(cases.getByRole("heading", { level: 2 })).toHaveText("혹시 이런 경험 있으세요?");
-  for (const t of ["병원비 청구를 깜빡했어요", "오래전에 가입한 보험이 있어요", "수술비 보장도 있는지 모르겠어요"]) {
-    await expect(cases.getByRole("button").filter({ hasText: t })).toHaveCount(1);
-  }
-  await expect(cases.locator("button > svg")).toHaveCount(3);
-  await expect(page.getByTestId("cases-footnote")).toContainText("지급 여부는 보험계약과 보험사 심사에 따릅니다");
-  await expect(cases.locator("img")).toHaveCount(0);
-  expect(await cases.innerText()).not.toMatch(/\d[\d,]*\s*(만\s*)?원/);
+  // 장면 2: 공감 — 보험증권·병원 영수증·달력이 하나씩 등장
+  const empathy = page.locator("#empathy");
+  await expect(empathy.getByRole("heading", { level: 2 })).toHaveText("보험료는 매달 내는데…");
+  await expect(empathy).toContainText("내가 받을 수 있는 보장은 얼마나 알고 계신가요?");
+  await expect(page.getByTestId("empathy-desc")).toHaveText("병원비, 수술비, 오래된 보험까지 확인할 항목은 생각보다 다양할 수 있어요.");
+  await expect(empathy.locator(".stagger-item svg")).toHaveCount(3);
 
-  // 점검 유형: 짧은 이름 + 일러스트. 해지환급금은 해지 시 보장 소멸·해지 비권유를 함께 표시
-  const types = page.locator("#services");
-  await expect(types.getByRole("heading", { level: 2 })).toHaveText("어떤 보험금이 궁금하세요?");
-  for (const t of ["병원비·수술비", "숨은·만기보험금", "과오납·해지환급금"]) await expect(types.getByText(t, { exact: true })).toBeVisible();
-  await expect(page.getByTestId("type-refund")).toContainText("해지 권유 없음");
-  await expect(page.getByTestId("refund-note")).toContainText("해지하면 보장이 사라집니다");
-  await expect(page.getByTestId("refund-note")).toContainText("해지를 권유하지 않습니다");
+  // 장면 4: 선택형 카드 3개. 성공담·금액·사진 없음
+  const pick = page.locator("#services");
+  await expect(pick.getByRole("heading", { level: 2 })).toHaveText("혹시 나도 해당될까요?");
+  for (const t of ["병원비·수술비를 청구하지 않았어요", "오래전에 가입한 보험이 있어요", "어떤 보장을 받는지 잘 모르겠어요"]) {
+    await expect(pick.getByRole("button", { name: t })).toHaveAttribute("aria-pressed", "false");
+  }
+  await expect(page.getByTestId("pick-footnote")).toContainText("보험금 지급을 뜻하지는 않아요");
+  await expect(pick.locator("img")).toHaveCount(0);
+  expect(await pick.innerText()).not.toMatch(/\d[\d,]*\s*(만\s*)?원/);
+
+  // 장면 5: 행동
+  const action = page.locator("#action");
+  await expect(action.getByRole("heading", { level: 2 })).toHaveText("그렇다면 이번 기회에 확인해 보세요.");
+  await expect(action).toContainText("가입한 보험에서 무엇을 확인해야 할지 무료로 안내받아 보세요.");
+  await expect(action.getByRole("button", { name: "나도 무료 점검 시작하기" })).toBeVisible();
 
   // 절차: 3단계 그림 + 핵심 고지, 상세는 접기
   await expect(page.getByTestId("process-key-notice")).toHaveText("보험금 지급 여부와 금액은 보험사가 결정합니다.");
@@ -152,44 +162,48 @@ test("page order: hero → stats → empathy cards → types → process → app
 
   // 가상 대화 갤러리는 없다. 실제 후기 영역은 동의·승인된 후기가 있을 때만(데모 표시 필수)
   await expect(page.getByTestId("chat-example")).toHaveCount(0);
-  await expect(page.getByTestId("reviews-empty")).toHaveCount(0);
   if ((await page.getByTestId("real-review").count()) === 0) await expect(page.locator("#reviews")).toHaveCount(0);
   await expect(page.getByTestId("real-review").filter({ hasNotText: "데모 데이터 · 실제 후기 아님" })).toHaveCount(0);
   await expect(page.getByTestId("operating-metrics")).toHaveCount(0);
 });
 
-test("every CTA leads into the same application flow; cards go straight to the form with their type", async ({ page }) => {
+test("every CTA leads into the same application flow; the picked card carries its type into the form", async ({ page }) => {
   await page.goto("/");
   await page.addStyleTag({ content: "html{scroll-behavior:auto!important}" });
-  const services = page.locator("#services-title");
-  // 히어로 · 통계 하단 · 하단 CTA → 점검 유형 선택
+  const pickTitle = page.locator("#services-title");
+  // 히어로 · 하단 CTA → "혹시 나도 해당될까요?"
   for (const [where, name] of [
-    ["#hero-cta", "나도 무료 점검 시작하기"],
-    ["#proof-cta", "내 보험에서 확인할 항목 알아보기"],
+    ["#hero-cta", "내 보험도 한번 확인하기"],
     ["#final-cta", "나도 무료 보험금 점검 시작하기"],
   ] as const) {
     await page.locator(where).getByRole("button", { name }).click();
-    await expect(services, `${where} → 유형 선택`).toBeInViewport();
-    await expect(services).toBeFocused();
+    await expect(pickTitle, `${where} → 해당 여부 선택`).toBeInViewport();
+    await expect(pickTitle).toBeFocused();
   }
-  // 유형 카드 → 중간 화면 없이 연락처 입력, 고른 유형을 짧게 보여준다
-  await page.getByTestId("type-refund").click();
+  // 카드를 고르면 선택 상태 + 안내, 화면은 강제로 이동하지 않는다
+  const y0 = await page.evaluate(() => window.scrollY);
+  await page.getByTestId("pick-unclaimed").click();
+  await expect(page.getByTestId("pick-unclaimed")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("pick-hint")).toHaveText("선택한 내용이 신청서에 반영돼요");
+  expect(Math.abs((await page.evaluate(() => window.scrollY)) - y0)).toBeLessThan(40);
+  await expect(page.getByTestId("action-picked")).toHaveText("병원비·수술비 점검");
+  // 행동 장면 CTA → 중간 화면 없이 연락처 단계, 고른 유형 표시
+  await page.locator("#action-cta").getByRole("button").click();
   await expect(page.locator("#apply-name")).toBeFocused();
-  await expect(page.locator("#apply-step-title")).toHaveText("연락받으실 분을 알려주세요");
-  await expect(page.getByTestId("apply-picked-type")).toContainText("과오납·해지환급금");
-  await page.getByRole("button", { name: "이전", exact: true }).click();
-  await expect(page.locator("#apply-type-refund")).toBeChecked();
-  await expect(page.getByTestId("apply-type-desc")).toContainText("해지하면 보장이 사라집니다");
-  // 공감 카드 → 해당 유형으로 바로 신청
-  await page.getByTestId("case-old-policy").click();
-  await expect(page.locator("#apply-name")).toBeFocused();
-  await expect(page.getByTestId("apply-picked-type")).toContainText("숨은·만기보험금");
+  await expect(page.getByTestId("apply-picked-type")).toContainText("병원비·수술비");
   await page.getByRole("button", { name: "점검 유형 변경" }).click();
-  await expect(page.locator("#apply-type-hidden")).toBeChecked();
-  // 유형을 모를 때의 보조 버튼도 같은 폼 (고른 유형은 유지)
-  await page.locator("#type-cta").getByRole("button").click();
+  await expect(page.locator("#apply-type-unclaimed")).toBeChecked();
+  // 폼에서 바꾼 유형은 위 선택 카드에도 반영된다. 해지환급금은 선택 시 고지
+  await page.locator("#apply-type-hidden").check({ force: true });
+  await expect(page.getByTestId("pick-old-policy")).toHaveAttribute("aria-pressed", "true");
+  await page.locator("#apply-type-refund").check({ force: true });
+  await expect(page.getByTestId("apply-type-desc")).toContainText("해지하면 보장이 사라집니다");
+  // '잘 모르겠어요'는 유형을 정하지 않고 폼에서 고르게 한다
+  await page.getByTestId("pick-unsure").click();
+  await expect(page.getByTestId("pick-unsure")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("action-picked")).toHaveCount(0);
+  await page.locator("#action-cta").getByRole("button").click();
   await expect(page.locator("#apply")).toBeInViewport();
-  await expect(page.locator("#apply-type-hidden")).toBeChecked();
   expect(await page.locator("form").count()).toBe(1);
   expect(page.url()).not.toContain("cont.insure.or.kr");
 });
@@ -339,7 +353,7 @@ test("mobile sticky CTA hides at hero, the form, the final CTA and while typing"
   await page.goto("/");
   const sticky = page.getByTestId("mobile-sticky-cta");
   await expect(sticky).toHaveAttribute("data-hidden", "true");
-  await page.locator("#services").scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollTo(0, document.getElementById("stats")!.getBoundingClientRect().top + window.scrollY));
   await expect(sticky).toHaveAttribute("data-hidden", "false");
   await expect(sticky.getByRole("button")).toHaveText("나도 무료 점검 시작하기");
   await page.locator("#apply-step-title").scrollIntoViewIfNeeded();
@@ -347,7 +361,7 @@ test("mobile sticky CTA hides at hero, the form, the final CTA and while typing"
   await page.locator("#final-cta").scrollIntoViewIfNeeded();
   await expect(sticky).toHaveAttribute("data-hidden", "true");
   // 입력창에 포커스가 있으면(키보드가 열린 상태) 숨긴다
-  await page.locator("#services").scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollTo(0, document.getElementById("stats")!.getBoundingClientRect().top + window.scrollY));
   await expect(sticky).toHaveAttribute("data-hidden", "false");
   await page.evaluate(() => {
     const i = document.createElement("input");

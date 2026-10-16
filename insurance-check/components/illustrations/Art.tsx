@@ -353,102 +353,40 @@ export function TypeArt({ kind, className, idPrefix = "type" }: { kind: TypeArtK
 
 /* ───────────────────────── 히어로 장면 ───────────────────────── */
 
-/** 3D 스마트폰 화면: 조회 결과가 아니라 '확인할 항목 체크리스트 + 상담 안내'를 보여준다 */
-function PhoneScreen() {
-  const p = "hero-phone";
-  const rows = [
-    { t: "병원비·수술비 청구", on: true },
-    { t: "오래된 보험·만기", on: true },
-    { t: "보험료 납입 내역", on: false },
-  ];
+/**
+ * 히어로 체크리스트 카드: "실손보험"만 체크되어 있고 나머지 두 줄은 비어 있다(확인하지 않은 보장).
+ * 금액·보험사명·조회 결과는 넣지 않는다. 글자는 '실손보험' 한 단어만.
+ */
+function MemoryChecklist() {
+  const p = "hero-list";
   return (
-    <svg viewBox="0 0 180 360" className="block h-auto w-full" aria-hidden="true" focusable="false">
+    <svg viewBox="-4 -4 248 180" className="block h-auto w-full overflow-visible" aria-hidden="true" focusable="false">
       <Defs p={p} />
-      <defs>
-        <linearGradient id={`${p}-body`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#1E4373" />
-          <stop offset="55%" stopColor={C.deep} />
-          <stop offset="100%" stopColor="#071A33" />
-        </linearGradient>
-        <linearGradient id={`${p}-glass`} x1="0" y1="0" x2="1" y2="0.6">
-          <stop offset="0%" stopColor="#fff" stopOpacity="0.5" />
-          <stop offset="40%" stopColor="#fff" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {/* 측면 두께 */}
-      <rect x="-5" y="4" width="182" height="354" rx="30" fill="#061629" />
-      <rect x="0" y="0" width="180" height="360" rx="30" fill={`url(#${p}-body)`} />
-      <rect x="0.75" y="0.75" width="178.5" height="358.5" rx="29.5" fill="none" stroke="#fff" strokeOpacity="0.18" strokeWidth="1.5" />
-      <rect x="-3" y="86" width="3" height="26" rx="1.5" fill="#24497A" />
-      <rect x="-3" y="120" width="3" height="40" rx="1.5" fill="#24497A" />
-      {/* 화면 */}
-      <rect x="8" y="8" width="164" height="344" rx="23" fill="#F3F7FC" />
-      <rect x="66" y="15" width="48" height="14" rx="7" fill={C.deep} />
-      <text x="22" y="26" fontSize="9" fontWeight="700" fill={C.navy}>
-        9:41
+      <rect x="4" y="7" width="232" height="160" rx="22" fill={C.blue100} />
+      <rect width="232" height="160" rx="22" fill="#fff" stroke={C.navy200} />
+      {/* 머리: 병원 표시 + 제목 자리 */}
+      <rect x="18" y="16" width="28" height="28" rx="9" fill={`url(#${p}-blue)`} />
+      <path d="M32 23v14M25 30h14" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" />
+      <Line x={56} y={20} w={78} h={7} c={C.navy300} />
+      <Line x={56} y={33} w={48} h={5} />
+      <path d="M16 56h200" stroke={C.navy100} strokeWidth="2" />
+      {/* 1줄: 확인함 */}
+      <rect x="18" y="64" width="20" height="20" rx="7" fill={`url(#${p}-mint)`} />
+      <Check x={28.5} y={74} s={0.95} w={2.6} />
+      <text x="48" y="79" fontSize="13" fontWeight="700" fill="#475569" letterSpacing="-0.3">
+        실손보험
       </text>
-      {/* 앱 헤더 */}
-      <rect x="18" y="44" width="20" height="20" rx="6" fill={`url(#${p}-blue)`} />
-      <Check x={28.5} y={54} s={0.8} w={2.2} />
-      <text x="44" y="58.5" fontSize="12.5" fontWeight="800" fill={C.navy} letterSpacing="-0.4">
-        보험금 점검
-      </text>
-      {/* 체크리스트 카드 */}
-      <rect x="16" y="76" width="148" height="96" rx="14" fill="#fff" />
-      <text x="28" y="96" fontSize="9" fontWeight="800" fill={C.navy} letterSpacing="-0.3">
-        내 보험 확인할 항목
-      </text>
-      {rows.map((r, i) => {
-        const y = 108 + i * 20;
-        return (
-          <g key={r.t}>
-            {r.on ? (
-              <>
-                <rect x="28" y={y} width="13" height="13" rx="4.5" fill={`url(#${p}-mint)`} />
-                <Check x={34.5} y={y + 6.5} s={0.62} w={1.9} />
-              </>
-            ) : (
-              <rect x="28.75" y={y + 0.75} width="11.5" height="11.5" rx="4" fill="#fff" stroke={C.blue} strokeWidth="1.5" />
-            )}
-            <text x="48" y={y + 10} fontSize="8.6" fontWeight="600" fill={r.on ? "#475569" : C.navy} letterSpacing="-0.3">
-              {r.t}
-            </text>
-          </g>
-        );
-      })}
-      {/* 상담 안내 카드 */}
-      <rect x="16" y="182" width="148" height="62" rx="14" fill="#fff" />
-      <circle cx="40" cy="213" r="13" fill={C.blue50} />
-      <path d="M34 214v-2a6 6 0 0 1 12 0v2" fill="none" stroke={C.blue} strokeWidth="2" strokeLinecap="round" />
-      <rect x="32" y="212" width="4" height="6" rx="2" fill={C.blue} />
-      <rect x="44" y="212" width="4" height="6" rx="2" fill={C.blue} />
-      <text x="60" y="209" fontSize="8.6" fontWeight="800" fill={C.navy} letterSpacing="-0.3">
-        상담사가 안내해요
-      </text>
-      <Line x={60} y={216} w={84} h={4.5} />
-      <Line x={60} y={225} w={58} h={4.5} />
-      {/* 진행 단계 */}
-      <rect x="16" y="254" width="148" height="44" rx="14" fill="#fff" />
-      <path d="M42 270h48M90 270h48" stroke={C.blue200} strokeWidth="2" />
-      <path d="M42 270h48" stroke={C.blue} strokeWidth="2" />
-      <circle cx="42" cy="270" r="6" fill={C.blue} />
-      <circle cx="90" cy="270" r="6" fill="#fff" stroke={C.blue} strokeWidth="2" />
-      <circle cx="138" cy="270" r="5" fill={C.navy200} />
-      <text x="42" y="290" fontSize="7.4" fontWeight="700" fill={C.navy} textAnchor="middle">
-        신청
-      </text>
-      <text x="90" y="290" fontSize="7.4" fontWeight="700" fill={C.navy} textAnchor="middle">
-        상담 안내
-      </text>
-      <text x="138" y="290" fontSize="7.4" fontWeight="600" fill="#64748B" textAnchor="middle">
-        보험사 확인
-      </text>
-      {/* CTA */}
-      <rect x="16" y="308" width="148" height="30" rx="11" fill={`url(#${p}-blue)`} />
-      <text x="90" y="327" fontSize="10" fontWeight="800" fill="#fff" textAnchor="middle" letterSpacing="-0.3">
-        무료 점검 시작
-      </text>
-      <rect x="8" y="8" width="164" height="344" rx="23" fill={`url(#${p}-glass)`} opacity="0.35" />
+      <Line x={112} y={71} w={40} h={6} />
+      {/* 2·3줄: 아직 확인하지 않음 */}
+      {[96, 128].map((y, i) => (
+        <g key={y}>
+          <rect x="10" y={y - 4} width="212" height="28" rx="10" fill={C.blue50} />
+          <rect x="18" y={y} width="20" height="20" rx="7" fill="#fff" stroke={C.blue} strokeWidth="2.2" />
+          <rect className="hero-pulse" x="18" y={y} width="20" height="20" rx="7" fill="none" stroke={C.blue400} strokeWidth="2" style={{ animationDelay: `${i * 0.6}s` }} />
+          <Line x={48} y={y + 7} w={i ? 84 : 104} h={7} c={C.navy300} />
+          <Line x={i ? 140 : 160} y={y + 7} w={36} h={7} c={C.navy200} />
+        </g>
+      ))}
     </svg>
   );
 }
@@ -462,69 +400,94 @@ function FloatSvg({ children, viewBox }: { children: React.ReactNode; viewBox: s
 }
 
 /**
- * 히어로 장면: 기울어진 3D 스마트폰 + 주변에 떠 있는 보험증권·병원 영수증·달력·체크 배지.
- * 비율 고정(400:280) 컨테이너 안에서 % 위치로 배치 → 화면 폭에 맞춰 그대로 축소된다.
- * 떠다니는 움직임은 아주 느리고 작으며, 움직임 줄이기 설정에서는 멈춘다.
+ * 히어로 장면: "예전에 병원 다녀오셨죠?" — 보험증권·병원 영수증 위로 기울어진 체크리스트 카드.
+ * 체크되지 않은 두 줄이 은은하게 깜빡이며 '아직 확인하지 않은 항목'을 떠올리게 한다.
+ * 비율 고정(400:260) 컨테이너 안에서 % 위치로 배치. 움직임은 작고 느리며 움직임 줄이기 설정에서는 멈춘다.
  */
-export function HeroScene({ className }: { className?: string }) {
+export function MemoryScene({ className }: { className?: string }) {
   const p = "hero-float";
   return (
-    <div aria-hidden="true" className={`relative aspect-[400/280] w-full select-none ${className ?? ""}`}>
-      <div className="absolute left-1/2 top-1/2 h-[96%] w-[74%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(8,102,245,0.16),rgba(8,102,245,0))]" />
-      <div className="absolute left-1/2 top-1/2 aspect-square w-[64%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-100" />
-      {/* 바닥 그림자 */}
-      <div className="absolute bottom-[1%] left-1/2 h-[7%] w-[44%] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,rgba(16,43,78,0.28),rgba(16,43,78,0))]" />
+    <div aria-hidden="true" className={`relative aspect-[400/260] w-full select-none ${className ?? ""}`}>
+      <div className="absolute left-1/2 top-1/2 h-[104%] w-[78%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(8,102,245,0.15),rgba(8,102,245,0))]" />
+      <div className="absolute left-1/2 top-1/2 aspect-square w-[62%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-100" />
 
-      {/* 스마트폰 */}
-      <div className="absolute left-1/2 top-[3%] w-[31%] -translate-x-1/2 [perspective:900px]">
-        <div className="[transform:rotateY(-16deg)_rotateX(7deg)_rotateZ(3deg)] drop-shadow-[0_24px_28px_rgba(11,36,69,0.32)]">
-          <PhoneScreen />
-        </div>
-      </div>
-
-      {/* 보험증권 */}
-      <div className="hero-float absolute left-[3%] top-[12%] w-[23%] [--r:-11deg]" style={{ animationDelay: "0s" }}>
+      {/* 보험증권 (뒤 왼쪽) */}
+      <div className="hero-float absolute left-[6%] top-[1%] w-[27%] [--r:-12deg]" style={{ animationDelay: "-1s" }}>
         <FloatSvg viewBox="-4 -4 92 116">
           <Defs p={`${p}-a`} />
           <Policy p={`${p}-a`} />
         </FloatSvg>
       </div>
-      {/* 병원 영수증 */}
-      <div className="hero-float absolute right-[5%] top-[6%] w-[19%] [--r:10deg]" style={{ animationDelay: "-2.2s" }}>
+      {/* 병원 영수증 (뒤 오른쪽) */}
+      <div className="hero-float absolute right-[7%] top-0 w-[23%] [--r:10deg]" style={{ animationDelay: "-2.6s" }}>
         <FloatSvg viewBox="-4 -4 82 116">
           <Defs p={`${p}-b`} />
           <Receipt p={`${p}-b`} />
         </FloatSvg>
       </div>
-      {/* 달력 */}
-      <div className="hero-float absolute bottom-[10%] right-[4%] w-[21%] [--r:7deg]" style={{ animationDelay: "-3.6s" }}>
-        <FloatSvg viewBox="-4 -8 96 96">
-          <Defs p={`${p}-c`} />
-          <Calendar p={`${p}-c`} />
+
+      {/* 바닥 그림자 */}
+      <div className="absolute bottom-[0%] left-1/2 h-[9%] w-[52%] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,rgba(16,43,78,0.24),rgba(16,43,78,0))]" />
+      {/* 체크리스트 카드 (앞, 3D 기울기) */}
+      <div className="absolute left-1/2 top-[27%] w-[60%] -translate-x-1/2 [perspective:800px]">
+        <div className="[transform:rotateX(14deg)_rotateZ(-3deg)] drop-shadow-[0_22px_24px_rgba(11,36,69,0.22)]">
+          <MemoryChecklist />
+        </div>
+      </div>
+
+      {/* 물음표 말풍선 */}
+      <div className="hero-float absolute right-[11%] top-[30%] w-[12%] [--r:8deg]" style={{ animationDelay: "-0.4s" }}>
+        <FloatSvg viewBox="0 0 52 56">
+          <Defs p={`${p}-q`} />
+          <circle cx="26" cy="29" r="24" fill={C.blue700} />
+          <circle cx="26" cy="26" r="24" fill={`url(#${p}-q-blue)`} />
+          <circle cx="26" cy="26" r="24" fill="none" stroke="#fff" strokeOpacity="0.55" strokeWidth="3" />
+          <text x="26" y="35" fontSize="26" fontWeight="800" fill="#fff" textAnchor="middle">
+            ?
+          </text>
         </FloatSvg>
       </div>
-      {/* 체크 배지 */}
-      <div className="hero-float absolute bottom-[13%] left-[12%] w-[13%] [--r:-6deg]" style={{ animationDelay: "-1.2s" }}>
-        <FloatSvg viewBox="0 0 56 58">
-          <Defs p={`${p}-d`} />
-          <circle cx="28" cy="31" r="26" fill="#0D7563" />
-          <circle cx="28" cy="28" r="26" fill={`url(#${p}-d-mint)`} />
-          <circle cx="28" cy="28" r="26" fill="none" stroke="#fff" strokeOpacity="0.6" strokeWidth="3" />
-          <Check x={29} y={28} s={2.1} w={5} />
-        </FloatSvg>
-      </div>
-      {/* 반짝임 */}
-      <div className="absolute left-[30%] top-[4%] w-[4%]">
+      <div className="absolute left-[34%] top-[2%] w-[3.5%]">
         <FloatSvg viewBox="0 0 12 12">
           <Sparkle x={6} y={6} r={6} />
         </FloatSvg>
       </div>
-      <div className="absolute right-[28%] bottom-[6%] w-[3%]">
+      <div className="absolute bottom-[12%] left-[10%] w-[3%]">
         <FloatSvg viewBox="0 0 12 12">
           <Sparkle x={6} y={6} r={6} color={C.mint} />
         </FloatSvg>
       </div>
     </div>
+  );
+}
+
+/* ───────────────────────── 공감 장면 오브젝트 (120×120) ───────────────────────── */
+
+export type ObjectArtKind = "policy" | "receipt" | "calendar";
+
+export function ObjectArt({ kind, className }: { kind: ObjectArtKind; className?: string }) {
+  const p = `obj-${kind}`;
+  return (
+    <svg viewBox="0 0 120 120" className={className} aria-hidden="true" focusable="false">
+      <Defs p={p} />
+      <circle cx="60" cy="60" r="57" fill={`url(#${p}-tile)`} />
+      <Floor p={p} cx={60} cy={106} rx={38} ry={6} />
+      {kind === "policy" && (
+        <g transform="translate(24 10) scale(0.9) rotate(-6 40 52)">
+          <Policy p={p} label={false} />
+        </g>
+      )}
+      {kind === "receipt" && (
+        <g transform="translate(28 8) scale(0.92) rotate(5 35 52)">
+          <Receipt p={p} />
+        </g>
+      )}
+      {kind === "calendar" && (
+        <g transform="translate(20 26) scale(0.95) rotate(-4 42 39)">
+          <Calendar p={p} />
+        </g>
+      )}
+    </svg>
   );
 }
 

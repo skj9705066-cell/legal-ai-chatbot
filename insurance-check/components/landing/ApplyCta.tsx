@@ -14,17 +14,26 @@ export function ApplyCta({
   type,
   target = "form",
   children,
+  primaryLabel,
   arrow = true,
   ...props
-}: Omit<ButtonProps, "onClick" | "type"> & { source: CtaSource; type?: ServiceType; target?: "types" | "form"; arrow?: boolean }) {
+}: Omit<ButtonProps, "onClick" | "type"> & {
+  source: CtaSource;
+  type?: ServiceType;
+  target?: "types" | "form";
+  arrow?: boolean;
+  /** 기본안(A)일 때 이 문구를 쓰고, 광고 URL로 다른 안(?cta=b~d)이 지정되면 그 안의 문구를 쓴다 */
+  primaryLabel?: string;
+}) {
   const { startApply, goToTypes, ctaLabel, ctaVariant } = useApply();
+  const label = children ?? (primaryLabel && ctaVariant === "a" ? primaryLabel : ctaLabel);
   return (
     <Button
       onClick={() => (target === "types" ? goToTypes(source) : startApply(source, type))}
       data-cta-variant={children ? undefined : ctaVariant}
       {...props}
     >
-      {children ?? ctaLabel}
+      {label}
       {arrow && <ArrowRight className="h-[1.1em] w-[1.1em] transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true" />}
     </Button>
   );

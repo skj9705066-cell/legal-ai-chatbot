@@ -13,7 +13,7 @@ export function MobileStickyCta() {
   const [typing, setTyping] = useState(false);
 
   useEffect(() => {
-    const ids = ["hero-cta", "proof-cta", "cases-cta", "reviews-cta", "apply", "final-cta"];
+    const ids = ["hero-cta", "action-cta", "reviews-cta", "apply", "final-cta"];
     const targets = ids.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => !!el);
     if (!targets.length) return;
     const visible = new Set<string>();

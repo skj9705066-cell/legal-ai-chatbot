@@ -9,8 +9,9 @@ async function submitLead(page: Page, phone: string, utm = "") {
     if (req.url().endsWith("/api/events")) events.push(req.postData() ?? "");
   });
   await page.goto(`/${utm}`);
-  // 유형 카드를 누르면 중간 화면 없이 바로 신청 폼(이름 입력)으로 간다
-  await page.locator("[data-testid=type-hidden]").click();
+  // "혹시 나도 해당될까요?"에서 고른 카드가 신청서에 반영되고, 행동 장면 CTA로 바로 이름 입력
+  await page.getByTestId("pick-old-policy").click();
+  await page.locator("#action-cta").getByRole("button").click();
   await expect(page.locator("#apply-name")).toBeFocused();
   await page.fill("#apply-name", "테스트");
   await page.fill("#apply-phone", phone);

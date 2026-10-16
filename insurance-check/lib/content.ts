@@ -39,23 +39,48 @@ export const STATS_MOTION_NOTE = "숫자 애니메이션은 표시 효과이며,
 /** 통계 섹션 안의 지급 실적 구간. 이 서비스의 실적이 아니라 전국 공식 집계다. */
 export const PROOF = {
   title: "2025년 약 80만 건 지급",
-  notes: ["전국 공식 집계 · 이 서비스 실적 아님", "지급 건수 기준(사람 수 아님)"],
-  cta: "내 보험에서 확인할 항목 알아보기",
+  notes: ["전국 공식 집계 · 이 서비스 실적 아님", "미청구 병원비·수술비와는 별개 통계"],
 } as const;
 
-/**
- * 공감 섹션 — 일러스트 중심 카드 3개(제목 + 한 문장). 카드 전체가 해당 점검 유형의 신청으로 연결된다.
- * 실제 지급 사례·후기가 아니며, 보험금 수령 가능성을 확정적으로 표현하지 않는다.
+/*
+ * 스토리텔링 장면 (히어로 → 공감 → 새로운 사실(공식 통계) → 나에게 해당? → 행동).
+ * 한 장면 = 메시지 하나, 제목·설명 각 2줄 이내. 지급 성공담·후기·금액 약속은 쓰지 않는다.
  */
-export const CASES = {
-  title: "혹시 이런 경험 있으세요?",
+
+/** 장면 2 — 공감 */
+export const EMPATHY = {
+  title: "보험료는 매달 내는데…",
+  emphasis: "내가 받을 수 있는 보장은 얼마나 알고 계신가요?",
+  description: "병원비, 수술비, 오래된 보험까지 확인할 항목은 생각보다 다양할 수 있어요.",
   items: [
-    { id: "hospital", art: "receipt", title: "병원비 청구를 깜빡했어요", body: "소액이라 미뤄둔 진료비도 청구 가능 여부를 확인해 보세요.", type: "unclaimed" },
-    { id: "old-policy", art: "policy", title: "오래전에 가입한 보험이 있어요", body: "만기·휴면 보험금 확인 방법을 알려드려요.", type: "hidden" },
-    { id: "surgery", art: "medical", title: "수술비 보장도 있는지 모르겠어요", body: "실손 외에 수술·입원 특약이 있는지 확인해 보세요.", type: "unclaimed" },
+    { art: "policy", label: "가입한 보장" },
+    { art: "receipt", label: "병원비·수술비" },
+    { art: "calendar", label: "오래된 보험" },
   ],
-  cardCta: "확인해 보기",
-  footnote: "일반적인 상황 예시예요. 지급 여부는 보험계약과 보험사 심사에 따릅니다.",
+} as const;
+
+/** 장면 3 — 새로운 사실 (공식 통계는 숨은보험금에 관한 것: 미청구 병원비·수술비와 별개) */
+export const FACT = {
+  title: "오래전에 가입한 보험도 확인해 보세요.",
+  description: "만기·중도·휴면보험금처럼 지급 시기가 지났지만 찾아가지 않은 보험금이 있을 수 있습니다.",
+} as const;
+
+/** 장면 4 — 나에게 해당되는지. 고르면 해당 점검 유형이 신청 단계에 반영된다(잘 모르겠으면 폼에서 고른다). */
+export const PICK = {
+  title: "혹시 나도 해당될까요?",
+  items: [
+    { id: "unclaimed", art: "receipt", title: "병원비·수술비를 청구하지 않았어요", type: "unclaimed" },
+    { id: "old-policy", art: "policy", title: "오래전에 가입한 보험이 있어요", type: "hidden" },
+    { id: "unsure", art: "medical", title: "어떤 보장을 받는지 잘 모르겠어요", type: null },
+  ],
+  pickedHint: "선택한 내용이 신청서에 반영돼요",
+  footnote: "해당하더라도 보험금 지급을 뜻하지는 않아요. 지급 여부는 보험계약과 보험사 심사에 따릅니다.",
+} as const;
+
+/** 장면 5 — 행동 */
+export const ACTION = {
+  title: "그렇다면 이번 기회에 확인해 보세요.",
+  description: "가입한 보험에서 무엇을 확인해야 할지 무료로 안내받아 보세요.",
 } as const;
 
 /**
@@ -86,11 +111,11 @@ export const FINAL_CTA = {
 export const HIDDEN_DEFINITION = "지급 사유가 생겼지만 아직 청구되지 않은 중도·만기·휴면보험금 등을 말합니다.";
 
 export const HERO = {
-  titleLines: ["나도 모르게 놓친 보험금,", "있을까요?"],
-  highlight: "보험금",
-  subLines: ["병원비부터 오래된 보험까지,", "확인할 사항을 알아보세요."],
-  cta: "나도 무료 점검 시작하기",
-  ctaNote: "무료 상담 신청 · 보험금 지급 여부는 보험사 심사에 따라 달라요",
+  title: "예전에 병원 다녀오셨죠?",
+  question: "그때 보험금은 모두 확인하셨나요?",
+  description: "실손보험만 청구했거나, 가입한 다른 보장을 확인하지 않았을 수도 있어요.",
+  cta: "내 보험도 한번 확인하기",
+  ctaNote: "무료 점검 상담 · 보험금 지급 여부는 개별 확인 필요",
 } as const;
 
 /** 점검 절차 요약(3단계). 상세 절차·서류·유의사항은 '자세히 보기'에 둔다. */
