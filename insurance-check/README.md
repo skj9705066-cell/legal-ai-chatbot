@@ -69,7 +69,7 @@ CRM 상세 필터의 '테스트 신청'(포함/제외/테스트만)으로 구분
 **DB 자동 점검** (`lib/server/db-check.ts`, 관리자 → 환경설정에서 결과·다시 점검): 실제 키로 데이터를 바꾸지 않고 확인한다 —
 키 종류(서버 키가 비밀키인지, 공개 키 자리에 비밀키가 없는지), 공개 키로 신청·직원 조회/수정 차단, 서버 키로도 신청 삭제·감사로그 수정 불가,
 02-hardening 칼럼 존재, 활성 관리자 1명 이상. 하나라도 실패하면 신청 API가 503으로 저장을 멈춘다(통과는 5분·실패는 30초 캐시).
-DB 내부 설정(RLS·트리거·규칙)은 SQL Editor에서 `supabase/verify.sql` 점검표로 사람이 확인하고 날짜를 `APPROVAL_DB_VERIFIED`에 적는다.
+DB 내부 설정(RLS·트리거·규칙)은 SQL Editor에서 `supabase/verify-summary.sql`(결과 표 하나, 모든 행 ok=true면 통과. 항목별 원본은 `verify.sql`)로 사람이 확인하고 날짜를 `APPROVAL_DB_VERIFIED`에 적는다.
 
 **신청 저장 규칙**: 연락처는 서버에서 AES-256-GCM으로 암호화(`phone_enc`) + HMAC 해시(`phone_hash`, 중복 감지) + 마스킹(`phone_masked`)만 저장한다.
 동의는 항목별로 여부·문구 버전·시각(`privacy_consent_at`, `marketing_consent_*`, `third_party_consent_*`, 철회 시 `marketing_withdrawn_at`)을 남기고,
@@ -303,6 +303,7 @@ lib/server/*              저장소(demo/supabase)·서비스 규칙·암호화�
 config/requirements.json  운영 필수 환경변수 목록 (앱·배포 스크립트 공용)
 supabase/schema.sql       운영 DB 스키마 + RLS + 권한 + 정합성 규칙 (전체를 한 번에 실행, 재실행 안전)
 supabase/verify.sql       스키마 적용 후 점검 쿼리 (읽기 전용)
+supabase/verify-summary.sql  같은 점검을 결과 표 하나로 (SQL Editor에서 한 번 실행)
 docs/DEPLOY_CHECKLIST.md  운영 전 승인·설정 체크리스트
 ```
 

@@ -63,7 +63,7 @@
 
 ### 실제 DB 연결 (테스트 모드로 먼저 확인)
 - [ ] Supabase SQL Editor에서 `supabase/schema.sql`(01) → 02-hardening(동의 기록·중복키·지급 증빙 칼럼) 실행
-- [ ] `supabase/verify.sql` 점검표 1~14번 모두 true → 확인일을 `APPROVAL_DB_VERIFIED`에 입력
+- [ ] `supabase/verify-summary.sql` 결과의 ok가 모두 true (항목별 원본: `supabase/verify.sql`) → 확인일을 `APPROVAL_DB_VERIFIED`에 입력
 - [ ] Supabase Authentication에서 신규 가입(Allow new users to sign up) 끄기 → 관리자 계정 생성 → `ic_staff`에 admin 등록
 - [ ] Vercel **Preview** 환경에만 `PREVIEW_TEST_SUBMISSIONS=1` + 인프라 변수 + `APPROVAL_DB_VERIFIED` 설정 (Production의 `APP_MODE`·승인 값은 건드리지 않음)
 - [ ] 미리보기 화면에 '현재 신청 접수를 준비하고 있어요'가 보이면 그 아래 '[테스트 환경 진단]'에 나온 변수를 채운 뒤 Redeploy
