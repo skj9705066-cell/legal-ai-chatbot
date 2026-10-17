@@ -125,6 +125,18 @@ export interface PublicConfig {
   metaPixelId: string | null;
 }
 
+/** GET /api/status 응답 — 신청 폼이 화면을 띄운 뒤 실제 접수 가능 여부를 다시 확인한다(페이지는 5분 캐시) */
+export interface SubmissionStatus {
+  submissionEnabled: boolean;
+  /** 진단(Production 배포에서는 항상 null): 미완료 설정 변수 이름 + 실패한 DB 자동 점검 항목. 값·키는 담지 않는다 */
+  diagnostics: {
+    lockedBy: string[];
+    dbFailures: string[];
+    /** 지금 보고 있는 배포. 배포 주소는 만들어질 때의 환경변수에 고정되므로, 설정을 바꿨다면 새 배포에서 확인해야 한다 */
+    deployment: { env: string | null; url: string | null; branch: string | null; commit: string | null } | null;
+  } | null;
+}
+
 export function getOperatorInfo(): OperatorInfo {
   return {
     operatorName: env("OPERATOR_NAME"),

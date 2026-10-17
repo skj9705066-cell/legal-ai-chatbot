@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, Loader2, Lock } from "lucide-react";
-import type { PublicConfig } from "@/lib/config";
+import type { PublicConfig, SubmissionStatus } from "@/lib/config";
 import { SERVICE_TYPES, TRIAL_LABEL, trialMode, type ServiceType } from "@/lib/types";
 import { SERVICE_CONTENT } from "@/lib/content";
 import { formatPhoneInput, LIMITS, requiresThirdPartyConsent, validateLeadInput, type FieldErrors } from "@/lib/validation";
@@ -63,6 +63,8 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   const [status, setStatus] = useState<Status>("idle");
   // 접수 잠김 상태에서 신청 버튼을 누른 경우의 안내(입력값은 전송하지 않는다)
   const [lockedNotice, setLockedNotice] = useState(false);
+  // 서버에 다시 물은 실제 접수 가능 여부(DB 자동 점검 포함). 페이지 HTML은 최대 5분 캐시라 이 값을 우선한다
+  const [live, setLive] = useState<SubmissionStatus | null>(null);
   const mountedAt = useRef(0);
   const idemKey = useRef("");
   // 전송 중 잠금. busy(state)는 다음 렌더링 전까지 반영되지 않아 연타 시 요청이 여러 번 나갈 수 있으므로 ref로 즉시 막는다
@@ -73,7 +75,9 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
 
   // 접수 잠김: 실제 전송(submit)만 막는다. 입력·선택·단계 이동 같은 화면 조작에는 절대 연결하지 않는다
   // (잠김 상태로 필드를 disabled 처리했다가 Preview에서 유형 카드·이름·전화번호가 눌리지 않는 문제가 두 번 있었다)
-  const disabled = !config.submissionEnabled;
+  const disabled = live ? !live.submissionEnabled : !config.submissionEnabled;
+  const diagnostics: SubmissionStatus["diagnostics"] =
+    live?.diagnostics ?? (!live && config.lockedBy?.length ? { lockedBy: config.lockedBy, dbFailures: [], deployment: null } : null);
   const busy = status !== "idle";
   const needThirdParty = requiresThirdPartyConsent(config.operator.thirdPartyProvision);
   const payload = { serviceType, name, phone, privacyConsent, marketingConsent, thirdPartyConsent };
@@ -83,6 +87,21 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
     mountedAt.current = Date.now();
     idemKey.current = crypto.randomUUID();
   }, []);
+
+  // 실제 DB를 쓰는 모드: 설정·DB 자동 점검 결과를 서버에 다시 확인(접수 API와 같은 기준). 실패하면 화면의 값을 그대로 쓴다
+  useEffect(() => {
+    if (config.mode === "demo") return;
+    let alive = true;
+    fetch("/api/status", { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<SubmissionStatus>) : null))
+      .then((d) => {
+        if (alive && d && typeof d.submissionEnabled === "boolean") setLive(d);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [config.mode]);
 
   // 신청 폼 진입(화면에 보임) — 세션당 한 번, 개인정보 없음
   useEffect(() => {
@@ -286,12 +305,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
           <OfficialLink className="font-semibold text-blue underline underline-offset-2" />할 수 있어요.
         </Alert>
       )}
-      {disabled && config.lockedBy && config.lockedBy.length > 0 && (
-        // Preview·로컬 전용 진단(운영 배포에서는 lockedBy가 항상 null). 변수 이름만 보여 주고 값은 보여 주지 않는다
-        <p className="mt-3 rounded-xl bg-navy-50 px-3.5 py-2.5 text-[13px] leading-relaxed text-navy-600" data-testid="lock-diagnostics">
-          [테스트 환경 진단 · {config.mode}] 미완료 설정: <code className="break-all">{config.lockedBy.join(", ")}</code>
-        </p>
-      )}
+      {disabled && diagnostics && <LockDiagnostics mode={config.mode} diagnostics={diagnostics} testId="lock-diagnostics" />}
 
       <div aria-live="assertive">
         {serverError && <Alert tone="error" role="alert" className="mt-6" title={serverError} />}
@@ -468,6 +482,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
             <Alert tone="caution" role="alert" title="지금은 신청을 접수할 수 없어요">
               입력하신 정보는 전송되지 않았어요. 운영 정보와 승인 절차가 끝나면 접수가 시작됩니다.
             </Alert>
+            {diagnostics && <LockDiagnostics mode={config.mode} diagnostics={diagnostics} testId="lock-diagnostics-notice" />}
           </div>
         )}
 
@@ -516,5 +531,44 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
         </p>
       </fieldset>
     </form>
+  );
+}
+
+/**
+ * Preview·로컬 전용 접수 잠김 진단(운영 배포에서는 서버가 diagnostics를 null로 보낸다).
+ * 변수 이름·점검 항목만 보여 주고 값은 보여 주지 않는다.
+ */
+function LockDiagnostics({ mode, diagnostics, testId }: { mode: PublicConfig["mode"]; diagnostics: NonNullable<SubmissionStatus["diagnostics"]>; testId: string }) {
+  const { lockedBy, dbFailures, deployment } = diagnostics;
+  return (
+    <div className="mt-3 space-y-1.5 rounded-xl bg-navy-50 px-3.5 py-2.5 text-[13px] leading-relaxed text-navy-600" data-testid={testId}>
+      <p className="font-semibold text-navy">[테스트 환경 진단 · {mode}]</p>
+      {lockedBy.length > 0 && (
+        <p>
+          미완료 설정: <code className="break-all">{lockedBy.join(", ")}</code>
+          <br />
+          Vercel → Settings → Environment Variables에서 <b>Preview</b>에 추가한 뒤 새로 배포하세요.
+        </p>
+      )}
+      {dbFailures.length > 0 && (
+        <div>
+          DB 자동 점검 미통과:
+          <ul className="list-disc pl-5">
+            {dbFailures.map((f) => (
+              <li key={f} className="break-all">
+                {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {deployment && (
+        <p className="break-all">
+          지금 보는 배포: {deployment.branch ?? "-"} @ {deployment.commit ?? "-"} ({deployment.url ?? "로컬"})
+          <br />
+          배포 주소는 만들어질 때의 환경변수를 계속 씁니다. 설정을 바꿨다면 Vercel → Deployments 맨 위의 <b>새 배포</b>를 열어 확인하세요.
+        </p>
+      )}
+    </div>
   );
 }
