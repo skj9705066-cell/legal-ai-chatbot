@@ -72,7 +72,13 @@ describe("Preview-only test submissions (PREVIEW_TEST_SUBMISSIONS)", () => {
     process.env.APP_MODE = "production";
     expect(getAppMode()).toBe("production");
     process.env.APP_MODE = "demo";
-    expect(getAppMode()).toBe("demo");
+    expect(getAppMode()).toBe("production"); // 실제 고객 주소에는 데모 화면을 내보내지 않는다
+  });
+  it("a Vercel Production deployment without APP_MODE is production (locked until ready), never demo", () => {
+    delete process.env.APP_MODE;
+    process.env.VERCEL_ENV = "production";
+    expect(getAppMode()).toBe("production");
+    expect(getReadiness().ready).toBe(false);
   });
   it("is ignored outside Vercel and when not exactly '1'", () => {
     process.env.APP_MODE = "production";
@@ -195,5 +201,33 @@ describe("test leads never mix into the sales list by default", () => {
     expect(applyLeadFilter(rows, { tests: "exclude" }).every((r) => !r.isTest)).toBe(true);
     expect(applyLeadFilter(rows, { tests: "only" }).every((r) => r.isTest)).toBe(true);
     expect(applyLeadFilter(rows, { tests: "include" })).toHaveLength(rows.length);
+  });
+});
+
+describe("customer-facing placeholders", () => {
+  it("demo/test screens name the missing setting; production screens never show internal setup text", async () => {
+    const { orSetting, settingLine, thirdPartyText, PENDING_TEXT } = await import("@/lib/display");
+    expect(orSetting(null, "운영 주체", "demo")).toBe("[설정 필요: 운영 주체]");
+    expect(orSetting(" ", "운영 주체", "staging")).toBe("[설정 필요: 운영 주체]");
+    expect(orSetting(null, "운영 주체", "production")).toBe(PENDING_TEXT);
+    expect(orSetting("홍길동", "운영 주체", "production")).toBe("홍길동");
+    const line = (m: "demo" | "production") => settingLine(`${orSetting("A GA", "소속 GA", m)} · 등록번호 ${orSetting(null, "GA 등록번호", m)}`, m);
+    expect(line("production")).toBe(PENDING_TEXT);
+    expect(line("demo")).toBe("A GA · 등록번호 [설정 필요: GA 등록번호]");
+    expect(thirdPartyText(null, "production")).toBe(PENDING_TEXT);
+    expect(thirdPartyText("none", "production")).toBe("제3자에게 제공하지 않습니다.");
+  });
+  it("ad/analytics tags stay off while a production deployment is still locked", async () => {
+    const { getPublicConfig } = await import("@/lib/config");
+    process.env.VERCEL_ENV = "production";
+    process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID = "G-TEST123";
+    process.env.NEXT_PUBLIC_META_PIXEL_ID = "1234567890";
+    const c = getPublicConfig();
+    expect(c.mode).toBe("production");
+    expect(c.submissionEnabled).toBe(false);
+    expect(c.gaMeasurementId).toBeNull();
+    expect(c.metaPixelId).toBeNull();
+    delete process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+    delete process.env.NEXT_PUBLIC_META_PIXEL_ID;
   });
 });

@@ -21,6 +21,11 @@ function Table({ rows }: { rows: { label: string; value: string }[] }) {
   );
 }
 
+/** 데모·테스트에서 비어 있는 운영 값('[설정 필요]')만 강조한다 */
+function Field({ value }: { value: string }) {
+  return <span className={cn(isPlaceholder(value) && "font-medium text-caution")}>{value}</span>;
+}
+
 export default function PrivacyPage() {
   const config = getPublicConfig();
   const o = config.operator;
@@ -29,7 +34,7 @@ export default function PrivacyPage() {
       <article className="rounded-3xl border border-navy-200/80 bg-white p-6 shadow-card sm:p-10">
         <h1 className="text-[26px] font-extrabold text-navy">개인정보 처리방침</h1>
         <p className="mt-2 text-[14px] text-navy-500">
-          시행일: <span className={cn(!o.privacyPolicyEffectiveDate && "font-medium text-caution")}>{orSetting(o.privacyPolicyEffectiveDate, "시행일")}</span>
+          시행일: <Field value={orSetting(o.privacyPolicyEffectiveDate, "시행일", config.mode)} />
         </p>
         {config.mode !== "production" && (
           <p className="mt-4 rounded-xl bg-caution-50 p-4 text-[13.5px] leading-relaxed text-caution">
@@ -41,25 +46,25 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-[18px] font-bold text-navy">1. 처리 주체</h2>
             <p className="mt-2">
-              보험금 점검 신청 정보는 <strong>{orSetting(o.privacyController, "개인정보 처리 주체")}</strong>가, 별도 동의한 보장 분석 상담 정보는{" "}
-              <strong>{orSetting(o.coverageProcessor, "보장 분석 처리 주체")}</strong>가 처리합니다.
+              보험금 점검 신청 정보는 <strong>{orSetting(o.privacyController, "개인정보 처리 주체", config.mode)}</strong>가, 별도 동의한 보장 분석 상담 정보는{" "}
+              <strong>{orSetting(o.coverageProcessor, "보장 분석 처리 주체", config.mode)}</strong>가 처리합니다.
             </p>
           </section>
           <section>
             <h2 className="text-[18px] font-bold text-navy">2. 보험금 점검 신청 (필수 동의)</h2>
-            <Table rows={claimConsentRows(o)} />
+            <Table rows={claimConsentRows(o, config.mode)} />
           </section>
           <section>
             <h2 className="text-[18px] font-bold text-navy">3. 보장 분석 상담 (신청 완료 후 별도 선택 동의)</h2>
-            <Table rows={coverageConsentRows(o)} />
+            <Table rows={coverageConsentRows(o, config.mode)} />
           </section>
           <section>
             <h2 className="text-[18px] font-bold text-navy">4. 광고성 정보 수신 (선택 동의)</h2>
-            <Table rows={marketingConsentRows(o)} />
+            <Table rows={marketingConsentRows(o, config.mode)} />
           </section>
           <section>
             <h2 className="text-[18px] font-bold text-navy">5. 제3자 제공</h2>
-            <p className="mt-2">{thirdPartyText(o.thirdPartyProvision)}</p>
+            <p className="mt-2">{thirdPartyText(o.thirdPartyProvision, config.mode)}</p>
           </section>
           <section>
             <h2 className="text-[18px] font-bold text-navy">6. 수집하지 않는 정보</h2>
@@ -96,9 +101,11 @@ export default function PrivacyPage() {
           </section>
           <section>
             <h2 className="text-[18px] font-bold text-navy">10. 개인정보 보호책임자</h2>
-            <p className={cn("mt-2", !o.privacyOfficer && "font-medium text-caution")}>{orSetting(o.privacyOfficer, "개인정보 보호책임자")}</p>
+            <p className="mt-2">
+              <Field value={orSetting(o.privacyOfficer, "개인정보 보호책임자", config.mode)} />
+            </p>
             <p className="mt-1">
-              문의: {orSetting(o.contactPhone, "대표 연락처")} · {orSetting(o.contactEmail, "문의 이메일")}
+              문의: {orSetting(o.contactPhone, "대표 연락처", config.mode)} · {orSetting(o.contactEmail, "문의 이메일", config.mode)}
             </p>
           </section>
         </div>

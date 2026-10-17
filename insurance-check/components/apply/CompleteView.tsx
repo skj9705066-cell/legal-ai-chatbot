@@ -34,6 +34,9 @@ export function CompleteView({ contactPhone, contactHours }: { contactPhone: str
   if (receipt === undefined) return <LoadingView />;
   if (receipt === null) return <MissingReceiptView />;
 
+  // 데모·테스트 접수에서만 빠진 설정을 '[설정 필요]'로 알린다(운영 접수는 trial이 없다)
+  const setupHint = Boolean(receipt.trial);
+
   const decline = () => {
     track("coverage_decline", { serviceType: receipt.serviceType });
     // 영업 DB로 넘기지 않는다: 서버 호출 없음 + 이 탭의 추가 신청 토큰 폐기
@@ -81,10 +84,15 @@ export function CompleteView({ contactPhone, contactHours }: { contactPhone: str
               · 문의 <strong className="font-semibold text-navy">{contactPhone}</strong>
             </>
           ) : (
-            <span className="text-caution">· [설정 필요: 대표 연락처]</span>
+            setupHint && <span className="text-caution">· [설정 필요: 대표 연락처]</span>
           )}
-          <br />
-          운영시간: {contactHours ?? <span className="text-caution">[설정 필요: 운영시간]</span>}
+          {/* 운영시간은 선택 설정이라 운영 화면에서는 값이 있을 때만 보여 준다 */}
+          {(contactHours || setupHint) && (
+            <>
+              <br />
+              운영시간: {contactHours ?? <span className="text-caution">[설정 필요: 운영시간]</span>}
+            </>
+          )}
         </p>
       </section>
 

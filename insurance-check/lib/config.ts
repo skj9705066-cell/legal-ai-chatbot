@@ -24,15 +24,17 @@ export function getDeployEnv(): DeployEnv {
  *  1) Vercel **Preview** 배포 + PREVIEW_TEST_SUBMISSIONS=1 → 테스트 모드(staging).
  *     APP_MODE 값과 관계없이 Preview에서만 켜지고, Production 배포에서는 이 값이 있어도 무시된다.
  *  2) APP_MODE=production → 운영 모드
- *  3) APP_MODE=staging → 테스트 모드. 단 Vercel Production 배포에서는 테스트 모드로 열지 않고 운영 기준(잠금)으로 본다.
- *  4) 그 밖(비어 있음·오타 포함) → 데모 모드
+ *  3) Vercel **Production** 배포 → APP_MODE 값과 관계없이(비어 있음·staging·demo·오타 포함) 운영 모드.
+ *     실제 고객이 보는 주소에 데모·테스트 화면이 나가지 않게 하고, 준비 전에는 운영 기준으로 접수를 잠근다.
+ *  4) APP_MODE=staging → 테스트 모드
+ *  5) 그 밖(비어 있음·오타 포함) → 데모 모드
  */
 export function getAppMode(): AppMode {
   const m = process.env.APP_MODE;
   const deploy = getDeployEnv();
   if (deploy === "preview" && process.env.PREVIEW_TEST_SUBMISSIONS === "1") return "staging";
-  if (m === "production") return "production";
-  if (m === "staging") return deploy === "production" ? "production" : "staging";
+  if (m === "production" || deploy === "production") return "production";
+  if (m === "staging") return "staging";
   return "demo";
 }
 
@@ -173,14 +175,15 @@ export function isSubmissionEnabled(): boolean {
 
 export function getPublicConfig(): PublicConfig {
   const mode = getAppMode();
+  const tagsOn = mode === "production" && isSubmissionEnabled();
   return {
     mode,
     submissionEnabled: isSubmissionEnabled(),
     lockedBy: lockDiagnostics(),
     operator: getOperatorInfo(),
-    // 광고·분석 태그는 운영 모드에서만. 데모 트래픽이 광고 통계를 오염시키지 않게 한다.
-    gaMeasurementId: mode === "production" ? env("NEXT_PUBLIC_GA_MEASUREMENT_ID") : null,
-    metaPixelId: mode === "production" ? numericId(env("NEXT_PUBLIC_META_PIXEL_ID")) : null,
+    // 광고·분석 태그는 접수가 열린 운영 모드에서만. 데모·테스트·준비 중 트래픽이 광고 통계를 오염시키지 않게 한다.
+    gaMeasurementId: tagsOn ? env("NEXT_PUBLIC_GA_MEASUREMENT_ID") : null,
+    metaPixelId: tagsOn ? numericId(env("NEXT_PUBLIC_META_PIXEL_ID")) : null,
   };
 }
 

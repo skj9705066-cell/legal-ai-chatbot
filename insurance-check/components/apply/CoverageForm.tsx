@@ -90,7 +90,7 @@ export function CoverageForm({ config }: { config: PublicConfig }) {
     }
   }
 
-  const rows = coverageConsentRows(config.operator);
+  const rows = coverageConsentRows(config.operator, config.mode);
 
   return (
     <form noValidate onSubmit={onSubmit} aria-labelledby="cov-title" className="rounded-[28px] bg-white p-6 shadow-card sm:p-9">

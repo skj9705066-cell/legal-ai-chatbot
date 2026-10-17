@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /**
  * 배포 게이트. `npm run build` 전에 자동 실행된다.
- *  - APP_MODE=production 이면: 운영 정보·인프라·GA 승인 기록이 전부 있어야 빌드 진행 (하나라도 없으면 실패)
+ *  - 운영 모드(APP_MODE=production 또는 Vercel Production 배포):
+ *      Vercel Production 배포는 항목이 비어 있어도 '접수 잠금' 상태로 빌드한다(경고 출력). 빌드를 실패시키면
+ *      실제 고객 주소에 이전 배포(데모 화면 등)가 그대로 남기 때문이다. 접수·광고 태그는 앱이 잠근다.
+ *      그 밖(로컬 등)에서 운영 모드로 빌드하면 하나라도 없을 때 실패한다.
  *  - 데모 모드면: 경고만 출력하고 통과
  *  - --strict: 모드와 무관하게 운영 기준으로 검사 (배포 전 수동 점검용)
  *  - 테스트(staging) 모드면: 인프라 항목 + 운영 DB 점검 확인일이 비어 있으면 경고(접수는 앱이 잠근다)
@@ -26,17 +29,15 @@ for (const f of [".env.production.local", ".env.local", ".env.production", ".env
 const req = JSON.parse(readFileSync(join(root, "config/requirements.json"), "utf8"));
 const strict = process.argv.includes("--strict");
 // 모드 규칙은 lib/config.ts getAppMode()와 같다:
-//  Vercel Preview + PREVIEW_TEST_SUBMISSIONS=1 → staging / APP_MODE=staging은 Vercel Production 배포에서 production으로 취급
+//  Vercel Preview + PREVIEW_TEST_SUBMISSIONS=1 → staging / Vercel Production 배포는 APP_MODE와 관계없이 production
 const deployEnv = process.env.VERCEL_ENV;
 const mode =
   deployEnv === "preview" && process.env.PREVIEW_TEST_SUBMISSIONS === "1"
     ? "staging"
-    : process.env.APP_MODE === "production"
+    : process.env.APP_MODE === "production" || deployEnv === "production"
       ? "production"
       : process.env.APP_MODE === "staging"
-        ? deployEnv === "production"
-          ? "production"
-          : "staging"
+        ? "staging"
         : "demo";
 
 /* ── 비밀키 노출 방지 (모든 모드) ──
@@ -103,6 +104,12 @@ if (mode === "staging" && !strict) {
 
 if (mode === "demo" && !strict) {
   console.log("[check-deploy] 데모 모드 빌드입니다. 실제 신청을 받지 않습니다. 운영 배포 전 `npm run check:deploy`로 점검하세요.");
+  process.exit(0);
+}
+
+if (failures.length && deployEnv === "production" && !strict) {
+  console.warn(`\n[check-deploy] 운영 준비 미완료 — ${failures.length}개 항목. 신청 접수·광고 태그가 잠긴 상태로 빌드합니다:\n${failures.join("\n")}\n`);
+  console.warn("광고 집행 전 모든 항목을 채우고 `npm run check:deploy`가 통과하는지 확인하세요. (docs/DEPLOY_CHECKLIST.md)\n");
   process.exit(0);
 }
 

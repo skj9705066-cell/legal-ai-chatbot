@@ -1,13 +1,30 @@
-/** 운영 값이 비어 있으면 가짜 값을 만들지 않고 '설정 필요' 자리표시를 보여준다. */
-export function orSetting(value: string | null | undefined, label: string): string {
-  return value && value.trim() ? value : `[설정 필요: ${label}]`;
+/** 화면을 그리는 모드(lib/config.ts의 AppMode와 같은 값). 클라이언트에서도 쓰므로 config를 import하지 않는다. */
+export type DisplayMode = "demo" | "staging" | "production";
+
+/** 운영 화면에서 아직 채워지지 않은 운영 정보 자리에 보이는 고객용 문구 */
+export const PENDING_TEXT = "준비 중";
+
+/**
+ * 운영 값이 비어 있을 때 가짜 값을 만들지 않는다.
+ * 데모·테스트: 어떤 설정이 빠졌는지 '[설정 필요: …]'로 보여 준다(운영자 확인용).
+ * 운영: 내부 설정 문구 대신 '준비 중'. 운영 모드는 이 값이 모두 채워져야 접수가 열린다.
+ */
+export function orSetting(value: string | null | undefined, label: string, mode: DisplayMode): string {
+  if (value && value.trim()) return value;
+  return mode === "production" ? PENDING_TEXT : `[설정 필요: ${label}]`;
 }
 
+/** 여러 값을 한 줄로 묶은 표시(예: "GA명 · 등록번호 …"). 운영 화면에서 하나라도 비면 줄 전체를 '준비 중'으로 */
+export function settingLine(text: string, mode: DisplayMode): string {
+  return mode === "production" && text.includes(PENDING_TEXT) ? PENDING_TEXT : text;
+}
+
+/** 데모·테스트 화면의 '[설정 필요]' 자리표시인지(강조 색 표시용) */
 export function isPlaceholder(text: string): boolean {
   return text.startsWith("[설정 필요");
 }
 
-export function thirdPartyText(value: string | null): string {
-  if (!value) return "[설정 필요: 제3자 제공 여부]";
+export function thirdPartyText(value: string | null, mode: DisplayMode): string {
+  if (!value) return orSetting(null, "제3자 제공 여부", mode);
   return value.toLowerCase() === "none" ? "제3자에게 제공하지 않습니다." : value;
 }

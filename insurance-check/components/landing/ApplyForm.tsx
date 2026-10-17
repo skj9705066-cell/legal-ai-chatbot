@@ -300,7 +300,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
 
       {disabled && (
         <Alert tone="caution" className="mt-6" title="현재 신청 접수를 준비하고 있어요" role="status">
-          운영 정보와 승인 절차가 끝나면 접수가 시작됩니다.{" "}
+          접수가 시작되면 이 화면에서 바로 신청하실 수 있어요.{" "}
           {config.operator.contactPhone ? `문의: ${config.operator.contactPhone}. ` : ""}숨은보험금은 지금 바로{" "}
           <OfficialLink className="font-semibold text-blue underline underline-offset-2" />할 수 있어요.
         </Alert>
@@ -436,7 +436,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
                     setPrivacyConsent(v);
                     clearError("privacyConsent");
                   }}
-                  rows={claimConsentRows(config.operator)}
+                  rows={claimConsentRows(config.operator, config.mode)}
                   footnote={CLAIM_CONSENT_FOOTNOTE}
                   error={errors.privacyConsent}
                 />
@@ -450,7 +450,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
                       setThirdPartyConsent(v);
                       clearError("thirdPartyConsent");
                     }}
-                    rows={thirdPartyConsentRows(config.operator)}
+                    rows={thirdPartyConsentRows(config.operator, config.mode)}
                     error={errors.thirdPartyConsent}
                   />
                 )}
@@ -460,7 +460,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
                   title="광고성 정보 수신 동의 (문자)"
                   checked={marketingConsent}
                   onChange={setMarketingConsent}
-                  rows={marketingConsentRows(config.operator)}
+                  rows={marketingConsentRows(config.operator, config.mode)}
                 />
               </div>
               <p className="flex gap-2 text-[14px] leading-relaxed text-navy-600">
@@ -480,7 +480,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
         {isLast && disabled && lockedNotice && (
           <div className="mt-8" data-testid="apply-locked-notice">
             <Alert tone="caution" role="alert" title="지금은 신청을 접수할 수 없어요">
-              입력하신 정보는 전송되지 않았어요. 운영 정보와 승인 절차가 끝나면 접수가 시작됩니다.
+              입력하신 정보는 전송되지 않았어요. 접수가 시작되면 다시 신청해 주세요.
             </Alert>
             {diagnostics && <LockDiagnostics mode={config.mode} diagnostics={diagnostics} testId="lock-diagnostics-notice" />}
           </div>
