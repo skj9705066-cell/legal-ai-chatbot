@@ -2,12 +2,12 @@ import Link from "next/link";
 import { BarChart3, ClipboardList, FileClock, MessageSquareQuote, Settings, ShieldCheck, Target } from "lucide-react";
 import type { StaffSession } from "@/lib/session";
 import { can } from "@/lib/session";
-import { STAFF_ROLE_LABEL } from "@/lib/types";
+import { STAFF_ROLE_LABEL, TRIAL_LABEL, type TrialMode } from "@/lib/types";
 import { LogoMark } from "@/components/site/Logo";
 import { LogoutButton } from "./LogoutButton";
 import { NavLink } from "./NavLink";
 
-export function AdminShell({ session, demo, children }: { session: StaffSession; demo: boolean; children: React.ReactNode }) {
+export function AdminShell({ session, trial, children }: { session: StaffSession; trial: TrialMode; children: React.ReactNode }) {
   const nav = [
     { href: "/admin", label: "상담 DB", icon: ClipboardList, show: true },
     { href: "/admin?view=sales", label: "보장 분석 영업 대상", icon: Target, show: true },
@@ -25,7 +25,7 @@ export function AdminShell({ session, demo, children }: { session: StaffSession;
           <Link prefetch={false} href="/admin" className="flex items-center gap-2.5">
             <LogoMark className="h-8 w-8 rounded-[10px] ring-1 ring-white/15" />
             <span className="text-[17px] font-extrabold tracking-[-0.02em]">점검 CRM</span>
-            {demo && <span className="rounded-full bg-caution-50 px-2 py-0.5 text-[13px] font-bold text-caution">데모</span>}
+            {trial && <span className="rounded-full bg-caution-50 px-2 py-0.5 text-[13px] font-bold text-caution">{TRIAL_LABEL[trial]}</span>}
           </Link>
           <div className="text-right lg:hidden">
             <p className="text-[14px] font-semibold">{session.name}</p>

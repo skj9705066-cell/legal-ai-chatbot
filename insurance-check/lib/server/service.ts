@@ -1,6 +1,6 @@
 import "server-only";
 import { randomBytes, randomUUID } from "node:crypto";
-import { COVERAGE_CONSENT_VERSION, PRIVACY_CONSENT_VERSION, getAppMode } from "@/lib/config";
+import { COVERAGE_CONSENT_VERSION, MARKETING_CONSENT_VERSION, PRIVACY_CONSENT_VERSION, THIRD_PARTY_CONSENT_VERSION, getAppMode } from "@/lib/config";
 import {
   COVERAGE_ACTIVE_STATUSES,
   CONTACT_METHOD_LABEL,
@@ -20,6 +20,7 @@ import { maskPhone, normalizePhone, type LeadInput } from "@/lib/validation";
 import type { StaffSession } from "@/lib/session";
 import { decryptPii, encryptPii, hashPhone } from "./crypto";
 import { repo, toLead, type LeadFilter, type LeadRow } from "./repo";
+import { DuplicateSubmissionError } from "./repo/types";
 import { isSalesEligible } from "./repo/filter";
 import { notifyNewLead } from "./notify";
 
@@ -34,21 +35,41 @@ function newRefNo(): string {
   return `IC-${ymd}-${suffix}`;
 }
 
-export async function submitLead(input: LeadInput, attribution: Attribution): Promise<{ lead: Lead }> {
+/** 브라우저가 만든 제출 키(UUID 등). 형식이 다르면 쓰지 않는다 */
+export function normalizeIdempotencyKey(v: unknown): string | null {
+  return typeof v === "string" && /^[A-Za-z0-9-]{8,64}$/.test(v) ? v : null;
+}
+
+/**
+ * 신청 저장. 같은 제출 키로 다시 들어오면(더블클릭·재전송) 새로 저장하지 않고 처음 신청을 돌려준다.
+ * 동의는 항목별로 여부·시각·문구 버전을 함께 남긴다. 테스트 모드의 신청은 모두 테스트 신청(운영 지표 제외)이다.
+ */
+export async function submitLead(
+  input: LeadInput,
+  attribution: Attribution,
+  idempotencyKey: string | null = null,
+): Promise<{ lead: Lead; replayed: boolean }> {
   const r = repo();
+  if (idempotencyKey) {
+    const existing = await r.findLeadByIdempotencyKey(idempotencyKey);
+    if (existing) return { lead: toLead(existing), replayed: true };
+  }
   const phoneHash = hashPhone(input.phone);
   const since = new Date(Date.now() - DUPLICATE_WINDOW_MS).toISOString();
   const duplicateOf = await r.findRecentRefByPhoneHash(phoneHash, since);
+  const now = new Date().toISOString();
+  const mode = getAppMode();
 
   const row: LeadRow = {
     id: randomUUID(),
     refNo: newRefNo(),
-    createdAt: new Date().toISOString(),
+    createdAt: now,
     serviceType: input.serviceType,
     name: input.name,
     phoneMasked: maskPhone(input.phone),
     phoneEnc: encryptPii(input.phone),
     phoneHash,
+    idempotencyKey,
     preferredTime: input.preferredTime,
     memo: input.memo,
     attribution,
@@ -56,6 +77,12 @@ export async function submitLead(input: LeadInput, attribution: Attribution): Pr
     marketingConsent: input.marketingConsent,
     thirdPartyConsent: input.thirdPartyConsent,
     privacyConsentVersion: PRIVACY_CONSENT_VERSION,
+    privacyConsentAt: now,
+    marketingConsentAt: input.marketingConsent ? now : null,
+    marketingConsentVersion: input.marketingConsent ? MARKETING_CONSENT_VERSION : null,
+    marketingWithdrawnAt: null,
+    thirdPartyConsentAt: input.thirdPartyConsent ? now : null,
+    thirdPartyConsentVersion: input.thirdPartyConsent ? THIRD_PARTY_CONSENT_VERSION : null,
     // 보장 분석은 신청 완료 후 별도 동의로만 켜진다. 여기서는 항상 미동의.
     coverageConsent: false,
     coverageConsentAt: null,
@@ -67,10 +94,19 @@ export async function submitLead(input: LeadInput, attribution: Attribution): Pr
     notes: "",
     privacyStatus: "none",
     duplicateOf,
-    isTest: false,
-    isDemo: getAppMode() === "demo",
+    isTest: mode === "staging",
+    isDemo: mode === "demo",
   };
-  await r.insertLead(row);
+  try {
+    await r.insertLead(row);
+  } catch (err) {
+    // 동시에 들어온 같은 제출(첫 조회 후 저장 전에 경합) → 먼저 저장된 신청을 돌려준다
+    if (err instanceof DuplicateSubmissionError && idempotencyKey) {
+      const existing = await r.findLeadByIdempotencyKey(idempotencyKey);
+      if (existing) return { lead: toLead(existing), replayed: true };
+    }
+    throw err;
+  }
   await r.addAudit({
     actor: "public",
     role: "public",
@@ -79,7 +115,7 @@ export async function submitLead(input: LeadInput, attribution: Attribution): Pr
     detail: `${row.refNo} 접수${duplicateOf ? ` (중복: ${duplicateOf})` : ""}`,
   });
   await notifyNewLead(row.refNo);
-  return { lead: toLead(row) };
+  return { lead: toLead(row), replayed: false };
 }
 
 export async function optInCoverage(
@@ -269,13 +305,15 @@ export async function createPrivacyRequest(input: { type: PrivacyRequestType; na
   const immediate = input.type !== "delete_all";
 
   for (const l of matched) {
+    // 광고 수신 동의를 철회하면 철회 시각을 남긴다(동의 시각·버전은 이력으로 보존)
+    const marketingOff = l.marketingConsent ? { marketingConsent: false, marketingWithdrawnAt: now } : { marketingConsent: false };
     if (input.type === "withdraw_marketing") {
-      await r.updateLead(l.id, { marketingConsent: false });
+      await r.updateLead(l.id, marketingOff);
     } else {
       const coveragePatch = l.coverageConsent ? { coverageConsent: false, coverageStatus: "withdrawn" as const } : {};
       await r.updateLead(l.id, {
         ...coveragePatch,
-        ...(input.type === "delete_all" ? { marketingConsent: false, privacyStatus: "delete_requested" as const } : {}),
+        ...(input.type === "delete_all" ? { ...marketingOff, privacyStatus: "delete_requested" as const } : {}),
         ...(input.type === "withdraw_coverage" ? { privacyStatus: "completed" as const } : {}),
       });
     }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Loader2, SearchX } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { TRIAL_LABEL, type TrialMode } from "@/lib/types";
 
 export function LoadingView() {
   return (
@@ -28,12 +29,12 @@ export function MissingReceiptView() {
   );
 }
 
-export function RefNo({ refNo, demo }: { refNo: string; demo: boolean }) {
+export function RefNo({ refNo, trial }: { refNo: string; trial: TrialMode }) {
   return (
     <div className="mt-6 inline-flex flex-wrap items-center justify-center gap-2 rounded-2xl bg-navy-50 px-4 py-3 text-[15px]">
       <span className="text-navy-600">신청번호</span>
       <strong className="font-mono text-[16px] font-bold tracking-wide text-navy">{refNo}</strong>
-      {demo && <span className="rounded-full bg-caution-50 px-2 py-0.5 text-[13px] font-bold text-caution">데모</span>}
+      {trial && <span className="rounded-full bg-caution-50 px-2 py-0.5 text-[13px] font-bold text-caution">{TRIAL_LABEL[trial]}</span>}
     </div>
   );
 }

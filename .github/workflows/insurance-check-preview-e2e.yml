@@ -1,0 +1,148 @@
+# 내보험 통합 점검 — 실제 Vercel Preview 배포 대상 E2E (Preview 전용, Production 대상 실행 금지)
+#
+# Vercel이 Preview 배포를 마치면(GitHub deployment_status=success) 그 Preview 주소로
+#   1) 사전 점검: 모드 배너·신청 잠김·미완료 설정 변수 이름(값은 출력 안 함)
+#   2) 점검 유형 3종 클릭·키보드·오류 화면 (신청 제출 없음, 데스크톱+모바일)
+#   3) 테스트 데이터로 실제 신청 → Supabase 저장 → 관리자 CRM 조회 (사전 점검 통과 시에만)
+# 필요한 저장소 Secrets(Settings → Secrets and variables → Actions):
+#   VERCEL_AUTOMATION_BYPASS_SECRET, STAGING_ADMIN_EMAIL, STAGING_ADMIN_PASSWORD
+# 테스트 데이터만 쓴다(이름 '테스트검증', 010-0000-xxxx). 저장된 신청은 is_test=true로 운영 지표에서 빠진다.
+name: insurance-check Preview E2E
+
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: insurance-check-preview-e2e-${{ github.event.deployment.sha }}
+  cancel-in-progress: false
+
+jobs:
+  # 이벤트 기록(값·비밀 없음): Vercel이 보낸 배포 상태와 환경 이름을 남겨 조건이 맞는지 확인할 수 있게 한다
+  event-info:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "state=${{ github.event.deployment_status.state }}"
+          echo "environment=${{ github.event.deployment.environment }}"
+          echo "production_environment=${{ github.event.deployment.production_environment }}"
+          echo "url=${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}"
+          echo "sha=${{ github.event.deployment.sha }}"
+
+  # Production 배포는 어떤 경우에도 대상이 아니다(환경 이름·production 표시·운영 주소 세 겹으로 거른다)
+  preview-e2e:
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.production_environment != true &&
+      !contains(github.event.deployment.environment, 'production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+        working-directory: insurance-check
+    env:
+      E2E_BASE_URL: ${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+      E2E_STAGING: "1"
+      STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
+      STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.deployment.sha }}
+
+      - name: 대상 확인 (Production 주소면 중단, 다른 앱의 Preview면 건너뜀)
+        id: target
+        run: |
+          host=$(node -e 'console.log(new URL(process.env.E2E_BASE_URL).host)')
+          echo "대상: $host (환경: ${{ github.event.deployment.environment }}, 커밋: ${{ github.event.deployment.sha }})"
+          if [ "$host" = "insurance-check-demo.vercel.app" ]; then echo "Production 주소라 중단합니다."; exit 1; fi
+          for v in VERCEL_AUTOMATION_BYPASS_SECRET STAGING_ADMIN_EMAIL STAGING_ADMIN_PASSWORD; do
+            if [ -n "${!v}" ]; then echo "$v: 설정됨"; else echo "$v: 없음"; fi
+          done
+          # 같은 저장소의 다른 Vercel 프로젝트(Preview)일 수 있어 화면으로 앱을 판별한다
+          code=$(curl -s -o page.html -w '%{http_code}' -H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" "$E2E_BASE_URL" || true)
+          if [ "$code" = "200" ] && ! grep -q "내보험 통합 점검" page.html; then
+            echo "내보험 통합 점검 앱이 아닙니다(HTTP $code). 건너뜁니다."; echo "app=other" >> "$GITHUB_OUTPUT"
+          else
+            echo "앱 판별: HTTP $code"; echo "app=ic" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.target.outputs.app == 'ic'
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: insurance-check/package-lock.json
+
+      - run: npm ci
+        if: steps.target.outputs.app == 'ic'
+
+      - run: npx playwright install --with-deps chromium
+        if: steps.target.outputs.app == 'ic'
+
+      - name: 사전 점검 (모드·잠김·미완료 설정)
+        id: preflight
+        if: steps.target.outputs.app == 'ic'
+        continue-on-error: true
+        run: |
+          set +e
+          node scripts/preview-preflight.mjs "$E2E_BASE_URL" > preflight.txt 2>&1; code=$?
+          cat preflight.txt
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit $code
+
+      # 순서: 가장 중요한 실제 저장 확인을 먼저. 관리자 로그인은 IP당 15분 10회 제한(보안 설정)이라
+      # DB(3회) → 클릭(0회) → 화면 크기·오류(데스크톱 7회) 순으로 총 10회 안에 끝낸다.
+      - name: 실제 신청 → Supabase 저장 → CRM 조회
+        id: db
+        if: steps.preflight.outcome == 'success'
+        continue-on-error: true
+        run: npx playwright test staging-db crm --project=desktop
+
+      - name: 점검 유형 3종 클릭·입력·동의·잠김 화면 (제출 없음, PC+모바일)
+        id: clicks
+        # 배포 보호에 막히면(코드 3) 브라우저가 Vercel 로그인 화면에 머물러 의미 없는 시간 초과만 나므로 건너뛴다
+        if: always() && steps.target.outputs.app == 'ic' && steps.preflight.outputs.code != '3'
+        continue-on-error: true
+        run: npx playwright test apply-flow --grep @preview
+
+      - name: 화면 크기 5종 · 오류·권한 (제출 없음)
+        id: matrix
+        if: always() && steps.target.outputs.app == 'ic' && steps.preflight.outputs.code != '3'
+        continue-on-error: true
+        run: npx playwright test viewports errors --grep @preview --project=desktop
+
+      - name: 결과 요약
+        if: always() && steps.target.outputs.app == 'ic'
+        run: |
+          {
+            echo "### insurance-check Preview E2E"
+            echo "- 대상: $E2E_BASE_URL"
+            echo "- 사전 점검: ${{ steps.preflight.outcome }}"
+            echo "- 유형 3종 클릭(제출 없음): ${{ steps.clicks.outcome || 'skipped' }}"
+            echo "- 화면 크기 5종·오류·권한: ${{ steps.matrix.outcome || 'skipped' }}"
+            echo "- 신청→DB→CRM: ${{ steps.db.outcome || 'skipped' }}"
+            echo '```'; cat preflight.txt 2>/dev/null; echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat preflight.txt 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.target.outputs.app == 'ic'
+        with:
+          name: preview-e2e-results
+          path: insurance-check/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: 실패 판정
+        if: always() && steps.target.outputs.app == 'ic'
+        run: |
+          [ "${{ steps.preflight.outputs.code }}" != "3" ] || { echo "Vercel 배포 보호에 막힘: 저장소 Secrets에 VERCEL_AUTOMATION_BYPASS_SECRET 필요(테스트 미실행)"; exit 1; }
+          [ "${{ steps.preflight.outcome }}" = "success" ] || { echo "사전 점검 실패: Preview가 테스트 신청 가능 상태가 아님(위 사전 점검 출력 참고)"; exit 1; }
+          [ "${{ steps.clicks.outcome }}" = "success" ] || { echo "유형 클릭 테스트 실패"; exit 1; }
+          [ "${{ steps.matrix.outcome }}" = "success" ] || { echo "화면 크기·오류·권한 테스트 실패"; exit 1; }
+          [ "${{ steps.db.outcome }}" = "success" ] || { echo "신청→DB→CRM 테스트 실패"; exit 1; }

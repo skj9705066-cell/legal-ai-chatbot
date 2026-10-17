@@ -15,7 +15,7 @@ export default async function AdminLoginPage() {
   const setupIssues: string[] = [];
   if (!getSessionSecret()) setupIssues.push("APP_SECRET(32자 이상)");
   if (mode === "demo" && !process.env.DEMO_ADMIN_PASSWORD) setupIssues.push("DEMO_ADMIN_PASSWORD");
-  if (mode === "production" && (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY)) setupIssues.push("SUPABASE_URL / SUPABASE_ANON_KEY");
+  if (mode !== "demo" && (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY)) setupIssues.push("SUPABASE_URL / SUPABASE_ANON_KEY");
 
   return (
     <main id="main" className="grid min-h-[100svh] bg-navy-50 lg:grid-cols-[1fr_1.1fr]">

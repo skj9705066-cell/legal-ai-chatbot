@@ -34,7 +34,13 @@ export async function POST(req: NextRequest) {
   } else {
     const email = typeof body.email === "string" ? body.email.trim().slice(0, 120) : "";
     const password = typeof body.password === "string" ? body.password.slice(0, 200) : "";
-    if (email && password) staff = await verifyStaffCredentials(email, password).catch(() => null);
+    if (email && password) {
+      staff = await verifyStaffCredentials(email, password).catch((err) => {
+        // DB 연결·권한 오류 등. 메시지에는 키·이메일이 들어가지 않는다
+        console.warn("[admin/login] 로그인 확인 중 오류:", err instanceof Error ? err.message.slice(0, 160) : "unknown");
+        return null;
+      });
+    }
   }
 
   if (!staff) {

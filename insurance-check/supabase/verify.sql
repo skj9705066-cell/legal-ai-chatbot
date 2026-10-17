@@ -1,5 +1,6 @@
 -- 운영 DB 점검 쿼리 — 읽기 전용(아무것도 바꾸지 않음). supabase/schema.sql 실행 후 SQL Editor에서 실행.
 -- 각 쿼리 위의 '기대 결과'와 다르면 운영 전환하지 말 것.
+-- 한 번에 확인하려면 supabase/verify-summary.sql (결과 표 하나, 항목별 ok = true/false). SQL Editor는 여러 쿼리를 실행하면 마지막 결과만 보여 준다.
 
 -- ① 6개 테이블 모두 RLS 켜짐 → 6행, rls_on 전부 true
 select relname as table_name, relrowsecurity as rls_on

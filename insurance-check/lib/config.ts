@@ -6,10 +6,41 @@ import requirements from "@/config/requirements.json";
  * 공개 가능한 값(운영 주체 표시 정보 등)만 내려간다. 비밀키는 절대 여기서 내보내지 않는다.
  */
 
-export type AppMode = "demo" | "production";
+/**
+ * demo: 서버 메모리 저장(가짜 데이터) · staging: 실제 DB에 '테스트 신청'으로 저장(배너 유지, 광고 태그 없음)
+ * production: 실제 운영. 값이 없거나 모르는 값이면 항상 demo.
+ */
+export type AppMode = "demo" | "staging" | "production";
 
+/** Vercel이 배포마다 자동으로 넣는 환경(VERCEL_ENV). Vercel 밖(로컬 등)이면 null */
+export type DeployEnv = "production" | "preview" | "development" | null;
+export function getDeployEnv(): DeployEnv {
+  const v = process.env.VERCEL_ENV;
+  return v === "production" || v === "preview" || v === "development" ? v : null;
+}
+
+/**
+ * 모드 결정 규칙
+ *  1) Vercel **Preview** 배포 + PREVIEW_TEST_SUBMISSIONS=1 → 테스트 모드(staging).
+ *     APP_MODE 값과 관계없이 Preview에서만 켜지고, Production 배포에서는 이 값이 있어도 무시된다.
+ *  2) APP_MODE=production → 운영 모드
+ *  3) Vercel **Production** 배포 → APP_MODE 값과 관계없이(비어 있음·staging·demo·오타 포함) 운영 모드.
+ *     실제 고객이 보는 주소에 데모·테스트 화면이 나가지 않게 하고, 준비 전에는 운영 기준으로 접수를 잠근다.
+ *  4) APP_MODE=staging → 테스트 모드
+ *  5) 그 밖(비어 있음·오타 포함) → 데모 모드
+ */
 export function getAppMode(): AppMode {
-  return process.env.APP_MODE === "production" ? "production" : "demo";
+  const m = process.env.APP_MODE;
+  const deploy = getDeployEnv();
+  if (deploy === "preview" && process.env.PREVIEW_TEST_SUBMISSIONS === "1") return "staging";
+  if (m === "production" || deploy === "production") return "production";
+  if (m === "staging") return "staging";
+  return "demo";
+}
+
+/** 실제 DB(Supabase)를 쓰는 모드인지 */
+export function usesDatabase(mode: AppMode = getAppMode()): boolean {
+  return mode !== "demo";
 }
 
 const env = (key: string): string | null => {
@@ -43,6 +74,11 @@ function checkValue(key: string, group: RequirementGroup): { ok: boolean; hint?:
   return { ok: true };
 }
 
+/** 테스트(staging) 모드에 필요한 항목: 인프라 전부 + 운영 DB 점검 확인일. 운영 주체·광고 승인은 운영 모드에서만 요구 */
+export function isStagingRequirement(i: Pick<ReadinessItem, "group" | "key">): boolean {
+  return i.group === "infra" || i.key === "APPROVAL_DB_VERIFIED";
+}
+
 export function getReadiness(): { mode: AppMode; items: ReadinessItem[]; ready: boolean } {
   const items: ReadinessItem[] = [];
   for (const group of ["operator", "infra", "approvals"] as const) {
@@ -50,7 +86,9 @@ export function getReadiness(): { mode: AppMode; items: ReadinessItem[]; ready: 
       items.push({ key: r.key, label: r.label, group, ...checkValue(r.key, group) });
     }
   }
-  return { mode: getAppMode(), items, ready: items.every((i) => i.ok) };
+  const mode = getAppMode();
+  const required = mode === "staging" ? items.filter(isStagingRequirement) : items;
+  return { mode, items, ready: required.every((i) => i.ok) };
 }
 
 export interface OperatorInfo {
@@ -78,10 +116,27 @@ export interface OperatorInfo {
 export interface PublicConfig {
   mode: AppMode;
   submissionEnabled: boolean;
+  /**
+   * 접수가 잠긴 이유(미완료 설정의 변수 이름만, 값은 없음). Vercel Production 배포에서는 항상 null —
+   * Preview·로컬에서 설정 누락을 찾기 위한 진단용이다.
+   */
+  lockedBy: string[] | null;
   operator: OperatorInfo;
   gaMeasurementId: string | null;
   /** Meta 픽셀 ID(숫자). 운영 모드 + 값이 있을 때만 */
   metaPixelId: string | null;
+}
+
+/** GET /api/status 응답 — 신청 폼이 화면을 띄운 뒤 실제 접수 가능 여부를 다시 확인한다(페이지는 5분 캐시) */
+export interface SubmissionStatus {
+  submissionEnabled: boolean;
+  /** 진단(Production 배포에서는 항상 null): 미완료 설정 변수 이름 + 실패한 DB 자동 점검 항목. 값·키는 담지 않는다 */
+  diagnostics: {
+    lockedBy: string[];
+    dbFailures: string[];
+    /** 지금 보고 있는 배포. 배포 주소는 만들어질 때의 환경변수에 고정되므로, 설정을 바꿨다면 새 배포에서 확인해야 한다 */
+    deployment: { env: string | null; url: string | null; branch: string | null; commit: string | null } | null;
+  } | null;
 }
 
 export function getOperatorInfo(): OperatorInfo {
@@ -109,8 +164,10 @@ export function getOperatorInfo(): OperatorInfo {
 
 /**
  * 데모 모드: 제출은 서버 메모리에만 저장되는 시연용으로 동작한다(화면에 '데모' 표시).
+ * 테스트 모드: 인프라 항목 + 운영 DB 점검 확인일이 있어야 제출이 열린다(화면에 '테스트' 표시).
  * 운영 모드: 운영 정보·인프라·승인 항목이 전부 갖춰져야 제출이 열린다.
  *            하나라도 비면 폼을 잠그고 운영자에게 설정을 요구한다.
+ * 실제 DB를 쓰는 모드는 접수 API가 DB 자동 점검(lib/server/db-check.ts)까지 통과해야 저장한다.
  */
 export function isSubmissionEnabled(): boolean {
   return getAppMode() === "demo" || getReadiness().ready;
@@ -118,14 +175,23 @@ export function isSubmissionEnabled(): boolean {
 
 export function getPublicConfig(): PublicConfig {
   const mode = getAppMode();
+  const tagsOn = mode === "production" && isSubmissionEnabled();
   return {
     mode,
     submissionEnabled: isSubmissionEnabled(),
+    lockedBy: lockDiagnostics(),
     operator: getOperatorInfo(),
-    // 광고·분석 태그는 운영 모드에서만. 데모 트래픽이 광고 통계를 오염시키지 않게 한다.
-    gaMeasurementId: mode === "production" ? env("NEXT_PUBLIC_GA_MEASUREMENT_ID") : null,
-    metaPixelId: mode === "production" ? numericId(env("NEXT_PUBLIC_META_PIXEL_ID")) : null,
+    // 광고·분석 태그는 접수가 열린 운영 모드에서만. 데모·테스트·준비 중 트래픽이 광고 통계를 오염시키지 않게 한다.
+    gaMeasurementId: tagsOn ? env("NEXT_PUBLIC_GA_MEASUREMENT_ID") : null,
+    metaPixelId: tagsOn ? numericId(env("NEXT_PUBLIC_META_PIXEL_ID")) : null,
   };
+}
+
+function lockDiagnostics(): string[] | null {
+  if (getDeployEnv() === "production" || isSubmissionEnabled()) return null;
+  const { mode, items } = getReadiness();
+  const required = mode === "staging" ? items.filter(isStagingRequirement) : items;
+  return required.filter((i) => !i.ok).map((i) => `${i.key}${i.hint && i.hint !== "미설정" ? `(${i.hint})` : ""}`);
 }
 
 /** 픽셀 ID는 숫자만 허용(스크립트에 그대로 들어가므로 형식이 다르면 로드하지 않는다) */
@@ -135,3 +201,5 @@ function numericId(v: string | null): string | null {
 
 export const PRIVACY_CONSENT_VERSION = "claim-2026-10-16.v2"; // 수집 항목에서 희망 시간·메모 제외
 export const COVERAGE_CONSENT_VERSION = "coverage-2026-10-15.v1";
+export const MARKETING_CONSENT_VERSION = "marketing-2026-10-16.v1";
+export const THIRD_PARTY_CONSENT_VERSION = "third-party-2026-10-16.v1";

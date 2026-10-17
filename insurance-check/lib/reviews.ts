@@ -138,7 +138,7 @@ export function parseImageDataUrl(v: unknown): { ok: true; mime: (typeof REVIEW_
 /* ───────────── 실제 운영 지표 공개 기준 ───────────── */
 
 export interface MetricsGate {
-  mode: "demo" | "production";
+  mode: "demo" | "staging" | "production";
   /** PUBLIC_METRICS_ENABLED=1 (광고 심의 승인 후 수동으로 켠다) */
   enabled: boolean;
   /** 최소 누적 신청 건수 (PUBLIC_METRICS_MIN, 기본 100) */

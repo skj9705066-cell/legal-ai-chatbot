@@ -38,7 +38,10 @@ npm run dev                     # http://localhost:3100  ·  관리자: http://l
 | `npm run dev` / `build` / `start` | 개발 / 빌드(배포 게이트 포함) / 실행 (포트 3100) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` | 단위 테스트 (vitest) — 검증·마스킹·암호화·세션·CSV·영업대상 규칙 |
+| `npm run lint` | ESLint (Next.js core-web-vitals + TypeScript 규칙). `next build`도 같은 규칙으로 검사한다 |
 | `npm run test:e2e` | E2E (Playwright, 서버 실행 중이어야 함) — 사용자 여정·관리자 권한·axe 접근성·반응형 |
+| (포함) `apply-flow.spec.ts` | 세 유형 카드 실제 클릭·탭 → 다음·이전 → 제출 → 완료 → 보장 분석(동의/거절/건너뜀) → CRM → CSV, 입력 오류·연타·네트워크 오류·새로고침·뒤로가기 |
+| (포함) `crm.spec.ts` | 관리자 전 메뉴, 화면 이동 중 필터·목록 중복 없음, 편집 저장 유지, 테스트 신청 필터·영업 대상 제외, 로그아웃 |
 | `DEMO_ADMIN_PASSWORD=… npm run verify:deployed` | 배포 사이트 점검(`tests/e2e/release-check.spec.ts`) — 사례 3개 우선·2개 접힘, 사례별 유형 자동 선택, 심사·지급 문구, 모바일 2단계 폼, 데모 신청 → CRM 조회. `E2E_BASE_URL`로 대상 변경. 운영 모드면 신청 테스트는 건너뜀 |
 | `npm run check:deploy` | 운영 배포 필수 항목·승인 기록 점검 |
 
@@ -46,15 +49,51 @@ E2E는 레이트리밋(IP당 10분 5건)에 걸리지 않도록 **서버를 새�
 
 ## 모드
 
-| | 데모 (`APP_MODE=demo`, 기본) | 운영 (`APP_MODE=production`) |
-|---|---|---|
-| 저장소 | 서버 메모리 (재시작 시 초기화) + **가짜 시드 데이터**(데모고객NN / 010-0000-NNNN) | Supabase Postgres (service role, 서버 전용) |
-| 표시 | 상단 '데모 모드' 배너, 폼·관리자·레코드에 '데모' 배지 | 없음 |
-| 신청 폼 | 시연용으로 동작 (실제 개인정보 입력 금지 안내) | 운영 정보·인프라·**GA 승인 기록이 모두 있어야** 열림. 하나라도 비면 잠김 |
-| 관리자 로그인 | `DEMO_ADMIN_PASSWORD` + 역할 선택(관리자/상담사/열람) | Supabase Auth 이메일·비밀번호 + `ic_staff` 역할 |
-| 운영 주체 정보 | 미설정 값은 `[설정 필요: …]`로 표시 (가짜 값 생성 안 함) | 필수 |
-| 분석 태그(GA4) | 로드 안 함 | 측정 ID + 방문자 동의 시에만 로드 |
-| 검색엔진 | noindex | index (`/admin`, `/api`, `/apply` 제외) |
+| | 데모 (`APP_MODE=demo`, 기본) | 테스트 (`APP_MODE=staging`) | 운영 (`APP_MODE=production` 또는 Vercel Production 배포) |
+|---|---|---|---|
+| 저장소 | 서버 메모리 (재시작 시 초기화) + **가짜 시드 데이터**(데모고객NN / 010-0000-NNNN) | Supabase Postgres — 모든 신청을 **테스트 신청**(`is_test`, 운영 지표 제외)으로 저장 | Supabase Postgres (service role, 서버 전용) |
+| 표시 | 상단 '데모 모드' 배너, 폼·관리자·레코드에 '데모' 배지 | 상단 '테스트 모드' 배너, '테스트' 배지, 완료 화면 안내 | 없음 |
+| 신청 폼 | 시연용으로 동작 (실제 개인정보 입력 금지 안내) | 인프라 6개 + `APPROVAL_DB_VERIFIED` + **DB 자동 점검 통과** 시 접수 | 운영 정보·인프라·**GA 승인 기록이 모두 있어야** 열림 + DB 자동 점검 통과 |
+| 관리자 로그인 | `DEMO_ADMIN_PASSWORD` + 역할 선택(관리자/상담사/열람) | Supabase Auth 이메일·비밀번호 + `ic_staff` 역할 | 같음 |
+| 운영 주체 정보 | 미설정 값은 `[설정 필요: …]`로 표시 (가짜 값 생성 안 함) | 같음 (요구하지 않음) | 필수. 준비 전에는 고객 화면에 '준비 중'(내부 설정 문구 없음) |
+| 분석 태그(GA4·Meta) | 로드 안 함 | 로드 안 함 | 접수가 열린 상태 + 측정 ID + 방문자 동의 시에만 로드 |
+| 검색엔진 | noindex | noindex | index (`/admin`, `/api`, `/apply` 제외) |
+
+**Preview 전용 테스트 신청**: Vercel 환경변수 `PREVIEW_TEST_SUBMISSIONS=1`을 **Preview에만** 넣으면, Vercel이 자동으로 주는
+`VERCEL_ENV=preview` 배포에서만 테스트 모드로 동작한다(APP_MODE 값과 무관). Production 배포(`VERCEL_ENV=production`)에서는 이 값이 있어도 무시되고,
+`APP_MODE`가 비었거나 `staging`·`demo`여도 운영 모드로 동작한다(실제 고객 주소에 데모·테스트 화면을 내보내지 않음). 준비 전 Production 빌드는 실패하지 않고 접수 잠금 상태로 배포된다. 접수가 잠겨 있으면 Preview·로컬에서만 폼 아래에 **미완료 설정의 변수 이름**을 보여 준다(값은 표시 안 함,
+Production에서는 표시 안 함). 테스트 신청은 `is_test=true`로 저장되어 CRM에 '테스트' 배지, CSV에 '테스트 신청' 열, 운영 지표 제외.
+CRM 상세 필터의 '테스트 신청'(포함/제외/테스트만)으로 구분하며, **보장 분석 영업 대상 목록은 테스트 신청을 기본으로 제외**한다.
+`STAGING_ADMIN_EMAIL`·`STAGING_ADMIN_PASSWORD`를 주면 `apply-flow`·`crm`·`staging-db` 스펙을 테스트 모드 배포(실제 DB)에도 그대로 돌릴 수 있다.
+
+**DB 자동 점검** (`lib/server/db-check.ts`, 관리자 → 환경설정에서 결과·다시 점검): 실제 키로 데이터를 바꾸지 않고 확인한다 —
+키 종류(서버 키가 비밀키인지, 공개 키 자리에 비밀키가 없는지), 공개 키로 신청·직원 조회/수정 차단, 서버 키로도 신청 삭제·감사로그 수정 불가,
+02-hardening 칼럼 존재, 활성 관리자 1명 이상. 하나라도 실패하면 신청 API가 503으로 저장을 멈춘다(통과는 5분·실패는 30초 캐시).
+DB 내부 설정(RLS·트리거·규칙)은 SQL Editor에서 `supabase/verify-summary.sql`(결과 표 하나, 모든 행 ok=true면 통과. 항목별 원본은 `verify.sql`)로 사람이 확인하고 날짜를 `APPROVAL_DB_VERIFIED`에 적는다.
+
+**신청 저장 규칙**: 연락처는 서버에서 AES-256-GCM으로 암호화(`phone_enc`) + HMAC 해시(`phone_hash`, 중복 감지) + 마스킹(`phone_masked`)만 저장한다.
+동의는 항목별로 여부·문구 버전·시각(`privacy_consent_at`, `marketing_consent_*`, `third_party_consent_*`, 철회 시 `marketing_withdrawn_at`)을 남기고,
+브라우저가 폼마다 만든 제출 키(`idempotency_key`, DB 고유 인덱스)로 더블클릭·재전송을 한 건으로 묶는다.
+
+**비밀키 노출 방지**: `npm run build`(check-deploy)가 모든 모드에서 `NEXT_PUBLIC_` 변수에 비밀값으로 보이는 이름·값·Supabase 비밀키가 있거나,
+`SUPABASE_SERVICE_ROLE_KEY`에 공개 키 / `SUPABASE_ANON_KEY`에 비밀키가 들어 있으면 빌드를 중단한다. Supabase 접근 코드는 모두 `server-only`.
+
+**실제 DB 연결 E2E**: 테스트 모드 배포에서
+`E2E_STAGING=1 E2E_BASE_URL=<주소> STAGING_ADMIN_EMAIL=… STAGING_ADMIN_PASSWORD=… npx playwright test staging-db --project=desktop`
+(DB 점검 통과 → 배너·태그 없음 → 사례 버튼 신청 → 같은 제출 키 재전송 1건 → CRM 조회·마스킹·동의 기록·연락처 복호화). 테스트 데이터만 사용(이름 '테스트검증', 010-0000-04xx).
+
+**실제 Preview 자동 검증** (`.github/workflows/insurance-check-preview-e2e.yml`): Vercel이 Preview 배포를 마치면 GitHub Actions가 그 주소로
+사전 점검(`scripts/preview-preflight.mjs` — 모드·잠김·미완료 설정 이름) → 실제 신청·DB·CRM(`staging-db`, `crm`) → 유형·입력·동의(`apply-flow @preview`, PC+모바일)
+→ 화면 크기 5종·오류·권한(`viewports`, `errors`)을 돌린다. Production 배포·운영 주소는 대상에서 제외한다.
+필요한 저장소 Secrets: `VERCEL_AUTOMATION_BYPASS_SECRET`(Vercel → Deployment Protection → Protection Bypass for Automation),
+`STAGING_ADMIN_EMAIL`, `STAGING_ADMIN_PASSWORD`. 없으면 Vercel 로그인 화면(HTTP 302)에서 멈추고 그 사실만 보고한다.
+
+**접수 잠금 원칙**: 잠금(`submissionEnabled=false`)은 **실제 전송만** 막는다. 유형 선택·입력·동의·이전/다음·신청 버튼 같은 화면 조작에 연결하지 않는다
+(과거 잠금을 fieldset `disabled`로 걸어 Preview에서 카드·입력칸이 눌리지 않는 문제가 두 번 있었다 — `apply-flow`의 '입력'·'잠김' 테스트가 재발을 막는다).
+잠긴 상태에서 올바르게 입력하고 신청하면 "지금은 신청을 접수할 수 없어요" 안내만 띄우고 아무것도 보내지 않는다. 서버도 잠김이면 503.
+실제 DB를 쓰는 모드에서는 폼이 화면을 띄운 뒤 `GET /api/status`로 접수 가능 여부를 다시 확인한다(접수 API와 같은 기준: 설정 + DB 자동 점검).
+잠겨 있으면 Preview·로컬에서만 폼 위와 잠김 안내 아래에 **미완료 설정 이름·실패한 DB 점검 항목·지금 보는 배포(브랜치·커밋·주소)**를 보여 준다
+(값·키는 표시 안 함, Production 배포에서는 진단 없음). Vercel 배포 주소는 만들어질 때의 환경변수에 고정되므로, 설정을 바꾼 뒤에는 새 배포 주소에서 확인한다.
 
 ## 디자인 시스템
 
@@ -97,7 +136,7 @@ E2E는 레이트리밋(IP당 10분 5건)에 걸리지 않도록 **서버를 새�
 | 3-1 | `ClaimCases` (`#claim-cases`) | "실손보험만 받고 끝인 줄 아셨나요?" — 놓치기 쉬운 보험금 **상황별 확인 절차 예시** 5장. 공감도 높은 3장(병원비·수술비 특약·만기보험금)을 먼저, 진단비 특약·중도/휴면은 '다른 사례 보기'. 카드 = 그림 + 한마디 + 보험금 유형 + 확인 과정 3단계 + "나도 해당되는지 확인하기"(해당 유형으로 신청 폼). 모바일 가로 캐러셀, 데스크톱 3열 격자. 실제 지급 후기·고객 사례·지급 금액·빈도 순위 없음, 소멸시효·약관·심사·통계 구분 고지 |
 | 4 | `RealReviews` | 동의·승인된 실제 후기만(최대 5개). 없으면 섹션 없음 |
 | 5 | `Process` | 그림 3단계 + "지급은 보험사가 결정", 상세는 접기 |
-| 6 | `ApplySection` (`#apply`) | "이제 내 보험도 확인해 볼까요?" + "어떤 도움을 받을 수 있나요?" 3줄 → 폼 → 지급 비보장·공식 조회 안내 + 운영 정보(운영 주체·GA·등록번호·설계사·등록번호·고객 문의·광고 심의·개인정보 처리방침, 미설정은 '[설정 필요]') |
+| 6 | `ApplySection` (`#apply`) | "이제 내 보험도 확인해 볼까요?" + "어떤 도움을 받을 수 있나요?" 3줄 → 폼 → 지급 비보장·공식 조회 안내 + 운영 정보(운영 주체·GA·등록번호·설계사·등록번호·고객 문의·광고 심의·개인정보 처리방침, 미설정은 데모·테스트 '[설정 필요]' / 운영 '준비 중') |
 
 **CTA 일관성** — 모든 CTA의 목적지는 같은 신청 폼(`#apply`)이며 외부 페이지로 나가지 않는다.
 
@@ -264,6 +303,7 @@ lib/server/*              저장소(demo/supabase)·서비스 규칙·암호화�
 config/requirements.json  운영 필수 환경변수 목록 (앱·배포 스크립트 공용)
 supabase/schema.sql       운영 DB 스키마 + RLS + 권한 + 정합성 규칙 (전체를 한 번에 실행, 재실행 안전)
 supabase/verify.sql       스키마 적용 후 점검 쿼리 (읽기 전용)
+supabase/verify-summary.sql  같은 점검을 결과 표 하나로 (SQL Editor에서 한 번 실행)
 docs/DEPLOY_CHECKLIST.md  운영 전 승인·설정 체크리스트
 ```
 

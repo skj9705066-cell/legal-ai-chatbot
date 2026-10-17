@@ -1,4 +1,5 @@
 import { getPublicConfig } from "@/lib/config";
+import { trialMode } from "@/lib/types";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { DemoBanner } from "@/components/site/DemoBanner";
@@ -21,11 +22,11 @@ export const revalidate = 300;
 export default async function LandingPage() {
   const config = getPublicConfig();
   const [reviews, metrics] = await Promise.all([getPublicReviews(), getPublicMetrics()]);
-  const demo = config.mode === "demo";
+  const trial = trialMode(config.mode);
   return (
     <ApplyProvider>
-      {demo && <DemoBanner />}
-      <SiteHeader demo={demo} />
+      {trial && <DemoBanner trial={trial} />}
+      <SiteHeader trial={trial} />
       <main id="main">
         <Hero />
         {/* 광고 클릭 → 호기심(히어로) → 자기 경험 회상(스토리 카드) → 신뢰(공식 통계·실제 후기) → 무료 점검 신청.
@@ -39,7 +40,7 @@ export default async function LandingPage() {
         <Faq contactPhone={config.operator.contactPhone} />
         <FinalCta />
       </main>
-      <SiteFooter operator={config.operator} demo={demo} />
+      <SiteFooter operator={config.operator} trial={trial} />
       {/* 모바일 고정 CTA 높이만큼 여백 — 푸터 마지막 줄을 가리지 않도록 */}
       <div aria-hidden="true" className="h-24 bg-navy-50 lg:hidden" />
       <MobileStickyCta />

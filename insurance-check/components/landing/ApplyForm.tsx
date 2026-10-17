@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, Loader2, Lock } from "lucide-react";
-import type { PublicConfig } from "@/lib/config";
-import { SERVICE_TYPES, type ServiceType } from "@/lib/types";
+import type { PublicConfig, SubmissionStatus } from "@/lib/config";
+import { SERVICE_TYPES, TRIAL_LABEL, trialMode, type ServiceType } from "@/lib/types";
 import { SERVICE_CONTENT } from "@/lib/content";
 import { formatPhoneInput, LIMITS, requiresThirdPartyConsent, validateLeadInput, type FieldErrors } from "@/lib/validation";
 import { claimConsentRows, CLAIM_CONSENT_FOOTNOTE, marketingConsentRows, thirdPartyConsentRows } from "@/lib/consent-text";
@@ -61,13 +61,23 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
+  // 접수 잠김 상태에서 신청 버튼을 누른 경우의 안내(입력값은 전송하지 않는다)
+  const [lockedNotice, setLockedNotice] = useState(false);
+  // 서버에 다시 물은 실제 접수 가능 여부(DB 자동 점검 포함). 페이지 HTML은 최대 5분 캐시라 이 값을 우선한다
+  const [live, setLive] = useState<SubmissionStatus | null>(null);
   const mountedAt = useRef(0);
   const idemKey = useRef("");
+  // 전송 중 잠금. busy(state)는 다음 렌더링 전까지 반영되지 않아 연타 시 요청이 여러 번 나갈 수 있으므로 ref로 즉시 막는다
+  const inFlight = useRef(false);
   const cardRef = useRef<HTMLFormElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const stepChanged = useRef(false);
 
-  const disabled = !config.submissionEnabled;
+  // 접수 잠김: 실제 전송(submit)만 막는다. 입력·선택·단계 이동 같은 화면 조작에는 절대 연결하지 않는다
+  // (잠김 상태로 필드를 disabled 처리했다가 Preview에서 유형 카드·이름·전화번호가 눌리지 않는 문제가 두 번 있었다)
+  const disabled = live ? !live.submissionEnabled : !config.submissionEnabled;
+  const diagnostics: SubmissionStatus["diagnostics"] =
+    live?.diagnostics ?? (!live && config.lockedBy?.length ? { lockedBy: config.lockedBy, dbFailures: [], deployment: null } : null);
   const busy = status !== "idle";
   const needThirdParty = requiresThirdPartyConsent(config.operator.thirdPartyProvision);
   const payload = { serviceType, name, phone, privacyConsent, marketingConsent, thirdPartyConsent };
@@ -77,6 +87,21 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
     mountedAt.current = Date.now();
     idemKey.current = crypto.randomUUID();
   }, []);
+
+  // 실제 DB를 쓰는 모드: 설정·DB 자동 점검 결과를 서버에 다시 확인(접수 API와 같은 기준). 실패하면 화면의 값을 그대로 쓴다
+  useEffect(() => {
+    if (config.mode === "demo") return;
+    let alive = true;
+    fetch("/api/status", { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<SubmissionStatus>) : null))
+      .then((d) => {
+        if (alive && d && typeof d.submissionEnabled === "boolean") setLive(d);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [config.mode]);
 
   // 신청 폼 진입(화면에 보임) — 세션당 한 번, 개인정보 없음
   useEffect(() => {
@@ -155,7 +180,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   }
 
   async function submit() {
-    track("form_submit_attempt", { serviceType: serviceType || null });
+    if (!disabled) track("form_submit_attempt", { serviceType: serviceType || null });
     const v = validate();
     if (!v.ok) {
       setErrors(v.errors);
@@ -167,6 +192,13 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
       }
       return;
     }
+    if (disabled) {
+      // 입력은 정상이지만 접수가 열리지 않은 환경(운영 준비 중·미승인 Preview): 전송하지 않고 안내만 한다
+      setLockedNotice(true);
+      return;
+    }
+    if (inFlight.current) return;
+    inFlight.current = true;
     setServerError(null);
     setStatus("submitting");
     try {
@@ -190,24 +222,27 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
         }
         setServerError(data?.error ?? "신청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
         setStatus("idle");
+        inFlight.current = false;
         track("lead_submit_error", { serviceType: v.value.serviceType });
         return;
       }
       setStatus("success");
-      saveReceipt({ refNo: data.refNo, receiptToken: data.receiptToken, serviceType: v.value.serviceType, demo: !!data.demo, coverage: "offered" });
+      saveReceipt({ refNo: data.refNo, receiptToken: data.receiptToken, serviceType: v.value.serviceType, trial: data.trial ?? null, coverage: "offered" });
       // 광고 전환의 유일한 기준 이벤트. 개인정보 없이 점검 유형만 전달.
       track("lead_submit_success", { serviceType: v.value.serviceType });
       router.push("/apply/complete");
     } catch {
       setServerError("네트워크 연결을 확인한 뒤 다시 시도해 주세요. 입력하신 내용은 그대로 남아 있어요.");
       setStatus("idle");
+      inFlight.current = false;
       track("lead_submit_error", { serviceType: v.value.serviceType });
     }
   }
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (busy || disabled) return;
+    if (busy) return;
+    // 접수가 잠겨 있어도 단계 이동·입력 검증은 그대로. 실제 전송 여부는 submit()이 판단한다(서버도 잠김 상태면 503으로 거절)
     if (step < STEPS.length - 1) next();
     else void submit();
   }
@@ -224,10 +259,10 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
       aria-labelledby="apply-step-title"
       className="scroll-mt-24 sm:rounded-[28px] sm:bg-white sm:p-9 sm:shadow-lift sm:ring-1 sm:ring-navy-100"
     >
-      {config.mode === "demo" && (
+      {trialMode(config.mode) && (
         <p className="mb-6 flex items-center gap-2 rounded-xl bg-caution-50 px-3.5 py-2.5 text-[14px] font-medium text-caution">
           <Lock className="h-4 w-4 shrink-0" aria-hidden="true" />
-          데모 모드 · 실제 이름·연락처는 입력하지 마세요.
+          {TRIAL_LABEL[trialMode(config.mode)!]} 모드 · 실제 이름·연락처는 입력하지 마세요.
         </p>
       )}
 
@@ -265,17 +300,19 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
 
       {disabled && (
         <Alert tone="caution" className="mt-6" title="현재 신청 접수를 준비하고 있어요" role="status">
-          운영 정보와 승인 절차가 끝나면 접수가 시작됩니다.{" "}
+          접수가 시작되면 이 화면에서 바로 신청하실 수 있어요.{" "}
           {config.operator.contactPhone ? `문의: ${config.operator.contactPhone}. ` : ""}숨은보험금은 지금 바로{" "}
           <OfficialLink className="font-semibold text-blue underline underline-offset-2" />할 수 있어요.
         </Alert>
       )}
+      {disabled && diagnostics && <LockDiagnostics mode={config.mode} diagnostics={diagnostics} testId="lock-diagnostics" />}
 
       <div aria-live="assertive">
         {serverError && <Alert tone="error" role="alert" className="mt-6" title={serverError} />}
       </div>
 
-      <fieldset key={step} disabled={disabled || busy} className="step-in mt-7">
+      {/* 전송 중(busy)에만 잠근다. 접수 잠김(disabled)은 여기에 연결하지 않는다 */}
+      <fieldset key={step} disabled={busy} className="step-in mt-7">
         <legend className="sr-only">{current.title}</legend>
 
         {step === 0 && (
@@ -344,91 +381,93 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
                 </button>
               </div>
             )}
-            <div>
-              <Label htmlFor="apply-name" required>
-                이름
-              </Label>
-              <Input
-                id="apply-name"
-                name="name"
-                autoComplete="name"
-                value={name}
-                maxLength={LIMITS.nameMax}
-                invalid={!!errors.name}
-                aria-required="true"
-                aria-describedby={errors.name ? "apply-name-error" : undefined}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  clearError("name");
-                }}
-                placeholder="이름을 입력해 주세요"
-              />
-              <FieldError id="apply-name-error">{errors.name}</FieldError>
-            </div>
-            <div>
-              <Label htmlFor="apply-phone" required>
-                휴대전화번호
-              </Label>
-              <Input
-                id="apply-phone"
-                name="phone"
-                type="tel"
-                inputMode="numeric"
-                autoComplete="tel-national"
-                value={phone}
-                invalid={!!errors.phone}
-                aria-required="true"
-                aria-describedby={errors.phone ? "apply-phone-error" : undefined}
-                onChange={(e) => {
-                  setPhone(formatPhoneInput(e.target.value));
-                  clearError("phone");
-                }}
-                placeholder="010-0000-0000"
-              />
-              <FieldError id="apply-phone-error">{errors.phone}</FieldError>
-            </div>
-
-            <div className="space-y-3 pt-1" data-testid="apply-consents">
-              <ConsentBox
-                id="apply-privacy"
-                required
-                title="개인정보 수집·이용 동의"
-                checked={privacyConsent}
-                onChange={(v) => {
-                  setPrivacyConsent(v);
-                  clearError("privacyConsent");
-                }}
-                rows={claimConsentRows(config.operator)}
-                footnote={CLAIM_CONSENT_FOOTNOTE}
-                error={errors.privacyConsent}
-              />
-              {needThirdParty && (
-                <ConsentBox
-                  id="apply-third-party"
-                  required
-                  title="개인정보 제3자 제공 동의"
-                  checked={thirdPartyConsent}
-                  onChange={(v) => {
-                    setThirdPartyConsent(v);
-                    clearError("thirdPartyConsent");
+            <div className="space-y-6" data-testid="apply-contact-fields">
+              <div>
+                <Label htmlFor="apply-name" required>
+                  이름
+                </Label>
+                <Input
+                  id="apply-name"
+                  name="name"
+                  autoComplete="name"
+                  value={name}
+                  maxLength={LIMITS.nameMax}
+                  invalid={!!errors.name}
+                  aria-required="true"
+                  aria-describedby={errors.name ? "apply-name-error" : undefined}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    clearError("name");
                   }}
-                  rows={thirdPartyConsentRows(config.operator)}
-                  error={errors.thirdPartyConsent}
+                  placeholder="이름을 입력해 주세요"
                 />
-              )}
-              <ConsentBox
-                id="apply-marketing"
-                required={false}
-                title="광고성 정보 수신 동의 (문자)"
-                checked={marketingConsent}
-                onChange={setMarketingConsent}
-                rows={marketingConsentRows(config.operator)}
-              />
+                <FieldError id="apply-name-error">{errors.name}</FieldError>
+              </div>
+              <div>
+                <Label htmlFor="apply-phone" required>
+                  휴대전화번호
+                </Label>
+                <Input
+                  id="apply-phone"
+                  name="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  value={phone}
+                  invalid={!!errors.phone}
+                  aria-required="true"
+                  aria-describedby={errors.phone ? "apply-phone-error" : undefined}
+                  onChange={(e) => {
+                    setPhone(formatPhoneInput(e.target.value));
+                    clearError("phone");
+                  }}
+                  placeholder="010-0000-0000"
+                />
+                <FieldError id="apply-phone-error">{errors.phone}</FieldError>
+              </div>
+
+              <div className="space-y-3 pt-1" data-testid="apply-consents">
+                <ConsentBox
+                  id="apply-privacy"
+                  required
+                  title="개인정보 수집·이용 동의"
+                  checked={privacyConsent}
+                  onChange={(v) => {
+                    setPrivacyConsent(v);
+                    clearError("privacyConsent");
+                  }}
+                  rows={claimConsentRows(config.operator, config.mode)}
+                  footnote={CLAIM_CONSENT_FOOTNOTE}
+                  error={errors.privacyConsent}
+                />
+                {needThirdParty && (
+                  <ConsentBox
+                    id="apply-third-party"
+                    required
+                    title="개인정보 제3자 제공 동의"
+                    checked={thirdPartyConsent}
+                    onChange={(v) => {
+                      setThirdPartyConsent(v);
+                      clearError("thirdPartyConsent");
+                    }}
+                    rows={thirdPartyConsentRows(config.operator, config.mode)}
+                    error={errors.thirdPartyConsent}
+                  />
+                )}
+                <ConsentBox
+                  id="apply-marketing"
+                  required={false}
+                  title="광고성 정보 수신 동의 (문자)"
+                  checked={marketingConsent}
+                  onChange={setMarketingConsent}
+                  rows={marketingConsentRows(config.operator, config.mode)}
+                />
+              </div>
+              <p className="flex gap-2 text-[14px] leading-relaxed text-navy-600">
+                <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                선택 동의는 하지 않아도 신청할 수 있어요. 보장 분석 상담은 신청이 끝난 뒤 원하시는 경우에만 따로 동의받습니다.
+              </p>
             </div>
-            <p className="flex gap-2 text-[14px] leading-relaxed text-navy-600">
-              <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              선택 동의는 하지 않아도 신청할 수 있어요. 보장 분석 상담은 신청이 끝난 뒤 원하시는 경우에만 따로 동의받습니다.
-            </p>
           </div>
         )}
 
@@ -437,6 +476,15 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
           <label htmlFor="apply-website">웹사이트</label>
           <input id="apply-website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
         </div>
+
+        {isLast && disabled && lockedNotice && (
+          <div className="mt-8" data-testid="apply-locked-notice">
+            <Alert tone="caution" role="alert" title="지금은 신청을 접수할 수 없어요">
+              입력하신 정보는 전송되지 않았어요. 접수가 시작되면 다시 신청해 주세요.
+            </Alert>
+            {diagnostics && <LockDiagnostics mode={config.mode} diagnostics={diagnostics} testId="lock-diagnostics-notice" />}
+          </div>
+        )}
 
         {/* 마지막 단계는 신청 버튼 문구가 길어 좁은 화면에서 세로로 쌓는다(신청 버튼이 위·전체 너비) */}
         <div className={cn("mt-9 flex gap-2.5", isLast && "flex-col-reverse sm:flex-row")}>
@@ -452,7 +500,12 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
               이전
             </Button>
           )}
-          <Button type="submit" size="lg" className={cn("min-w-0", isLast ? "w-full sm:w-auto sm:flex-1" : "flex-1")} aria-disabled={busy || disabled}>
+          <Button
+            type="submit"
+            size="lg"
+            className={cn("min-w-0", isLast ? "w-full sm:w-auto sm:flex-1" : "flex-1")}
+            aria-disabled={busy}
+          >
             {status === "submitting" ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
@@ -478,5 +531,44 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
         </p>
       </fieldset>
     </form>
+  );
+}
+
+/**
+ * Preview·로컬 전용 접수 잠김 진단(운영 배포에서는 서버가 diagnostics를 null로 보낸다).
+ * 변수 이름·점검 항목만 보여 주고 값은 보여 주지 않는다.
+ */
+function LockDiagnostics({ mode, diagnostics, testId }: { mode: PublicConfig["mode"]; diagnostics: NonNullable<SubmissionStatus["diagnostics"]>; testId: string }) {
+  const { lockedBy, dbFailures, deployment } = diagnostics;
+  return (
+    <div className="mt-3 space-y-1.5 rounded-xl bg-navy-50 px-3.5 py-2.5 text-[13px] leading-relaxed text-navy-600" data-testid={testId}>
+      <p className="font-semibold text-navy">[테스트 환경 진단 · {mode}]</p>
+      {lockedBy.length > 0 && (
+        <p>
+          미완료 설정: <code className="break-all">{lockedBy.join(", ")}</code>
+          <br />
+          Vercel → Settings → Environment Variables에서 <b>Preview</b>에 추가한 뒤 새로 배포하세요.
+        </p>
+      )}
+      {dbFailures.length > 0 && (
+        <div>
+          DB 자동 점검 미통과:
+          <ul className="list-disc pl-5">
+            {dbFailures.map((f) => (
+              <li key={f} className="break-all">
+                {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {deployment && (
+        <p className="break-all">
+          지금 보는 배포: {deployment.branch ?? "-"} @ {deployment.commit ?? "-"} ({deployment.url ?? "로컬"})
+          <br />
+          배포 주소는 만들어질 때의 환경변수를 계속 씁니다. 설정을 바꿨다면 Vercel → Deployments 맨 위의 <b>새 배포</b>를 열어 확인하세요.
+        </p>
+      )}
+    </div>
   );
 }
