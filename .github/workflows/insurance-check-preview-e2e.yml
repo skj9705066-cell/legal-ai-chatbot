@@ -101,20 +101,20 @@ jobs:
         id: db
         if: steps.preflight.outcome == 'success'
         continue-on-error: true
-        run: npx playwright test staging-db crm --project=desktop
+        run: npx playwright test staging-db crm --project=desktop --output=test-results/db
 
       - name: 점검 유형 3종 클릭·입력·동의·잠김 화면 (제출 없음, PC+모바일)
         id: clicks
         # 배포 보호에 막히면(코드 3) 브라우저가 Vercel 로그인 화면에 머물러 의미 없는 시간 초과만 나므로 건너뛴다
         if: always() && steps.target.outputs.app == 'ic' && steps.preflight.outputs.code != '3'
         continue-on-error: true
-        run: npx playwright test apply-flow --grep @preview
+        run: npx playwright test apply-flow --grep @preview --output=test-results/clicks
 
       - name: 화면 크기 5종 · 오류·권한 (제출 없음)
         id: matrix
         if: always() && steps.target.outputs.app == 'ic' && steps.preflight.outputs.code != '3'
         continue-on-error: true
-        run: npx playwright test viewports errors --grep @preview --project=desktop
+        run: npx playwright test viewports errors --grep @preview --project=desktop --output=test-results/matrix
 
       # 실패한 테스트의 화면 상태(안내 문구 포함)를 로그에 남긴다 — 첨부 파일을 받지 않고도 원인을 볼 수 있게
       - name: 실패 화면 상태 출력

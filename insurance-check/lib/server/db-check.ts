@@ -62,32 +62,31 @@ export async function runDbCheck(): Promise<DbCheckResult> {
   const anon = createClient(url, anonKey, opts);
 
   try {
-    const read = await server.from("ic_leads").select("id", { count: "exact", head: true });
+    // 서로 독립적인 점검이라 동시에 보낸다(차례로 보내면 Supabase 왕복 시간이 9번 쌓여 첫 신청·환경설정 화면이 수 초 늦어진다)
+    const [read, cols, rcols, aRead, aStaff, aWrite, sDelete, sAudit, admins] = await Promise.all([
+      server.from("ic_leads").select("id", { count: "exact", head: true }),
+      server.from("ic_leads").select(LEAD_COLUMNS_02).limit(0),
+      server.from("ic_reviews").select(REVIEW_COLUMNS_02).limit(0),
+      anon.from("ic_leads").select("id").limit(1),
+      anon.from("ic_staff").select("user_id").limit(1),
+      anon.from("ic_leads").update({ notes: "" }).eq("id", NIL_UUID),
+      server.from("ic_leads").delete().eq("id", NIL_UUID),
+      server.from("ic_audit_logs").update({ detail: "" }).eq("id", -1),
+      server.from("ic_staff").select("user_id", { count: "exact", head: true }).eq("role", "admin").eq("active", true),
+    ]);
     add("server_read", "서버가 신청 테이블을 조회할 수 있음", !read.error, read.error ? errText(read.error) : "정상");
-
-    const cols = await server.from("ic_leads").select(LEAD_COLUMNS_02).limit(0);
     add("lead_columns", "동의 기록·중복 방지 칼럼 존재 (02-hardening)", !cols.error, cols.error ? errText(cols.error) : "정상");
-    const rcols = await server.from("ic_reviews").select(REVIEW_COLUMNS_02).limit(0);
     add("review_columns", "후기 지급 증빙 칼럼 존재 (02-hardening)", !rcols.error, rcols.error ? errText(rcols.error) : "정상");
-
-    const aRead = await anon.from("ic_leads").select("id").limit(1);
     add("anon_read_blocked", "공개 키로 신청 조회 차단", isPermissionDenied(aRead.error),
       isPermissionDenied(aRead.error) ? "권한 없음으로 거절됨" : aRead.error ? `예상과 다른 오류: ${errText(aRead.error)}` : "🔴 조회가 허용됨");
-    const aStaff = await anon.from("ic_staff").select("user_id").limit(1);
     add("anon_staff_blocked", "공개 키로 직원 정보 조회 차단", isPermissionDenied(aStaff.error),
       isPermissionDenied(aStaff.error) ? "권한 없음으로 거절됨" : aStaff.error ? `예상과 다른 오류: ${errText(aStaff.error)}` : "🔴 조회가 허용됨");
-    const aWrite = await anon.from("ic_leads").update({ notes: "" }).eq("id", NIL_UUID);
     add("anon_write_blocked", "공개 키로 신청 수정 차단", isPermissionDenied(aWrite.error),
       isPermissionDenied(aWrite.error) ? "권한 없음으로 거절됨" : aWrite.error ? `예상과 다른 오류: ${errText(aWrite.error)}` : "🔴 수정 요청이 허용됨");
-
-    const sDelete = await server.from("ic_leads").delete().eq("id", NIL_UUID);
     add("server_no_lead_delete", "서버도 신청을 삭제할 수 없음 (파기는 익명화)", isPermissionDenied(sDelete.error),
       isPermissionDenied(sDelete.error) ? "권한 없음으로 거절됨" : sDelete.error ? `예상과 다른 오류: ${errText(sDelete.error)}` : "🔴 삭제 권한이 있음");
-    const sAudit = await server.from("ic_audit_logs").update({ detail: "" }).eq("id", -1);
     add("audit_append_only", "감사로그 수정 불가", isPermissionDenied(sAudit.error),
       isPermissionDenied(sAudit.error) ? "권한 없음으로 거절됨" : sAudit.error ? `예상과 다른 오류: ${errText(sAudit.error)}` : "🔴 수정 권한이 있음");
-
-    const admins = await server.from("ic_staff").select("user_id", { count: "exact", head: true }).eq("role", "admin").eq("active", true);
     add("admin_registered", "활성 관리자 1명 이상 등록", !admins.error && (admins.count ?? 0) > 0,
       admins.error ? errText(admins.error) : `${admins.count ?? 0}명`);
   } catch (err) {
