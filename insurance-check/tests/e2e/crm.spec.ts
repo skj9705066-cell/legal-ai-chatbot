@@ -26,7 +26,9 @@ async function expectSingleListView(page: Page) {
 test("모든 메뉴가 열리고, 화면 이동·뒤로가기 중 필터·목록이 중복되지 않는다", async ({ page, isMobile }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+  // Vercel이 Preview 배포에만 끼워 넣는 의견 도구 스크립트(vercel.live)는 우리 CSP가 막는다. 앱 오류가 아니고 운영 배포에는 없으므로 이것만 제외
+  const vercelToolbar = (t: string) => t.includes("https://vercel.live/") && t.includes("Content Security Policy");
+  page.on("console", (m) => m.type() === "error" && !vercelToolbar(m.text()) && errors.push(m.text()));
   await login(page, `menus-${isMobile ? "m" : "d"}`);
   const menu = page.getByRole("navigation", { name: "관리자 메뉴" });
   const pages: [string, RegExp, string][] = [
