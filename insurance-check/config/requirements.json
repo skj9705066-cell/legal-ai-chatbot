@@ -3,9 +3,9 @@
   "operator": [
     { "key": "OPERATOR_NAME", "label": "운영 주체(상호 또는 성명)", "default": "손국주" },
     { "key": "AGENCY_NAME", "label": "소속 보험대리점(GA) 명칭", "default": "어센틱금융그룹" },
-    { "key": "AGENCY_REG_NO", "label": "보험대리점 등록번호 (광고 표시 사항)" },
+    { "key": "AGENCY_REG_NO", "label": "보험대리점 등록번호 — 법령상 광고 필수 표시 근거 미확인, GA 심의에서 요구하면 입력 (비면 고객 화면에 명칭만 표시)", "blocking": false },
     { "key": "PLANNER_NAME", "label": "보험설계사 성명", "default": "손국주" },
-    { "key": "PLANNER_REG_NO", "label": "보험설계사 등록번호 (광고 표시 사항)" },
+    { "key": "PLANNER_REG_NO", "label": "보험설계사 등록번호 — 법령상 광고 필수 표시 근거 미확인, GA 심의에서 요구하면 입력 (비면 고객 화면에 성명만 표시)", "blocking": false },
     { "key": "CONTACT_PHONE", "label": "대표 연락처", "default": "010-8822-2341" },
     { "key": "CONTACT_EMAIL", "label": "문의 이메일", "default": "skj0506@naver.com" },
     { "key": "BUSINESS_ADDRESS", "label": "사업장 주소 (비어 있으면 고객 화면에서 줄을 숨김)", "blocking": false },
@@ -15,7 +15,7 @@
     { "key": "THIRD_PARTY_PROVISION", "label": "제3자 제공 여부(none 또는 제공받는 자·목적·항목·기간)", "default": "none" },
     { "key": "RETENTION_CLAIM", "label": "보험금 점검 신청 정보 보유기간", "default": "신청일로부터 1년" },
     { "key": "RETENTION_COVERAGE", "label": "보장 분석 상담 정보 보유기간 (같은 신청 기록으로 1년 자동 파기)", "default": "신청일로부터 1년" },
-    { "key": "AD_REVIEW_NO", "label": "광고 심의필 번호(소속 GA 준법 확인·협회 심의)" },
+    { "key": "AD_REVIEW_NO", "label": "광고 심의필 번호 — 금융소비자보호법 제22조: 신청을 받는 이 페이지는 업무광고라 소속 GA·협회 심의 후 게시" },
     { "key": "PRIVACY_POLICY_EFFECTIVE_DATE", "label": "개인정보 처리방침 시행일(YYYY-MM-DD)", "default": "2026-10-18" },
     { "key": "SERVER_REGION", "label": "처리방침 고지: 신청 처리 서버(Vercel Functions) 위치 — 운영 응답 x-vercel-id로 확인", "default": "미국 워싱턴 D.C. (iad1)" },
     { "key": "DB_REGION", "label": "처리방침 고지: 신청 정보 저장 DB(Supabase) 위치 — DB 주소의 AWS 리전으로 확인", "default": "대한민국 서울 (AWS ap-northeast-2)" }
