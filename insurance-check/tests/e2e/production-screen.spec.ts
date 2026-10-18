@@ -73,3 +73,19 @@ test("③ 준비 전에는 광고·분석 태그를 불러오지 않는다", asy
   await page.waitForLoadState("networkidle");
   expect(tags).toEqual([]);
 });
+
+test("④ 접수 상태 API: 잠김이고, 운영에서는 진단 정보(설정 이름 등)를 내보내지 않는다", async ({ request }) => {
+  const res = await request.get("/api/status");
+  expect(res.status()).toBe(200);
+  expect(await res.json()).toEqual({ submissionEnabled: false, diagnostics: null });
+});
+
+test("④ 운영에서는 데모 관리자 로그인(역할 선택·데모 비밀번호)이 화면·API 모두 막혀 있다", async ({ page }) => {
+  await page.goto("/admin/login");
+  await expect(page.getByRole("heading", { name: "상담 관리자 로그인" })).toBeVisible();
+  await expect(page.locator("#login-role")).toHaveCount(0);
+  const origin = new URL(page.url()).origin;
+  const res = await page.request.post("/api/admin/login", { data: { role: "admin", password: "demo-admin-local" }, headers: { origin, referer: `${origin}/admin/login` } });
+  expect(res.ok(), `데모 로그인 응답 ${res.status()}`).toBe(false);
+  expect(res.headers()["set-cookie"] ?? "").not.toContain("ic_admin");
+});

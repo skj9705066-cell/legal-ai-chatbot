@@ -1,4 +1,4 @@
-# 내보험 통합 점검 — 실제 Vercel Preview 배포 대상 E2E (Preview 전용, Production 대상 실행 금지)
+# 내보험 통합 점검 — 실제 Vercel 배포 대상 E2E. Preview: 신청·DB·CRM 전체 검증 / Production: 읽기 전용 잠금 확인(production-check)
 #
 # Vercel이 Preview 배포를 마치면(GitHub deployment_status=success) 그 Preview 주소로
 #   1) 사전 점검: 모드 배너·신청 잠김·미완료 설정 변수 이름(값은 출력 안 함)
@@ -154,3 +154,59 @@ jobs:
           [ "${{ steps.clicks.outcome }}" = "success" ] || { echo "유형 클릭 테스트 실패"; exit 1; }
           [ "${{ steps.matrix.outcome }}" = "success" ] || { echo "화면 크기·오류·권한 테스트 실패"; exit 1; }
           [ "${{ steps.db.outcome }}" = "success" ] || { echo "신청→DB→CRM 테스트 실패"; exit 1; }
+
+  # Production 배포 확인 — 읽기 전용(신청을 보내지 않는다). 접수 잠금·데모 화면 없음·필수 고지·광고 태그 없음을
+  # 배포 고유 주소와 고정 주소(insurance-check-demo.vercel.app) 양쪽에서 확인한다. 비밀값은 쓰지 않는다.
+  production-check:
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      (github.event.deployment.production_environment == true || contains(github.event.deployment.environment, 'production'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+        working-directory: insurance-check
+    env:
+      DEPLOY_URL: ${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+      E2E_PRODUCTION: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.deployment.sha }}
+
+      - name: 대상 확인 (이 앱의 Production인지)
+        id: target
+        run: |
+          code=$(curl -s -L -o page.html -w '%{http_code}' "$DEPLOY_URL" || true)
+          echo "대상: $DEPLOY_URL (HTTP $code, 커밋: ${{ github.event.deployment.sha }})"
+          if [ "$code" != "200" ]; then echo "Production 주소를 열 수 없습니다(HTTP $code) — 배포 보호 또는 오류"; exit 1; fi
+          if grep -q "내보험 통합 점검" page.html; then echo "app=ic" >> "$GITHUB_OUTPUT"; else echo "다른 앱의 Production — 건너뜀"; echo "app=other" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/setup-node@v4
+        if: steps.target.outputs.app == 'ic'
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: insurance-check/package-lock.json
+
+      - run: npm ci
+        if: steps.target.outputs.app == 'ic'
+
+      - run: npx playwright install --with-deps chromium
+        if: steps.target.outputs.app == 'ic'
+
+      - name: Production 배포 주소 — 접수 잠금·고객 화면 점검 (PC+모바일, 신청 전송 없음)
+        if: steps.target.outputs.app == 'ic'
+        run: E2E_BASE_URL="$DEPLOY_URL" npx playwright test production-screen --output=test-results/deploy
+
+      - name: 고정 주소 insurance-check-demo.vercel.app — 같은 점검
+        if: steps.target.outputs.app == 'ic'
+        run: E2E_BASE_URL="https://insurance-check-demo.vercel.app" npx playwright test production-screen --output=test-results/alias
+
+      - name: 실패 화면 상태 출력
+        if: failure() && steps.target.outputs.app == 'ic'
+        run: |
+          find test-results -name error-context.md 2>/dev/null | while read -r f; do
+            echo "::group::$f"; head -c 6000 "$f"; echo; echo "::endgroup::"
+          done
