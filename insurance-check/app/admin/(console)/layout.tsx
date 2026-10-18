@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAppMode } from "@/lib/config";
+import { trialMode } from "@/lib/types";
 import { getStaffSession } from "@/lib/server/auth";
 import { AdminShell } from "@/components/admin/AdminShell";
 
@@ -11,7 +12,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
   return (
-    <AdminShell session={session} demo={getAppMode() === "demo"}>
+    <AdminShell session={session} trial={trialMode(getAppMode())}>
       {children}
     </AdminShell>
   );

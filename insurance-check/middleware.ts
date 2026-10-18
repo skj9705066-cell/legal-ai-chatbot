@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getSessionSecret, SESSION_COOKIE, verifySession } from "./lib/session";
+import { AUTH_ERROR, getSessionSecret, SESSION_COOKIE, verifySession } from "./lib/session";
 
 /**
  * /admin/*, /api/admin/* 게이트. 서명된 HttpOnly 세션 쿠키가 없으면 차단한다.
@@ -12,7 +12,7 @@ export async function middleware(req: NextRequest) {
   if (!isPublicAuth) {
     const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value, getSessionSecret());
     if (!session) {
-      if (pathname.startsWith("/api/")) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+      if (pathname.startsWith("/api/")) return NextResponse.json(AUTH_ERROR.unauthorized, { status: 401 });
       const url = req.nextUrl.clone();
       url.pathname = "/admin/login";
       url.search = "";

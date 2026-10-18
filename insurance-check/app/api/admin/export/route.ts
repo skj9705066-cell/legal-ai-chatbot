@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireApi } from "@/lib/server/auth";
 import { leadsToCsv } from "@/lib/server/csv";
 import { listLeadsForStaff, recordStaffAudit } from "@/lib/server/service";
-import { parseLeadQuery } from "@/lib/lead-query";
+import { describeLeadQuery, parseLeadQuery } from "@/lib/lead-query";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   if (auth.error) return auth.error;
   const filter = parseLeadQuery(Object.fromEntries(req.nextUrl.searchParams));
   const leads = await listLeadsForStaff(auth.session, { ...filter, limit: 10_000 });
-  await recordStaffAudit(auth.session, "lead.export_csv", `CSV 내보내기 ${leads.length}건 (${req.nextUrl.search || "전체"})`);
+  await recordStaffAudit(auth.session, "lead.export_csv", `CSV 내보내기 ${leads.length}건 (${describeLeadQuery(filter)})`);
   const stamp = new Date().toISOString().slice(0, 10);
   return new NextResponse(leadsToCsv(leads), {
     headers: {

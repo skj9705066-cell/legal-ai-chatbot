@@ -1,8 +1,11 @@
 # 운영 배포 체크리스트
 
 > **소속 GA(보험대리점)의 보험 모집 광고 사전 심의와 개인정보 처리 승인을 받기 전에는 운영 배포를 하지 않는다.**
-> 이 앱은 승인 기록(`APPROVAL_*`)이 비어 있으면 운영 모드 빌드가 실패하고(`npm run build` → `scripts/check-deploy.mjs`),
-> 런타임에서도 신청 폼이 잠긴다. 아래 수동 항목은 코드로 강제할 수 없으므로 담당자가 직접 확인한다.
+> 이 앱은 승인 기록(`APPROVAL_*`)·운영 정보가 하나라도 비어 있으면 운영 모드에서 신청 접수와 광고·분석 태그를 잠근다.
+> Vercel **Production** 배포는 `APP_MODE` 값과 관계없이 운영 모드로 동작하며(데모·테스트 화면이 실제 주소에 나가지 않음),
+> 준비 전에는 '접수 잠금' 상태로 빌드된다(고객 화면은 '준비 중' 표시). 광고 집행 전 기준은 `npm run check:deploy`(엄격 검사) 통과다.
+> 그 밖(로컬 등)에서 `APP_MODE=production`으로 빌드하면 항목이 비었을 때 빌드가 실패한다.
+> 아래 수동 항목은 코드로 강제할 수 없으므로 담당자가 직접 확인한다. 같은 요약이 관리자 → 환경설정·배포 체크 화면에도 있다.
 
 ## A. 자동 검사 (`npm run check:deploy`)
 
@@ -21,6 +24,10 @@
 ## B. 수동 확인 (배포 전 매번)
 
 ### 문구·준법
+- [ ] **랜딩페이지 자체가 보험 광고 심의 대상인지** 소속 GA에 확인했다. 대상이면 랜딩 전체(문구·일러스트·통계·사례 카드·FAQ·고지·운영 주체 표시)를
+      심의받고, 대상이 아니라는 답변도 기록으로 남긴다
+- [ ] **Meta·당근 광고 소재는 이 앱과 별도로 관리**한다(이미지·문구·연결 URL·소재별 심의필 번호). 소재가 연결하는 랜딩 URL의 `?cta=`·`utm_content`가
+      심의받은 CTA 안인지 확인한다
 - [ ] `lib/content.ts`의 모든 문구가 심의 받은 버전과 **글자 단위로 일치**한다 (수정 시 재심의)
 - [ ] 통계 3건(2025년 말 숨은보험금 약 10조 3,000억원 / 2025년 지급 약 80만 건·약 3조 2,470억원)을
       [금융위원회 2026-07-07 보도자료](https://www.fsc.go.kr/po010103/87270) 원문과 대조했다
@@ -60,6 +67,16 @@
 - [ ] 보유기간 경과 데이터 파기 작업(`supabase/schema.sql` 하단 예시)을 스케줄링했다
 - [ ] 삭제 요청의 본인 확인 절차(예: 신청 번호로 회신 전화)를 정했다
 - [ ] 감사로그는 수정·삭제가 막혀 있으므로 보유기간이 지난 감사로그 정리 절차(DB 소유자가 SQL Editor에서 트리거를 잠시 끄고 정리)를 정했다
+
+### 실제 DB 연결 (테스트 모드로 먼저 확인)
+- [ ] Supabase SQL Editor에서 `supabase/schema.sql`(01) → 02-hardening(동의 기록·중복키·지급 증빙 칼럼) 실행
+- [ ] `supabase/verify-summary.sql` 결과의 ok가 모두 true (항목별 원본: `supabase/verify.sql`) → 확인일을 `APPROVAL_DB_VERIFIED`에 입력
+- [ ] Supabase Authentication에서 신규 가입(Allow new users to sign up) 끄기 → 관리자 계정 생성 → `ic_staff`에 admin 등록
+- [ ] Vercel **Preview** 환경에만 `PREVIEW_TEST_SUBMISSIONS=1` + 인프라 변수 + `APPROVAL_DB_VERIFIED` 설정 (Production의 `APP_MODE`·승인 값은 건드리지 않음)
+- [ ] 미리보기 화면에 '현재 신청 접수를 준비하고 있어요'가 보이면 그 아래 '[테스트 환경 진단]'에 나온 변수를 채운 뒤 Redeploy
+- [ ] 미리보기 배포의 관리자 → 환경설정에서 **운영 DB 자동 점검 '통과'** 확인
+- [ ] 테스트 데이터로 신청 → CRM 조회 확인 (`npx playwright test staging-db` — README '모드' 참고)
+- [ ] 위 코드가 배포된 뒤 02-hardening 하단 [D] 규칙(동의·지급 확인 시각 필수)을 SQL Editor에서 실행
 
 ### 보안·인프라
 - [ ] 기존 DB에는 `supabase/schema.sql`을 다시 실행해 `ic_reviews` 테이블과 `ic_leads.is_test`·`ic_leads.third_party_consent` 컬럼을 추가했다

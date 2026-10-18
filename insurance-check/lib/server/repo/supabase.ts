@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { AuditLog, FunnelEvent, Review } from "@/lib/types";
-import { COMPLETED_CLAIM_STATUSES, type ReviewImage, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
+import { COMPLETED_CLAIM_STATUSES, DuplicateSubmissionError, type ReviewImage, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
 
 /**
  * 운영 저장소. service role 키로 서버에서만 접근한다.
@@ -32,6 +32,7 @@ function fromLeadRow(r: Row): LeadRow {
     phoneMasked: r.phone_masked as string,
     phoneEnc: (r.phone_enc as string) ?? "",
     phoneHash: (r.phone_hash as string) ?? "",
+    idempotencyKey: (r.idempotency_key as string) ?? null,
     preferredTime: r.preferred_time as LeadRow["preferredTime"],
     memo: (r.memo as string) ?? "",
     attribution: {
@@ -47,6 +48,12 @@ function fromLeadRow(r: Row): LeadRow {
     marketingConsent: !!r.marketing_consent,
     thirdPartyConsent: !!r.third_party_consent,
     privacyConsentVersion: r.privacy_consent_version as string,
+    privacyConsentAt: (r.privacy_consent_at as string) ?? null,
+    marketingConsentAt: (r.marketing_consent_at as string) ?? null,
+    marketingConsentVersion: (r.marketing_consent_version as string) ?? null,
+    marketingWithdrawnAt: (r.marketing_withdrawn_at as string) ?? null,
+    thirdPartyConsentAt: (r.third_party_consent_at as string) ?? null,
+    thirdPartyConsentVersion: (r.third_party_consent_version as string) ?? null,
     coverageConsent: !!r.coverage_consent,
     coverageConsentAt: (r.coverage_consent_at as string) ?? null,
     coverageConsentVersion: (r.coverage_consent_version as string) ?? null,
@@ -74,6 +81,12 @@ const LEAD_COLUMNS: Record<string, string> = {
   marketingConsent: "marketing_consent",
   thirdPartyConsent: "third_party_consent",
   privacyConsentVersion: "privacy_consent_version",
+  privacyConsentAt: "privacy_consent_at",
+  marketingConsentAt: "marketing_consent_at",
+  marketingConsentVersion: "marketing_consent_version",
+  marketingWithdrawnAt: "marketing_withdrawn_at",
+  thirdPartyConsentAt: "third_party_consent_at",
+  thirdPartyConsentVersion: "third_party_consent_version",
   coverageConsent: "coverage_consent",
   coverageConsentAt: "coverage_consent_at",
   coverageConsentVersion: "coverage_consent_version",
@@ -126,7 +139,7 @@ function fromPrivacyRow(r: Row): PrivacyRequestRow {
 
 /** 목록 조회 시 이미지 본문(image_base64)은 읽지 않는다 */
 const REVIEW_SELECT =
-  "id, created_at, created_by, kind, display_name, category, content, has_image, pii_masked, payment_confirmed, verified_amount, use_consent, use_consent_at, status, reviewed_by, reviewed_at";
+  "id, created_at, created_by, kind, display_name, category, content, has_image, pii_masked, payment_confirmed, payment_confirmed_by, payment_confirmed_at, verified_amount, use_consent, use_consent_at, status, reviewed_by, reviewed_at";
 
 function fromReviewRow(r: Row): Review {
   return {
@@ -140,6 +153,8 @@ function fromReviewRow(r: Row): Review {
     hasImage: !!r.has_image,
     piiMasked: !!r.pii_masked,
     paymentConfirmed: !!r.payment_confirmed,
+    paymentConfirmedBy: (r.payment_confirmed_by as string) ?? null,
+    paymentConfirmedAt: (r.payment_confirmed_at as string) ?? null,
     verifiedAmount: r.verified_amount == null ? null : Number(r.verified_amount),
     useConsent: !!r.use_consent,
     useConsentAt: (r.use_consent_at as string) ?? null,
@@ -158,6 +173,8 @@ const REVIEW_COLUMNS: Record<string, string> = {
   hasImage: "has_image",
   piiMasked: "pii_masked",
   paymentConfirmed: "payment_confirmed",
+  paymentConfirmedBy: "payment_confirmed_by",
+  paymentConfirmedAt: "payment_confirmed_at",
   verifiedAmount: "verified_amount",
   useConsent: "use_consent",
   useConsentAt: "use_consent_at",
@@ -185,11 +202,18 @@ function escapeSearch(q: string): string {
 export const supabaseRepository: Repository = {
   kind: "supabase",
   async insertLead(row) {
-    must(
-      await db()
-        .from("ic_leads")
-        .insert({ id: row.id, ref_no: row.refNo, created_at: row.createdAt, ...toLeadColumns(row) }),
-    );
+    const res = await db()
+      .from("ic_leads")
+      .insert({ id: row.id, ref_no: row.refNo, created_at: row.createdAt, idempotency_key: row.idempotencyKey, ...toLeadColumns(row) });
+    // 같은 제출 키의 재전송(더블클릭·네트워크 재시도)은 DB 고유 인덱스가 막는다
+    if (res.error?.code === "23505" && /idempotency/.test(`${res.error.message} ${res.error.details ?? ""}`)) {
+      throw new DuplicateSubmissionError();
+    }
+    must(res);
+  },
+  async findLeadByIdempotencyKey(key) {
+    const data = must(await db().from("ic_leads").select("*").eq("idempotency_key", key).maybeSingle());
+    return data ? fromLeadRow(data) : null;
   },
   async findRecentRefByPhoneHash(phoneHash, sinceIso) {
     const data = must(
@@ -214,6 +238,8 @@ export const supabaseRepository: Repository = {
     if (f.coverageStatus) q = q.eq("coverage_status", f.coverageStatus);
     if (f.privacyStatus) q = q.eq("privacy_status", f.privacyStatus);
     if (f.duplicatesOnly) q = q.not("duplicate_of", "is", null);
+    if (f.tests === "exclude") q = q.eq("is_test", false);
+    if (f.tests === "only") q = q.eq("is_test", true);
     if (f.salesOnly) {
       q = q
         .eq("coverage_consent", true)
@@ -396,15 +422,21 @@ export async function verifyStaffCredentials(
 ): Promise<{ id: string; name: string; role: "admin" | "counselor" | "viewer" } | null> {
   const url = process.env.SUPABASE_URL;
   const anon = process.env.SUPABASE_ANON_KEY;
-  if (!url || !anon) return null;
+  // 실패 사유만 서버 로그에 남긴다(이메일·비밀번호·키는 기록하지 않음) — Vercel Logs에서 설정 문제를 찾기 위함
+  const fail = (reason: string) => {
+    console.warn(`[admin/login] 로그인 거절: ${reason}`);
+    return null;
+  };
+  if (!url || !anon) return fail("SUPABASE_URL 또는 SUPABASE_ANON_KEY 미설정");
   const auth = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data, error } = await auth.auth.signInWithPassword({ email, password });
-  if (error || !data.user) return null;
+  if (error || !data.user) return fail(`Supabase Auth 거절 (${error?.code ?? error?.status ?? "no user"})`);
   // Supabase 토큰은 쓰지 않는다(자체 HttpOnly 세션 발급). 즉시 폐기.
   await auth.auth.signOut().catch(() => undefined);
   const staff = must(
     await db().from("ic_staff").select("name, role, active").eq("user_id", data.user.id).maybeSingle(),
   );
-  if (!staff || !staff.active) return null;
+  if (!staff) return fail("Supabase Auth 계정은 맞지만 ic_staff에 등록되지 않음");
+  if (!staff.active) return fail("ic_staff 계정이 비활성(active=false)");
   return { id: data.user.id, name: staff.name as string, role: staff.role as "admin" | "counselor" | "viewer" };
 }

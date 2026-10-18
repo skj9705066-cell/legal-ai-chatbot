@@ -12,7 +12,7 @@ import {
 } from "@/lib/types";
 import { encryptPii, hashPhone } from "../crypto";
 import { maskPhone } from "@/lib/validation";
-import { COMPLETED_CLAIM_STATUSES, isRealLead, type ReviewImage, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
+import { COMPLETED_CLAIM_STATUSES, DuplicateSubmissionError, isRealLead, type ReviewImage, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
 import { applyLeadFilter } from "./filter";
 
 /**
@@ -118,6 +118,7 @@ function seed(): DemoState {
       phoneMasked: maskPhone(phone),
       phoneEnc: encryptPii(phone),
       phoneHash: hashPhone(phone),
+      idempotencyKey: null,
       preferredTime: pick(PREFERRED_TIMES),
       memo: rand() < 0.4 ? "데모 메모: 작년 통원 치료 영수증 보관 중" : "",
       attribution: {
@@ -132,6 +133,12 @@ function seed(): DemoState {
       claimStatus: pick(CLAIM_STATUSES),
       marketingConsent: rand() < 0.3,
       privacyConsentVersion: "claim-2026-10-15.v1",
+      privacyConsentAt: new Date(createdAt).toISOString(),
+      marketingConsentAt: null,
+      marketingConsentVersion: null,
+      marketingWithdrawnAt: null,
+      thirdPartyConsentAt: null,
+      thirdPartyConsentVersion: null,
       coverageConsent,
       coverageConsentAt: coverageConsent ? new Date(createdAt + 20_000).toISOString() : null,
       coverageConsentVersion: coverageConsent ? "coverage-2026-10-15.v1" : null,
@@ -146,6 +153,14 @@ function seed(): DemoState {
       thirdPartyConsent: false,
       isDemo: true,
     });
+  }
+
+  // 광고 수신 동의 기록(시각·문구 버전). 난수 순서를 바꾸지 않도록 생성 후에 채운다
+  for (const l of leads) {
+    if (l.marketingConsent) {
+      l.marketingConsentAt = l.createdAt;
+      l.marketingConsentVersion = "marketing-2026-10-16.v1";
+    }
   }
 
   // 중복 신청 표시 (같은 연락처, 30일 이내 → 먼저 들어온 신청번호)
@@ -208,7 +223,11 @@ function state(): DemoState {
 export const demoRepository: Repository = {
   kind: "demo",
   async insertLead(row) {
+    if (row.idempotencyKey && state().leads.some((l) => l.idempotencyKey === row.idempotencyKey)) throw new DuplicateSubmissionError();
     state().leads.push(row);
+  },
+  async findLeadByIdempotencyKey(key) {
+    return state().leads.find((l) => l.idempotencyKey === key) ?? null;
   },
   async findRecentRefByPhoneHash(phoneHash, sinceIso) {
     const hits = state()

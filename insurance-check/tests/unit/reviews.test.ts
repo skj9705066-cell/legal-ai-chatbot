@@ -6,6 +6,8 @@ const base: Review = {
   id: "r1",
   createdAt: "2026-10-01T00:00:00.000Z",
   createdBy: "관리자",
+  paymentConfirmedBy: null,
+  paymentConfirmedAt: null,
   kind: "review",
   displayName: "40대 직장인",
   category: "claim_guidance",

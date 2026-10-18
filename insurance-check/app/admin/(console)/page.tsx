@@ -69,7 +69,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: SP }) 
         title={sales ? "보장 분석 영업 대상" : "상담 DB"}
         description={
           sales
-            ? "보장 분석에 별도 동의했고 철회·삭제 요청이 없는 고객만 표시됩니다. 미동의 고객은 자동 등록되지 않습니다."
+            ? "보장 분석에 별도 동의했고 철회·삭제 요청이 없는 고객만 표시됩니다. 미동의 고객은 자동 등록되지 않으며, 테스트 신청은 기본으로 제외됩니다."
             : "연락처는 마스킹되어 표시되며, 원문 열람은 권한자만 가능하고 모두 기록됩니다."
         }
         actions={
@@ -158,6 +158,14 @@ export default async function LeadsPage({ searchParams }: { searchParams: SP }) 
               <option value="next_contact">다음 연락 일정순</option>
             </select>
           </label>
+          <label className="flex flex-1 flex-col gap-1.5 text-[13px] font-semibold text-navy-600">
+            테스트 신청
+            <select name="test" defaultValue={query.tests ?? "include"} className={cn(fieldCls, "select-chevron appearance-none pr-9")}>
+              <option value="include">포함</option>
+              <option value="exclude">제외</option>
+              <option value="only">테스트만</option>
+            </select>
+          </label>
           <label className="flex h-11 items-center gap-2 px-1 text-[14px] font-medium text-ink">
             <input type="checkbox" name="dup" value="1" defaultChecked={query.duplicatesOnly} className="h-[18px] w-[18px] accent-blue" />
             중복만
@@ -223,6 +231,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: SP }) 
                             </Badge>
                           )}
                           {l.isDemo && <Badge variant="demo">데모</Badge>}
+                          {l.isTest && <Badge variant="demo">테스트</Badge>}
                         </div>
                       </td>
                       <td className={cn(tableCell, "whitespace-nowrap text-navy-600")}>{formatDateTime(l.createdAt)}</td>

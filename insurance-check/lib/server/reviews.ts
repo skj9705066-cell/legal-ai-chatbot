@@ -37,6 +37,9 @@ export async function createReview(session: StaffSession, raw: Record<string, un
     ...v.value,
     hasImage: !!img,
     useConsentAt: v.value.useConsent ? now : null,
+    // 지급 확인은 누가·언제 표시했는지 함께 남긴다
+    paymentConfirmedBy: v.value.paymentConfirmed ? session.name : null,
+    paymentConfirmedAt: v.value.paymentConfirmed ? now : null,
     status: "pending", // 등록은 항상 승인 대기 — 공개는 관리자 승인으로만
     reviewedBy: null,
     reviewedAt: null,
@@ -69,6 +72,14 @@ export async function updateReviewByStaff(session: StaffSession, id: string, raw
     Object.assign(patch, v.value);
     if (v.value.useConsent && !cur.useConsent) patch.useConsentAt = new Date().toISOString();
     if (!v.value.useConsent) patch.useConsentAt = null;
+    if (v.value.paymentConfirmed && !cur.paymentConfirmed) {
+      patch.paymentConfirmedBy = session.name;
+      patch.paymentConfirmedAt = new Date().toISOString();
+    }
+    if (!v.value.paymentConfirmed) {
+      patch.paymentConfirmedBy = null;
+      patch.paymentConfirmedAt = null;
+    }
     changes.push("내용 수정");
     if (cur.status === "approved") {
       patch.status = v.value.useConsent ? "pending" : "hidden";

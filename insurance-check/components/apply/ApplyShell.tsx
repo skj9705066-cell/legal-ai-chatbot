@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import type { PublicConfig } from "@/lib/config";
+import { trialMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
@@ -23,11 +24,11 @@ export function ApplyShell({
   journey?: 1 | 2;
   wide?: boolean;
 }) {
-  const demo = config.mode === "demo";
+  const trial = trialMode(config.mode);
   return (
     <>
-      {demo && <DemoBanner />}
-      <SiteHeader demo={demo} />
+      {trial && <DemoBanner trial={trial} />}
+      <SiteHeader trial={trial} />
       <main id="main" className="min-h-[70svh] bg-navy-50">
         <div className={cn("container py-8 sm:py-14", wide ? "max-w-3xl" : "max-w-[600px]")}>
           {journey && (
@@ -60,7 +61,7 @@ export function ApplyShell({
           {children}
         </div>
       </main>
-      <SiteFooter operator={config.operator} demo={demo} />
+      <SiteFooter operator={config.operator} trial={trial} />
     </>
   );
 }

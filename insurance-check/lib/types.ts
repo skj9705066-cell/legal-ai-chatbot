@@ -3,6 +3,13 @@
 export const SERVICE_TYPES = ["unclaimed", "hidden", "refund"] as const;
 export type ServiceType = (typeof SERVICE_TYPES)[number];
 
+/** 실제 운영이 아닌 화면 표시용 모드: 데모(메모리 저장) / 테스트(실제 DB에 테스트 신청으로 저장). 운영이면 null */
+export type TrialMode = "demo" | "staging" | null;
+export const TRIAL_LABEL = { demo: "데모", staging: "테스트" } as const;
+export function trialMode(mode: "demo" | "staging" | "production"): TrialMode {
+  return mode === "production" ? null : mode;
+}
+
 export const PREFERRED_TIMES = ["weekday_morning", "weekday_afternoon", "weekday_evening", "anytime"] as const;
 export type PreferredTime = (typeof PREFERRED_TIMES)[number];
 
@@ -105,6 +112,13 @@ export interface Lead {
   /** 제3자 제공 동의(제3자 제공이 설정된 운영에서만 받는다) */
   thirdPartyConsent: boolean;
   privacyConsentVersion: string;
+  /** 동의 기록: 시각·문구 버전. 이 기능 이전 신청이나 미동의 항목은 null */
+  privacyConsentAt: string | null;
+  marketingConsentAt: string | null;
+  marketingConsentVersion: string | null;
+  marketingWithdrawnAt: string | null;
+  thirdPartyConsentAt: string | null;
+  thirdPartyConsentVersion: string | null;
   coverageConsent: boolean;
   coverageConsentAt: string | null;
   coverageConsentVersion: string | null;
@@ -256,6 +270,9 @@ export interface Review {
   piiMasked: boolean;
   /** 실제 지급이 확인됐는지 (지급 안내 문서·고객 확인 등으로) */
   paymentConfirmed: boolean;
+  /** 지급 확인을 표시한 담당자·시각 (paymentConfirmed가 아니면 null) */
+  paymentConfirmedBy: string | null;
+  paymentConfirmedAt: string | null;
   /** 검증된 지급 금액(원). paymentConfirmed가 아니면 항상 null */
   verifiedAmount: number | null;
   /** 후기 게시 동의 */

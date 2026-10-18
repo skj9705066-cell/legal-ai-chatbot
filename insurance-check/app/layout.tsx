@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next";
 // 글꼴 파일이 늦거나 실패하면 font-display: swap으로 시스템 글꼴이 그대로 쓰인다.
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./globals.css";
-import { getPublicConfig } from "@/lib/config";
+import { getAppMode, getPublicConfig } from "@/lib/config";
 import { Analytics } from "@/components/site/Analytics";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3100";
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ko_KR",
   },
-  robots: process.env.APP_MODE === "production" ? { index: true, follow: true } : { index: false, follow: false },
+  robots: getAppMode() === "production" ? { index: true, follow: true } : { index: false, follow: false },
   formatDetection: { telephone: false },
 };
 

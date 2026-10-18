@@ -1,6 +1,6 @@
 "use client";
 
-import type { Attribution, FunnelEventName, ServiceType } from "./types";
+import type { Attribution, FunnelEventName, ServiceType, TrialMode } from "./types";
 
 /**
  * 계측 원칙
@@ -149,7 +149,8 @@ export interface StoredReceipt {
   refNo: string;
   receiptToken: string | null;
   serviceType: ServiceType;
-  demo: boolean;
+  /** 데모·테스트 모드 표시 (운영이면 null) */
+  trial: TrialMode;
   coverage: "offered" | "opted_in" | "declined";
 }
 

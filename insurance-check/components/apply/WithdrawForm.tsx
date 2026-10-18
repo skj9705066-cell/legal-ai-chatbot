@@ -23,6 +23,8 @@ export function WithdrawForm() {
   const [state, setState] = useState<"idle" | "busy" | "done">("idle");
   const [serverError, setServerError] = useState<string | null>(null);
   const doneRef = useRef<HTMLDivElement>(null);
+  // 연타 시 요청이 여러 번 나가 같은 요청이 중복 접수되지 않도록 즉시 잠근다(state는 다음 렌더링에 반영됨)
+  const inFlight = useRef(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,6 +37,8 @@ export function WithdrawForm() {
       document.getElementById({ type: "wd-type-withdraw_marketing", name: "wd-name", phone: "wd-phone" }[first!])?.focus();
       return;
     }
+    if (inFlight.current) return;
+    inFlight.current = true;
     setState("busy");
     try {
       const res = await fetch("/api/privacy-requests", {
@@ -46,6 +50,7 @@ export function WithdrawForm() {
       if (!res.ok || !data?.ok) {
         setServerError(data?.error ?? "요청을 처리하지 못했습니다.");
         setState("idle");
+        inFlight.current = false;
         return;
       }
       setState("done");
@@ -53,6 +58,7 @@ export function WithdrawForm() {
     } catch {
       setServerError("네트워크 연결을 확인한 뒤 다시 시도해 주세요.");
       setState("idle");
+      inFlight.current = false;
     }
   }
 
