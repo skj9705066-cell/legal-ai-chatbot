@@ -60,7 +60,7 @@ function keyKind(k) {
   return k ? "unknown" : "empty";
 }
 const exposure = [];
-const SECRET_NAMES = ["SUPABASE_SERVICE_ROLE_KEY", "APP_SECRET", "PII_ENCRYPTION_KEY", "DEMO_ADMIN_PASSWORD"];
+const SECRET_NAMES = ["SUPABASE_SERVICE_ROLE_KEY", "APP_SECRET", "PII_ENCRYPTION_KEY", "DEMO_ADMIN_PASSWORD", "SOLAPI_API_SECRET"];
 const secretValues = SECRET_NAMES.map((n) => (process.env[n] ?? "").trim()).filter((v) => v.length >= 8);
 for (const [name, value] of Object.entries(process.env)) {
   if (!name.startsWith("NEXT_PUBLIC_")) continue;
