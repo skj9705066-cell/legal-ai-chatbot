@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { OperatorInfo } from "@/lib/config";
 import { TRIAL_LABEL, type TrialMode } from "@/lib/types";
 import { SERVICE_DISCLAIMER, STATS_SOURCE } from "@/lib/content";
-import { isPlaceholder, orSetting, settingLine } from "@/lib/display";
+import { isPlaceholder, nameWithRegNo, orSetting, settingLine } from "@/lib/display";
 import { cn } from "@/lib/utils";
 import { OfficialLink } from "./OfficialLink";
 import { LogoMark } from "./Logo";
@@ -32,10 +32,11 @@ export function SiteFooter({ operator, trial }: { operator: OperatorInfo; trial:
             <h2 className="sr-only">운영 주체 정보</h2>
             <dl className="mt-6 text-[15px] leading-relaxed">
               <Row label="운영 주체" value={orSetting(o.operatorName, "운영 주체", m)} />
-              <Row label="소속 보험대리점" value={settingLine(`${orSetting(o.agencyName, "소속 GA", m)} · 등록번호 ${orSetting(o.agencyRegNo, "GA 등록번호", m)}`, m)} />
-              <Row label="보험설계사" value={settingLine(`${orSetting(o.plannerName, "설계사 성명", m)} · 등록번호 ${orSetting(o.plannerRegNo, "설계사 등록번호", m)}`, m)} />
+              <Row label="소속 보험대리점" value={nameWithRegNo(o.agencyName, o.agencyRegNo, "소속 GA", "GA 등록번호", m)} />
+              <Row label="보험설계사" value={nameWithRegNo(o.plannerName, o.plannerRegNo, "설계사 성명", "설계사 등록번호", m)} />
               {o.operatorBizNo && <Row label="사업자등록번호" value={o.operatorBizNo} />}
-              <Row label="주소" value={orSetting(o.businessAddress, "사업장 주소", m)} />
+              {/* 주소는 필수 고지가 아니다(관리자 경고 항목). 운영 화면에서 값이 없으면 '준비 중' 대신 줄을 숨긴다 */}
+              {(o.businessAddress || m !== "production") && <Row label="주소" value={orSetting(o.businessAddress, "사업장 주소", m)} />}
               <Row
                 label="연락처"
                 value={settingLine(`${orSetting(o.contactPhone, "대표 연락처", m)} · ${orSetting(o.contactEmail, "문의 이메일", m)}${o.contactHours ? ` (${o.contactHours})` : ""}`, m)}

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Check, Info } from "lucide-react";
 import { APPLY } from "@/lib/content";
 import type { PublicConfig } from "@/lib/config";
-import { isPlaceholder, orSetting, settingLine } from "@/lib/display";
+import { isPlaceholder, nameWithRegNo, orSetting, settingLine } from "@/lib/display";
 import { cn } from "@/lib/utils";
 import { ApplyForm } from "./ApplyForm";
 
@@ -20,8 +20,8 @@ export function ApplySection({ config }: { config: PublicConfig }) {
   //   확인되지 않은 회사명·자격·경력·심의번호를 코드에 직접 적지 않는다.
   const rows = [
     { label: "운영 주체", value: orSetting(o.operatorName, "운영 주체", m) },
-    { label: "소속 보험대리점", value: settingLine(`${orSetting(o.agencyName, "소속 GA", m)} · 등록번호 ${orSetting(o.agencyRegNo, "GA 등록번호", m)}`, m) },
-    { label: "담당 설계사", value: settingLine(`${orSetting(o.plannerName, "설계사 성명", m)} · 등록번호 ${orSetting(o.plannerRegNo, "설계사 등록번호", m)}`, m) },
+    { label: "소속 보험대리점", value: nameWithRegNo(o.agencyName, o.agencyRegNo, "소속 GA", "GA 등록번호", m) },
+    { label: "담당 설계사", value: nameWithRegNo(o.plannerName, o.plannerRegNo, "설계사 성명", "설계사 등록번호", m) },
     { label: "고객 문의", value: settingLine(`${orSetting(o.contactPhone, "대표 연락처", m)}${o.contactHours ? ` · ${o.contactHours}` : ""}`, m) },
     { label: "광고 심의", value: orSetting(o.adReviewNo, "광고 심의필 번호", m) },
   ];

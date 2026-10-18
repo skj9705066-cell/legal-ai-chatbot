@@ -69,8 +69,8 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-[18px] font-bold text-navy">6. 처리위탁 및 국외 이전</h2>
             <p className="mt-2">
-              서비스 운영을 위해 아래 업체에 개인정보 처리를 맡기며, 두 업체 모두 미국 법인이므로 국외 이전이 포함됩니다. 신청 정보는 신청할 때마다 암호화된 네트워크(HTTPS)로
-              전송됩니다.
+              서비스 운영을 위해 아래 업체(모두 미국 법인)에 개인정보 처리를 맡깁니다. 처리 위치가 국외인 경우 국외 이전에 해당하며, 신청 정보는 신청할 때마다 암호화된
+              네트워크(HTTPS)로 전송됩니다.
             </p>
             {processorRows(o, config.mode).map((p) => (
               <Table

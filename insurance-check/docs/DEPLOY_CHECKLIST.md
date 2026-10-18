@@ -1,23 +1,24 @@
 # 운영 배포 체크리스트
 
-> **소속 GA(보험대리점)의 보험 모집 광고 사전 심의와 개인정보 처리 승인을 받기 전에는 운영 배포를 하지 않는다.**
-> 이 앱은 승인 기록(`APPROVAL_*`)·운영 정보가 하나라도 비어 있으면 운영 모드에서 신청 접수와 광고·분석 태그를 잠근다.
-> Vercel **Production** 배포는 `APP_MODE` 값과 관계없이 운영 모드로 동작하며(데모·테스트 화면이 실제 주소에 나가지 않음),
-> 준비 전에는 '접수 잠금' 상태로 빌드된다(고객 화면은 '준비 중' 표시). 광고 집행 전 기준은 `npm run check:deploy`(엄격 검사) 통과다.
-> 그 밖(로컬 등)에서 `APP_MODE=production`으로 빌드하면 항목이 비었을 때 빌드가 실패한다.
-> 아래 수동 항목은 코드로 강제할 수 없으므로 담당자가 직접 확인한다. 같은 요약이 관리자 → 환경설정·배포 체크 화면에도 있다.
+> **운영 접수는 법적·보안 필수 항목이 모두 있어야 열린다.** 그 밖의 내부 점검 항목은 관리자 경고로만 표시하고 접수를 막지 않는다
+> (`config/requirements.json`의 `"blocking": false`). Vercel **Production** 배포는 `APP_MODE`와 관계없이 운영 모드로 동작하며,
+> 필수 항목이 비면 '접수 잠금' 상태로 빌드된다(고객 화면 '준비 중'). 운영자가 확인해 준 값은 `default`로 들어 있어 환경변수가 없어도 표시된다
+> (환경변수가 있으면 그 값이 우선). 확인되지 않은 등록번호·주소·심의번호·승인일은 기본값이 없다.
 
 ## A. 자동 검사 (`npm run check:deploy`)
 
-| 구분 | 항목 | 환경변수 |
+### 신청 차단 (법적·보안 필수)
+
+| 근거 | 항목 | 상태(2026-10-18) |
 |---|---|---|
-| 승인 | 보험 모집 광고 사전 심의 승인일 | `APPROVAL_AD_REVIEW` |
-| 승인 | 개인정보 수집·이용 문구 및 처리 흐름 승인일 | `APPROVAL_PRIVACY` |
-| 승인 | 보장 분석 추가 제안 화면·동의 문구 승인일 | `APPROVAL_COVERAGE_OFFER` |
-| 승인 | 처리 주체·제3자 제공 여부 확정일 | `APPROVAL_THIRD_PARTY` |
-| 승인 | 통계 수치 원문 대조 완료일 | `APPROVAL_STATS_VERIFIED` |
-| 고지 | 운영 주체, GA 명칭·등록번호, 설계사 성명·등록번호, 연락처, 주소, 개인정보 보호책임자, 처리 주체(점검/보장분석), 제3자 제공, 보유기간(점검/보장분석), 광고 심의필 번호, 처리방침 시행일, 서버·DB 위치(`SERVER_REGION`·`DB_REGION`) | `config/requirements.json` 참고 |
-| 인프라 | HTTPS 서비스 URL, Supabase URL/anon/service role 키, `APP_SECRET`, `PII_ENCRYPTION_KEY`, `CRON_SECRET`(운영 전용 — 1년 자동 파기) | 〃 |
+| 개인정보 보호법 제15·22·30조, 제28조의8(처리방침·동의·위탁·국외이전 고지) | 운영 주체, 연락처·이메일, 개인정보 보호책임자, 처리 주체, 제3자 제공(none), 보유기간(점검·보장분석 1년), 처리방침 시행일, 서버 위치(iad1)·DB 위치(서울 ap-northeast-2) | 기본값으로 충족 |
+| 보험업법 제95조의4·금융소비자보호법 제22조·보험협회 광고심의 기준 (소속 GA 준법 확인 + 심의필 표시, 모집종사자 표시) | `AD_REVIEW_NO`, `AGENCY_REG_NO`, `PLANNER_REG_NO` (GA 명칭·설계사 성명은 기본값) | **미충족 — 운영자 입력 필요** |
+| 보안(연락처 암호화·관리자 인증·DB) | Supabase URL/anon/service role 키, `APP_SECRET`, `PII_ENCRYPTION_KEY` + 실행 중 DB 자동 점검 통과 | Production 설정됨 |
+
+### 경고만 (신청 차단 안 함)
+
+`BUSINESS_ADDRESS`(비면 고객 화면에서 줄 숨김), `NEXT_PUBLIC_SITE_URL`(비면 Vercel 운영 주소), `CRON_SECRET`(첫 신청이 1년 되기 전까지 설정),
+`APPROVAL_AD_REVIEW`·`APPROVAL_PRIVACY`·`APPROVAL_COVERAGE_OFFER`·`APPROVAL_THIRD_PARTY`·`APPROVAL_STATS_VERIFIED`·`APPROVAL_DB_VERIFIED`(내부 기록).
 
 승인일은 `YYYY-MM-DD` 형식만 인정된다. 승인 문서(심의필, 승인 메일 등)는 별도로 보관한다.
 

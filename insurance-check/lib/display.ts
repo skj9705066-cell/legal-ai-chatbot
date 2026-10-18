@@ -19,6 +19,16 @@ export function settingLine(text: string, mode: DisplayMode): string {
   return mode === "production" && text.includes(PENDING_TEXT) ? PENDING_TEXT : text;
 }
 
+/**
+ * "이름 · 등록번호 …" 한 줄. 운영 화면에서 등록번호가 아직 없으면 확인된 이름만 보여 준다(등록번호를 지어내거나 '준비 중'으로 이름까지 가리지 않음).
+ * 데모·테스트는 빠진 등록번호를 '[설정 필요]'로 드러낸다.
+ */
+export function nameWithRegNo(name: string | null, regNo: string | null, nameLabel: string, regLabel: string, mode: DisplayMode): string {
+  const n = orSetting(name, nameLabel, mode);
+  if (regNo && regNo.trim()) return `${n} · 등록번호 ${regNo}`;
+  return mode === "production" ? n : `${n} · 등록번호 ${orSetting(null, regLabel, mode)}`;
+}
+
 /** 데모·테스트 화면의 '[설정 필요]' 자리표시인지(강조 색 표시용) */
 export function isPlaceholder(text: string): boolean {
   return text.startsWith("[설정 필요");
