@@ -133,9 +133,28 @@ test("같은 제출(제출 키)을 다시 보내면 새로 저장하지 않고 �
   expect((await res.json()).refNo).toBe(mobileRefNo);
 });
 
-test("관리자 CRM: 저장된 신청 조회 — 테스트 표시·마스킹·동의 기록·연락처 복호화", async ({ page }) => {
-  expect(refNo, "앞 테스트의 신청번호").not.toBe("");
+/** 상세 화면에서 라벨(dt) 옆 값(dd) */
+const field = (page: Page, label: string) => page.locator("dl > div").filter({ has: page.locator("dt").getByText(label, { exact: true }) }).locator("dd");
+
+/** 상세 화면 편집: 상태·메모 저장 → 새로고침 후에도 DB 값 유지 */
+async function editAndVerify(page: Page, status: string, memo: string) {
+  const editor = page.locator("form").filter({ has: page.getByRole("button", { name: "저장" }) });
+  await editor.getByLabel("보험금 점검 상태").selectOption(status);
+  await editor.getByLabel("처리 메모").fill(memo);
+  await editor.getByRole("button", { name: "저장" }).click();
+  await expect(page.getByText("저장되었습니다.")).toBeVisible();
+  await page.reload();
+  await expect(editor.getByLabel("보험금 점검 상태")).toHaveValue(status);
+  await expect(editor.getByLabel("처리 메모")).toHaveValue(memo);
+}
+
+// 이번 실행에서 만든 테스트 신청 2건만 수정한다(기존 신청은 건드리지 않음). 관리자 로그인은 1회(로그인 제한 15분 10회)
+test("관리자 CRM: 신청 조회·DB 값 일치 → 상태·메모 저장 (PC 1280) → 같은 작업을 모바일 390 화면에서", async ({ page }) => {
+  expect(refNo, "앞 테스트의 PC 신청번호").not.toBe("");
+  expect(mobileRefNo, "앞 테스트의 모바일 신청번호").not.toBe("");
   await login(page);
+
+  // ── PC: 목록 → 상세 → 신청 내용과 DB 값 일치 ──
   await page.goto(`/admin?q=${encodeURIComponent(refNo)}`);
   const row = page.getByRole("row").filter({ hasText: refNo });
   await expect(row).toHaveCount(1);
@@ -143,25 +162,49 @@ test("관리자 CRM: 저장된 신청 조회 — 테스트 표시·마스킹·�
   await expect(row).toContainText("미청구 보험금");
   await expect(row).toContainText("staging_check");
   await row.getByRole("link", { name: refNo }).click();
+  await expect(page.locator("h1")).toHaveText(refNo);
   await expect(page.getByText("테스트 · 지표 제외")).toBeVisible();
+  await expect(field(page, "고객명")).toHaveText(NAME);
+  await expect(field(page, "점검 유형")).toContainText("미청구 보험금");
+  await expect(field(page, "유입")).toContainText("staging_check / qa / db_connect");
   // 동의: 여부 · 문구 버전 · 시각
   await expect(page.locator("dd").filter({ hasText: /^동의 · claim-.+ · \d/ })).toHaveCount(1);
   await expect(page.locator("dd").filter({ hasText: /^동의 · marketing-.+ · \d/ })).toHaveCount(1);
   // 연락처 원문은 권한자만, 서버에서 복호화 (열람은 감사로그에 기록)
   await page.getByRole("button", { name: /원문 보기/ }).click();
-  await expect(page.getByText(PHONE_DIGITS)).toBeVisible();
+  await expect(field(page, "연락처")).toContainText(PHONE_DIGITS);
+
+  // ── PC: 상태·메모 저장 ──
+  await editAndVerify(page, "contacting", `E2E PC 저장 확인 ${refNo}`);
+  await page.goto(`/admin?q=${encodeURIComponent(refNo)}`);
+  await expect(page.getByRole("row").filter({ hasText: refNo })).toContainText("연락 중");
+
   // CSV: 마스킹 번호 + 테스트 표시, 원문 번호 없음
   const csv = await (await page.request.get(`/api/admin/export?q=${encodeURIComponent(refNo)}`)).text();
   expect(csv).toContain(refNo);
   expect(csv).toContain("테스트(지표 제외)");
   expect(csv).not.toContain(PHONE_DIGITS);
 
-  // 모바일에서 보낸 신청도 같은 CRM에 한 건으로 보인다
-  expect(mobileRefNo, "모바일 신청번호").not.toBe("");
+  // ── 모바일 390x844: 모바일에서 보낸 신청을 같은 로그인으로 조회·수정 ──
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/admin?q=${encodeURIComponent(mobileRefNo)}`);
   const mrow = page.getByRole("row").filter({ hasText: mobileRefNo });
   await expect(mrow).toHaveCount(1);
   await expect(mrow).toContainText(`010-****-06${suffix}`);
   await expect(mrow).toContainText("숨은·만기·휴면 보험금");
   await expect(mrow).toContainText("staging_check");
+  await mrow.getByRole("link", { name: mobileRefNo }).click();
+  await expect(page.locator("h1")).toHaveText(mobileRefNo);
+  await expect(field(page, "고객명")).toHaveText(`${NAME}모바일`);
+  await expect(field(page, "유입")).toContainText("staging_check / qa / db_connect_mobile");
+  await page.getByRole("button", { name: /원문 보기/ }).click();
+  await expect(field(page, "연락처")).toContainText(MOBILE_PHONE.replace(/-/g, ""));
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), "모바일 가로 스크롤").toBeLessThanOrEqual(0);
+  await editAndVerify(page, "guided", `E2E 모바일 저장 확인 ${mobileRefNo}`);
+  await page.goto(`/admin?q=${encodeURIComponent(mobileRefNo)}`);
+  await expect(page.getByRole("row").filter({ hasText: mobileRefNo })).toContainText("청구 방법 안내 완료");
+
+  // 수정은 감사로그에 남는다
+  await page.goto("/admin/audit");
+  await expect(page.getByText("lead.update").first()).toBeVisible();
 });
