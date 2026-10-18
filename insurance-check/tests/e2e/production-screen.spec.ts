@@ -45,7 +45,13 @@ test("② 필수 고지가 남아 있다 (운영 주체 정보·처리방침·�
   }
 });
 
+/** 운영 접수가 열려 있는지(열린 뒤에는 '준비 전 잠금' 점검은 해당 없음 — 실제 신청 확인은 별도로 테스트 데이터로 한다) */
+async function submissionOpen(request: import("@playwright/test").APIRequestContext) {
+  return ((await (await request.get("/api/status")).json()) as { submissionEnabled: boolean }).submissionEnabled;
+}
+
 test("③ 준비 전 접수 잠금: 동의 화면은 그대로, 신청은 전송되지 않고 API도 503", async ({ page, request, isMobile }) => {
+  test.skip(await submissionOpen(request), "운영 접수가 열려 있음");
   const posts: string[] = [];
   page.on("request", (r) => r.url().endsWith("/api/leads") && r.method() === "POST" && posts.push(r.url()));
   await page.goto("/#apply");
@@ -70,7 +76,8 @@ test("③ 준비 전 접수 잠금: 동의 화면은 그대로, 신청은 전송
   expect(res.status()).toBe(503);
 });
 
-test("③ 준비 전에는 광고·분석 태그를 불러오지 않는다", async ({ page }) => {
+test("③ 준비 전에는 광고·분석 태그를 불러오지 않는다", async ({ page, request }) => {
+  test.skip(await submissionOpen(request), "운영 접수가 열려 있음");
   const tags: string[] = [];
   page.on("request", (r) => /googletagmanager|google-analytics|connect\.facebook\.net/.test(r.url()) && tags.push(r.url()));
   await page.goto("/");
@@ -78,10 +85,10 @@ test("③ 준비 전에는 광고·분석 태그를 불러오지 않는다", asy
   expect(tags).toEqual([]);
 });
 
-test("④ 접수 상태 API: 잠김이고, 운영에서는 진단 정보(설정 이름 등)를 내보내지 않는다", async ({ request }) => {
+test("④ 접수 상태 API: 운영에서는 진단 정보(설정 이름 등)를 내보내지 않는다", async ({ request }) => {
   const res = await request.get("/api/status");
   expect(res.status()).toBe(200);
-  expect(await res.json()).toEqual({ submissionEnabled: false, diagnostics: null });
+  expect(await res.json()).toEqual({ submissionEnabled: expect.any(Boolean), diagnostics: null });
 });
 
 test("④ 운영에서는 데모 관리자 로그인(역할 선택·데모 비밀번호)이 화면·API 모두 막혀 있다", async ({ page }) => {
