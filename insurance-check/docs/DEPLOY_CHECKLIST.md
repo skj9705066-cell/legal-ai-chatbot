@@ -12,11 +12,11 @@
 | 근거 | 항목 | 상태(2026-10-18) |
 |---|---|---|
 | 개인정보 보호법 제15·22·30조, 제28조의8(처리방침·동의·위탁·국외이전 고지) | 운영 주체, 연락처·이메일, 개인정보 보호책임자, 처리 주체, 제3자 제공(none), 보유기간(점검·보장분석 1년), 처리방침 시행일, 서버 위치(iad1)·DB 위치(서울 ap-northeast-2) | 기본값으로 충족 |
-| 금융소비자보호법 제22조(업무광고)·보험협회 광고심의 — GA 소속 설계사 광고는 GA 본사·협회 심의를 거친 것만 사용(위반 시 과태료) | `AD_REVIEW_NO` | **미충족 — 심의 후 운영자 입력** |
 | 보안(연락처 암호화·관리자 인증·DB) | Supabase URL/anon/service role 키, `APP_SECRET`, `PII_ENCRYPTION_KEY` + 실행 중 DB 자동 점검 통과 | Production 설정됨 |
 
 ### 경고만 (신청 차단 안 함)
 
+`AD_REVIEW_NO`(금융소비자보호법 제22조·협회 심의 기준상 심의 후 광고 게시·번호 표시는 **운영자 의무**지만, 번호 유무로 신청 API를 막을 법령 요건은 없음 — 비면 고객 화면에 '준비 중' 표시, 승인된 것처럼 표시하지 않음),
 `AGENCY_REG_NO`·`PLANNER_REG_NO`(법령상 광고 필수 표시 근거 미확인 — GA 심의에서 요구하면 입력, 비면 명칭·성명만 표시), `BUSINESS_ADDRESS`(비면 고객 화면에서 줄 숨김), `NEXT_PUBLIC_SITE_URL`(비면 Vercel 운영 주소), `CRON_SECRET`(첫 신청이 1년 되기 전까지 설정),
 `APPROVAL_AD_REVIEW`·`APPROVAL_PRIVACY`·`APPROVAL_COVERAGE_OFFER`·`APPROVAL_THIRD_PARTY`·`APPROVAL_STATS_VERIFIED`·`APPROVAL_DB_VERIFIED`(내부 기록).
 

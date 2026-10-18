@@ -153,21 +153,24 @@ describe("production lock: only legal·security items block submissions", () => 
     }
   });
 
-  it("stays locked without the ad review number only (registration numbers warn), and opens once it is set", async () => {
+  it("blocks only on security settings; ad review number and registration numbers are admin warnings", async () => {
     const { getReadiness, getOperatorInfo } = await import("@/lib/config");
-    Object.assign(process.env, INFRA, { VERCEL_ENV: "production" });
+    process.env.VERCEL_ENV = "production";
+    for (const k of Object.keys(AD)) delete process.env[k];
+    // 보안 설정(암호화 키·DB 키·서명 키)이 없으면 운영 접수는 계속 잠긴다
     let r = getReadiness();
     expect(r.mode).toBe("production");
     expect(r.ready).toBe(false);
-    expect(r.items.filter((i) => i.blocking && !i.ok).map((i) => i.key)).toEqual(["AD_REVIEW_NO"]);
-    expect(r.items.filter((i) => ["AGENCY_REG_NO", "PLANNER_REG_NO"].includes(i.key)).every((i) => !i.blocking)).toBe(true);
+    expect(r.items.filter((i) => i.blocking && !i.ok).every((i) => i.group === "infra")).toBe(true);
 
-    process.env.AD_REVIEW_NO = AD.AD_REVIEW_NO;
+    Object.assign(process.env, INFRA);
     r = getReadiness();
     expect(r.ready).toBe(true);
-    // 내부 점검 항목은 비어 있어도 경고만
+    // 심의필 번호·등록번호·내부 점검 항목은 비어 있어도 경고만
+    for (const key of ["AD_REVIEW_NO", "AGENCY_REG_NO", "PLANNER_REG_NO", "APPROVAL_PRIVACY"]) {
+      expect(r.items.find((i) => i.key === key), key).toMatchObject({ ok: false, blocking: false });
+    }
     expect(r.items.filter((i) => !i.ok).every((i) => !i.blocking)).toBe(true);
-    expect(r.items.find((i) => i.key === "APPROVAL_PRIVACY")).toMatchObject({ ok: false, blocking: false });
 
     // 확인된 운영 정보는 기본값으로, 확인되지 않은 값은 비어 있다
     const o = getOperatorInfo();
