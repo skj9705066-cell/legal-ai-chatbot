@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getPublicConfig } from "@/lib/config";
-import { claimConsentRows, coverageConsentRows, marketingConsentRows } from "@/lib/consent-text";
+import { claimConsentRows, coverageConsentRows, marketingConsentRows, processorRows } from "@/lib/consent-text";
 import { isPlaceholder, orSetting, thirdPartyText } from "@/lib/display";
 import { cn } from "@/lib/utils";
 import { ApplyShell } from "@/components/apply/ApplyShell";
@@ -67,19 +67,51 @@ export default function PrivacyPage() {
             <p className="mt-2">{thirdPartyText(o.thirdPartyProvision, config.mode)}</p>
           </section>
           <section>
-            <h2 className="text-[18px] font-bold text-navy">6. 수집하지 않는 정보</h2>
+            <h2 className="text-[18px] font-bold text-navy">6. 처리위탁 및 국외 이전</h2>
+            <p className="mt-2">
+              서비스 운영을 위해 아래 업체에 개인정보 처리를 맡기며, 두 업체 모두 미국 법인이므로 국외 이전이 포함됩니다. 신청 정보는 신청할 때마다 암호화된 네트워크(HTTPS)로
+              전송됩니다.
+            </p>
+            {processorRows(o, config.mode).map((p) => (
+              <Table
+                key={p.name}
+                rows={[
+                  { label: "이전받는 자", value: `${p.name} · ${p.contact}` },
+                  { label: "위탁 업무", value: p.task },
+                  { label: "이전 항목", value: p.items },
+                  { label: "처리 위치", value: p.location },
+                  { label: "보유 기간", value: p.retention },
+                ]}
+              />
+            ))}
+            <p className="mt-3">
+              국외 이전을 원하지 않으시면 온라인 신청을 하지 않으실 수 있으며, 이 경우 온라인 상담 신청은 이용할 수 없습니다.
+            </p>
+          </section>
+          <section>
+            <h2 className="text-[18px] font-bold text-navy">7. 수집하지 않는 정보</h2>
             <p className="mt-2">주민등록번호, 상세 병력 등 건강정보, 보험증권 원본은 신청 단계에서 수집하지 않습니다.</p>
           </section>
           <section>
-            <h2 className="text-[18px] font-bold text-navy">7. 안전성 확보 조치</h2>
+            <h2 className="text-[18px] font-bold text-navy">8. 개인정보의 파기</h2>
             <ul className="mt-2 list-disc space-y-1 pl-5">
-              <li>전송 구간 암호화(HTTPS), 연락처 별도 암호화 저장</li>
-              <li>관리자 인증·권한별 접근 통제, 연락처 원문 열람·내보내기 등 접근 이력 기록</li>
-              <li>보유 기간 경과 또는 삭제 요청 시 지체 없이 파기</li>
+              <li>
+                보험금 점검 신청 정보와 보장 분석 상담·광고성 정보 수신 동의 정보는 신청일로부터 1년이 지나면 매일 실행되는 자동 파기 작업으로 이름·연락처·상담
+                메모·동의 여부를 지웁니다. 개인을 알아볼 수 없는 통계용 항목(점검 유형, 처리 상태, 유입 경로)만 남깁니다.
+              </li>
+              <li>보유 기간 전이라도 삭제를 요청하시면 본인 확인 후 지체 없이 같은 방법으로 파기합니다.</li>
+              <li>동의 철회·삭제 요청 기록도 접수일로부터 1년이 지나면 이름·연락처를 지웁니다.</li>
             </ul>
           </section>
           <section>
-            <h2 className="text-[18px] font-bold text-navy">8. 방문 기록과 광고 성과 측정</h2>
+            <h2 className="text-[18px] font-bold text-navy">9. 안전성 확보 조치</h2>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              <li>전송 구간 암호화(HTTPS), 연락처 별도 암호화 저장</li>
+              <li>관리자 인증·권한별 접근 통제, 연락처 원문 열람·내보내기 등 접근 이력 기록</li>
+            </ul>
+          </section>
+          <section>
+            <h2 className="text-[18px] font-bold text-navy">10. 방문 기록과 광고 성과 측정</h2>
             <ul className="mt-2 list-disc space-y-1 pl-5">
               <li>서비스 개선을 위해 화면 방문·버튼 클릭 같은 이용 기록을 무작위 세션 번호, 광고 유입 정보(UTM), 선택한 점검 유형과 함께 저장합니다. 이름·연락처는 포함하지 않습니다.</li>
               <li>
@@ -90,7 +122,7 @@ export default function PrivacyPage() {
             </ul>
           </section>
           <section>
-            <h2 className="text-[18px] font-bold text-navy">9. 정보주체의 권리와 동의 철회</h2>
+            <h2 className="text-[18px] font-bold text-navy">11. 정보주체의 권리와 동의 철회</h2>
             <p className="mt-2">
               언제든지 열람·정정·삭제·처리정지 및 동의 철회를 요청할 수 있습니다.{" "}
               <Link href="/privacy/withdraw" className="font-semibold text-blue underline underline-offset-2">
@@ -100,7 +132,7 @@ export default function PrivacyPage() {
             </p>
           </section>
           <section>
-            <h2 className="text-[18px] font-bold text-navy">10. 개인정보 보호책임자</h2>
+            <h2 className="text-[18px] font-bold text-navy">12. 개인정보 보호책임자</h2>
             <p className="mt-2">
               <Field value={orSetting(o.privacyOfficer, "개인정보 보호책임자", config.mode)} />
             </p>

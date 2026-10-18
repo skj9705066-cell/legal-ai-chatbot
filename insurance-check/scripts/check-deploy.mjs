@@ -83,6 +83,7 @@ function check(key, group) {
   if (key === "APP_SECRET" && v.length < 32) return "32자 미만";
   if (key === "PII_ENCRYPTION_KEY" && Buffer.from(v, "base64").length !== 32) return "base64 32바이트 아님";
   if (key === "NEXT_PUBLIC_SITE_URL" && !v.startsWith("https://")) return "https 아님";
+  if (key === "CRON_SECRET" && v.length < 16) return "16자 미만";
   return null;
 }
 
@@ -95,7 +96,7 @@ for (const group of ["approvals", "operator", "infra"]) {
 }
 
 if (mode === "staging" && !strict) {
-  const STAGING = new Set([...req.infra.map((r) => r.key), "APPROVAL_DB_VERIFIED"]);
+  const STAGING = new Set([...req.infra.filter((r) => !r.productionOnly).map((r) => r.key), "APPROVAL_DB_VERIFIED"]);
   const missing = failures.filter((f) => [...STAGING].some((k) => f.includes(`(${k})`)));
   console.log("[check-deploy] 테스트(staging) 모드 빌드입니다. 실제 DB에 '테스트 신청'으로 저장하며 광고 태그는 꺼집니다.");
   if (missing.length) console.warn(`[check-deploy] 테스트 모드 필수 항목 미완료 — 신청 접수가 잠깁니다:\n${missing.join("\n")}`);

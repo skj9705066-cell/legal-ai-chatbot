@@ -20,7 +20,7 @@ import { maskPhone, normalizePhone, type LeadInput } from "@/lib/validation";
 import type { StaffSession } from "@/lib/session";
 import { decryptPii, encryptPii, hashPhone } from "./crypto";
 import { repo, toLead, type LeadFilter, type LeadRow } from "./repo";
-import { DuplicateSubmissionError } from "./repo/types";
+import { DELETED_NAME, DuplicateSubmissionError, LEAD_SCRUB, PRIVACY_REQUEST_SCRUB } from "./repo/types";
 import { isSalesEligible } from "./repo/filter";
 import { notifyNewLead } from "./notify";
 
@@ -290,7 +290,7 @@ export async function updateLeadByStaff(session: StaffSession, id: string, raw: 
 
 /* ───────────── 개인정보 요청(철회·삭제) ───────────── */
 
-export const DELETED_NAME = "(삭제됨)";
+export { DELETED_NAME };
 
 /**
  * 공개 요청 접수. 존재 여부를 노출하지 않도록 응답은 항상 동일하다.
@@ -355,22 +355,7 @@ export async function updatePrivacyRequestByStaff(
 
   if (req.type === "delete_all" && status === "completed") {
     // 파기: 식별 정보 제거. 통계용 비식별 필드(유형·상태·UTM)만 남긴다.
-    for (const leadId of req.matchedLeadIds) {
-      await r.updateLead(leadId, {
-        name: DELETED_NAME,
-        phoneMasked: "***-****-****",
-        phoneEnc: "",
-        phoneHash: "",
-        memo: "",
-        notes: "",
-        assignee: null,
-        nextContactAt: null,
-        marketingConsent: false,
-        coverageConsent: false,
-        coverageStatus: "withdrawn",
-        privacyStatus: "completed",
-      });
-    }
+    for (const leadId of req.matchedLeadIds) await r.updateLead(leadId, LEAD_SCRUB);
   } else if (req.type === "delete_all" && status === "processing") {
     for (const leadId of req.matchedLeadIds) await r.updateLead(leadId, { privacyStatus: "processing" });
   }
@@ -382,7 +367,7 @@ export async function updatePrivacyRequestByStaff(
     handledAt: now,
   };
   if (req.type === "delete_all" && status === "completed") {
-    Object.assign(patch, { name: DELETED_NAME, phoneMasked: "***-****-****", phoneHash: "" });
+    Object.assign(patch, PRIVACY_REQUEST_SCRUB);
   }
   const updated = await r.updatePrivacyRequest(id, patch);
   await r.addAudit({
@@ -393,6 +378,35 @@ export async function updatePrivacyRequestByStaff(
     detail: `${req.type} → ${status}`,
   });
   return updated;
+}
+
+/** 상담 신청 정보 보유기간: 신청일로부터 1년 (개인정보 처리방침 '개인정보의 파기'와 같은 값) */
+export const LEAD_RETENTION_YEARS = 1;
+
+/** 이 시각 이전에 들어온 신청은 보유기간이 지났다 */
+export function retentionCutoff(now: Date = new Date()): string {
+  const d = new Date(now);
+  d.setUTCFullYear(d.getUTCFullYear() - LEAD_RETENTION_YEARS);
+  return d.toISOString();
+}
+
+/**
+ * 보유기간이 지난 신청·개인정보 요청을 파기(익명화)한다. 매일 Vercel Cron(app/api/cron/purge-expired)이 부른다.
+ * 삭제 요청 완료와 같은 방식으로 이름·연락처·메모·동의를 지우고 통계용 비식별 항목만 남긴다.
+ * 지운 건이 없어도 실행 기록을 남겨, 파기 작업이 실제로 돌고 있는지 감사 로그로 확인할 수 있게 한다.
+ */
+export async function purgeExpiredPersonalData(now: Date = new Date()) {
+  const r = repo();
+  const before = retentionCutoff(now);
+  const result = await r.purgeBefore(before);
+  await r.addAudit({
+    actor: "system",
+    role: "system",
+    action: "privacy.purge_expired",
+    target: null,
+    detail: `보유기간(${LEAD_RETENTION_YEARS}년) 경과 파기 — 기준 ${before.slice(0, 10)} 이전, 신청 ${result.leads}건, 개인정보 요청 ${result.privacyRequests}건`,
+  });
+  return { before, ...result };
 }
 
 export async function recordStaffAudit(actor: { name: string; role: StaffRole }, action: string, detail: string, target: string | null = null) {

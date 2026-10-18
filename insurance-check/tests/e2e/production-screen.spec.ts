@@ -12,7 +12,8 @@ import { expect, test, type Page } from "@playwright/test";
 const ON = process.env.E2E_PRODUCTION === "1";
 test.skip(!ON, "E2E_PRODUCTION=1 일 때만 실행 (운영 모드 빌드)");
 
-const INTERNAL = /\[설정 필요|데모|테스트 모드|테스트 환경|Vercel|환경변수|서비스 가칭|PREVIEW_TEST/;
+// 'Vercel'은 내부 문구(배포 진단)로 보되, 처리방침·동의의 처리위탁 고지(수탁자 'Vercel Inc.', 'Vercel의 로그 보관')는 고객에게 꼭 보여야 하는 문구라 허용
+const INTERNAL = /\[설정 필요|데모|테스트 모드|테스트 환경|Vercel(?! ?Inc\.|의 로그 보관)|환경변수|서비스 가칭|PREVIEW_TEST/;
 const PAGES = ["/", "/privacy", "/privacy/withdraw", "/apply/complete", "/apply/done"];
 
 async function visibleText(page: Page) {
@@ -37,7 +38,7 @@ test("② 필수 고지가 남아 있다 (운영 주체 정보·처리방침·�
   await expect(page.getByTestId("apply-trust")).toContainText("보험금 지급은 보장하지 않으며");
 
   await page.goto("/privacy");
-  for (const t of ["1. 처리 주체", "2. 보험금 점검 신청 (필수 동의)", "5. 제3자 제공", "9. 정보주체의 권리와 동의 철회", "10. 개인정보 보호책임자"]) {
+  for (const t of ["1. 처리 주체", "2. 보험금 점검 신청 (필수 동의)", "5. 제3자 제공", "6. 처리위탁 및 국외 이전", "8. 개인정보의 파기", "11. 정보주체의 권리와 동의 철회", "12. 개인정보 보호책임자"]) {
     await expect(page.getByRole("heading", { name: t })).toBeVisible();
   }
 });
