@@ -134,3 +134,43 @@ describe("readiness", () => {
     expect(isStagingRequirement(items.find((i) => i.key === "PII_ENCRYPTION_KEY")!)).toBe(true);
   });
 });
+
+describe("production lock: only legal·security items block submissions", () => {
+  const INFRA = {
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_ANON_KEY: "sb_publishable_x",
+    SUPABASE_SERVICE_ROLE_KEY: "sb_secret_x",
+    APP_SECRET: "a".repeat(40),
+    PII_ENCRYPTION_KEY: Buffer.alloc(32, 1).toString("base64"),
+  };
+  const AD = { AD_REVIEW_NO: "심의필 테스트", AGENCY_REG_NO: "등록-테스트", PLANNER_REG_NO: "등록-테스트" };
+  const keys = [...Object.keys(INFRA), ...Object.keys(AD), "VERCEL_ENV", "PII_ENCRYPTION_KEY"];
+  const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+  afterEach(() => {
+    for (const k of keys) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
+  });
+
+  it("stays locked without the ad review number / registration numbers, and opens once they are set", async () => {
+    const { getReadiness, getOperatorInfo } = await import("@/lib/config");
+    Object.assign(process.env, INFRA, { VERCEL_ENV: "production" });
+    let r = getReadiness();
+    expect(r.mode).toBe("production");
+    expect(r.ready).toBe(false);
+    expect(r.items.filter((i) => i.blocking && !i.ok).map((i) => i.key).sort()).toEqual(["AD_REVIEW_NO", "AGENCY_REG_NO", "PLANNER_REG_NO"]);
+
+    Object.assign(process.env, AD);
+    r = getReadiness();
+    expect(r.ready).toBe(true);
+    // 내부 점검 항목은 비어 있어도 경고만
+    expect(r.items.filter((i) => !i.ok).every((i) => !i.blocking)).toBe(true);
+    expect(r.items.find((i) => i.key === "APPROVAL_PRIVACY")).toMatchObject({ ok: false, blocking: false });
+
+    // 확인된 운영 정보는 기본값으로, 확인되지 않은 값은 비어 있다
+    const o = getOperatorInfo();
+    expect(o).toMatchObject({ operatorName: "손국주", agencyName: "어센틱금융그룹", contactPhone: "010-8822-2341", contactEmail: "skj0506@naver.com", retentionClaim: "신청일로부터 1년" });
+    expect(o.businessAddress).toBeNull();
+  });
+});

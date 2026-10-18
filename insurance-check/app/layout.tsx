@@ -6,7 +6,10 @@ import "./globals.css";
 import { getAppMode, getPublicConfig } from "@/lib/config";
 import { Analytics } from "@/components/site/Analytics";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3100";
+// 검색·공유 미리보기 기준 주소. 설정이 없으면 Vercel이 주는 운영 주소(예: insurance-check-demo.vercel.app)를 쓴다
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3100");
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

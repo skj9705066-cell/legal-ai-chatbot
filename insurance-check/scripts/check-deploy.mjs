@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 배포 게이트. `npm run build` 전에 자동 실행된다.
- *  - 운영 모드(APP_MODE=production 또는 Vercel Production 배포):
+ *  - 운영 모드(APP_MODE=production 또는 Vercel Production 배포): 법적·보안 필수 항목만 검사(blocking=false 항목은 경고)
  *      Vercel Production 배포는 항목이 비어 있어도 '접수 잠금' 상태로 빌드한다(경고 출력). 빌드를 실패시키면
  *      실제 고객 주소에 이전 배포(데모 화면 등)가 그대로 남기 때문이다. 접수·광고 태그는 앱이 잠근다.
  *      그 밖(로컬 등)에서 운영 모드로 빌드하면 하나라도 없을 때 실패한다.
@@ -76,8 +76,11 @@ if (exposure.length) {
 }
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+// 환경변수가 없으면 운영자가 확인해 준 기본값(requirements.json default)을 쓴다 — lib/config.ts setting()과 같은 규칙
+const DEFAULTS = new Map(Object.values(req).filter(Array.isArray).flat().filter((r) => r.default).map((r) => [r.key, r.default]));
+
 function check(key, group) {
-  const v = (process.env[key] ?? "").trim();
+  const v = ((process.env[key] ?? "").trim() || DEFAULTS.get(key)) ?? "";
   if (!v) return "미설정";
   if ((group === "approvals" || key === "PRIVACY_POLICY_EFFECTIVE_DATE") && !DATE.test(v)) return "YYYY-MM-DD 형식 아님";
   if (key === "APP_SECRET" && v.length < 32) return "32자 미만";
@@ -88,12 +91,15 @@ function check(key, group) {
 }
 
 const failures = [];
+const warnings = [];
 for (const group of ["approvals", "operator", "infra"]) {
-  for (const { key, label } of req[group]) {
+  for (const { key, label, blocking } of req[group]) {
     const problem = check(key, group);
-    if (problem) failures.push(`  - [${group}] ${label} (${key}): ${problem}`);
+    // blocking=false: 법적·보안 필수가 아닌 내부 점검 항목 — 운영 접수를 막지 않고 경고만
+    if (problem) (blocking === false && (mode !== "staging" || strict) ? warnings : failures).push(`  - [${group}] ${label} (${key}): ${problem}`);
   }
 }
+if (warnings.length && mode !== "demo") console.warn(`[check-deploy] 경고(신청 차단 안 함) — ${warnings.length}개 항목:\n${warnings.join("\n")}\n`);
 
 if (mode === "staging" && !strict) {
   const STAGING = new Set([...req.infra.filter((r) => !r.productionOnly).map((r) => r.key), "APPROVAL_DB_VERIFIED"]);

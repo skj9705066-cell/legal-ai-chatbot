@@ -35,6 +35,8 @@ test("② 필수 고지가 남아 있다 (운영 주체 정보·처리방침·�
   await expect(op.getByRole("link", { name: "개인정보 처리방침" })).toBeVisible();
   const footer = page.locator("footer");
   for (const t of ["운영 주체", "개인정보 보호책임자", "광고 심의", "손해사정", "기존 보험계약을 해지하고"]) await expect(footer).toContainText(t);
+  // 운영자가 확인한 운영 정보가 그대로 표시된다
+  for (const t of ["손국주", "어센틱금융그룹", "010-8822-2341", "skj0506@naver.com"]) await expect(footer).toContainText(t);
   await expect(page.getByTestId("apply-trust")).toContainText("보험금 지급은 보장하지 않으며");
 
   await page.goto("/privacy");

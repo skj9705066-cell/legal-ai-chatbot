@@ -309,8 +309,9 @@ test("trust right before the form: what you get, no-guarantee note, operator inf
   // 운영 주체 정보: 설정되지 않은 값은 지어내지 않고 '[설정 필요]'로 표시
   const op = page.getByTestId("apply-operator");
   for (const l of ["운영 주체", "소속 보험대리점", "담당 설계사", "고객 문의", "광고 심의", "개인정보"]) await expect(op.getByText(l, { exact: true })).toBeVisible();
-  // 확인되지 않은 정보는 지어내지 않고 '[설정 필요]'로 표시
-  for (const t of ["[설정 필요: 운영 주체]", "[설정 필요: GA 등록번호]", "[설정 필요: 설계사 등록번호]", "[설정 필요: 광고 심의필 번호]"]) await expect(op).toContainText(t);
+  // 운영자가 확인한 정보는 그대로 표시하고, 확인되지 않은 정보(등록번호·심의번호)는 지어내지 않고 '[설정 필요]'로 표시
+  for (const t of ["손국주", "어센틱금융그룹", "010-8822-2341"]) await expect(op).toContainText(t);
+  for (const t of ["[설정 필요: GA 등록번호]", "[설정 필요: 설계사 등록번호]", "[설정 필요: 광고 심의필 번호]"]) await expect(op).toContainText(t);
   await expect(op.getByRole("link", { name: "개인정보 처리방침" })).toHaveAttribute("href", "/privacy");
   await expect(page.locator("#apply").getByRole("heading", { level: 2 })).toHaveText("이제 내 보험도 확인해 볼까요?");
   await expect(page.locator("#apply")).toContainText("확인하고 싶은 항목을 선택하고 무료 상담을 신청하세요.");

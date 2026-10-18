@@ -35,7 +35,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const { mode, items, ready } = getReadiness();
   const dbCheck = await getDbCheck((await searchParams).recheck === "1");
   const notify = notifyStatus();
-  const done = items.filter((i) => i.ok).length;
+  const required = items.filter((i) => i.blocking);
+  const done = required.filter((i) => i.ok).length;
+  const warnings = items.filter((i) => !i.blocking && !i.ok);
 
   return (
     <div className="space-y-6">
@@ -56,10 +58,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           </p>
         </div>
         <div className="rounded-2xl bg-white shadow-card ring-1 ring-navy-100 p-4">
-          <p className="text-[13px] text-navy-600">운영 준비</p>
+          <p className="text-[13px] text-navy-600">운영 필수(법적·보안)</p>
           <p className="mt-1 text-[18px] font-extrabold text-navy">
-            {done} / {items.length}
+            {done} / {required.length}
           </p>
+          <p className="mt-0.5 text-[13px] text-navy-600">경고(신청 차단 안 함) {warnings.length}건</p>
         </div>
         <div className="rounded-2xl bg-white shadow-card ring-1 ring-navy-100 p-4">
           <p className="text-[13px] text-navy-600">담당자 알림(문자·알림톡)</p>
@@ -68,9 +71,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </div>
 
       {mode === "production" && !ready && (
-        <Alert tone="error" title="운영 모드지만 필수 항목이 비어 있어 신청 접수가 잠겨 있습니다.">
-          고객 화면에는 &lsquo;준비 중&rsquo;으로 표시되고 신청 접수와 광고·분석 태그가 꺼져 있습니다. 소속 GA의 광고·개인정보 사전 승인을 받은 뒤 아래 미완료
-          항목을 채우고 재배포하세요. 광고 집행 전 <code>npm run check:deploy</code>가 통과해야 합니다.
+        <Alert tone="error" title="운영 모드지만 법적·보안 필수 항목이 비어 있어 신청 접수가 잠겨 있습니다.">
+          고객 화면에는 &lsquo;준비 중&rsquo;으로 표시되고 신청 접수와 광고·분석 태그가 꺼져 있습니다. 아래 &lsquo;신청 차단&rsquo; 표시 항목을 채우고 재배포하세요.
+        </Alert>
+      )}
+      {mode === "production" && ready && warnings.length > 0 && (
+        <Alert tone="caution" title={`신청 접수 중 · 확인할 경고 ${warnings.length}건 (신청은 막지 않음)`}>
+          {warnings.map((i) => i.key).join(", ")} — 아래 &lsquo;경고&rsquo; 표시 항목을 확인하세요. <code>CRON_SECRET</code>은 첫 신청이 1년이 되기 전에 반드시 설정해야 자동 파기가
+          동작합니다.
         </Alert>
       )}
       {mode === "demo" && (
@@ -147,6 +155,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                   <span className="min-w-[200px] flex-1 text-navy">{i.label}</span>
                   <code className="text-[13px] text-navy-600">{i.key}</code>
                   {!i.ok && <Badge variant="caution">{i.hint}</Badge>}
+                  {!i.ok && mode === "production" && (i.blocking ? <Badge variant="caution">신청 차단</Badge> : <Badge variant="demo">경고 · 차단 안 함</Badge>)}
                   {mode === "staging" && isStagingRequirement(i) && <Badge variant="demo">테스트 모드 필수</Badge>}
                 </li>
               ))}

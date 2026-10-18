@@ -43,17 +43,31 @@ export function usesDatabase(mode: AppMode = getAppMode()): boolean {
   return mode !== "demo";
 }
 
+type RequirementGroup = "operator" | "infra" | "approvals";
+
 const env = (key: string): string | null => {
   const v = process.env[key];
   return v && v.trim() ? v.trim() : null;
 };
 
-type RequirementGroup = "operator" | "infra" | "approvals";
+type Requirement = { key: string; label: string; default?: string; blocking?: boolean; productionOnly?: boolean };
+const REQUIREMENTS: Record<RequirementGroup, Requirement[]> = requirements;
+const DEFAULTS = new Map(
+  Object.values(REQUIREMENTS)
+    .flat()
+    .filter((r) => r.default)
+    .map((r) => [r.key, r.default as string]),
+);
+
+/** 운영 설정값: 환경변수 → 없으면 운영자가 확인해 준 기본값(config/requirements.json의 default). 확인되지 않은 항목은 기본값이 없다 */
+const setting = (key: string): string | null => env(key) ?? DEFAULTS.get(key) ?? null;
 
 export interface ReadinessItem {
   key: string;
   label: string;
   group: RequirementGroup;
+  /** false면 관리자 경고만 — 운영 신청 접수를 막지 않는다(법적·보안 필수가 아닌 내부 점검 항목) */
+  blocking: boolean;
   ok: boolean;
   hint?: string;
 }
@@ -61,7 +75,7 @@ export interface ReadinessItem {
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function checkValue(key: string, group: RequirementGroup): { ok: boolean; hint?: string } {
-  const v = env(key);
+  const v = setting(key);
   if (!v) return { ok: false, hint: "미설정" };
   if (group === "approvals" || key === "PRIVACY_POLICY_EFFECTIVE_DATE") {
     return DATE_RE.test(v) ? { ok: true } : { ok: false, hint: "YYYY-MM-DD 형식의 승인일을 입력" };
@@ -76,7 +90,7 @@ function checkValue(key: string, group: RequirementGroup): { ok: boolean; hint?:
 }
 
 /** 운영에서만 요구하는 인프라 항목(예: 자동 파기 Cron 키 — Vercel Cron은 Production 배포에서만 돈다) */
-const PRODUCTION_ONLY = new Set<string>(requirements.infra.filter((r) => "productionOnly" in r && r.productionOnly).map((r) => r.key));
+const PRODUCTION_ONLY = new Set<string>(REQUIREMENTS.infra.filter((r) => r.productionOnly).map((r) => r.key));
 
 /** 테스트(staging) 모드에 필요한 항목: 인프라(운영 전용 제외) + 운영 DB 점검 확인일. 운영 주체·광고 승인은 운영 모드에서만 요구 */
 export function isStagingRequirement(i: Pick<ReadinessItem, "group" | "key">): boolean {
@@ -86,13 +100,17 @@ export function isStagingRequirement(i: Pick<ReadinessItem, "group" | "key">): b
 export function getReadiness(): { mode: AppMode; items: ReadinessItem[]; ready: boolean } {
   const items: ReadinessItem[] = [];
   for (const group of ["operator", "infra", "approvals"] as const) {
-    for (const r of requirements[group]) {
-      items.push({ key: r.key, label: r.label, group, ...checkValue(r.key, group) });
+    for (const r of REQUIREMENTS[group]) {
+      items.push({ key: r.key, label: r.label, group, blocking: r.blocking !== false, ...checkValue(r.key, group) });
     }
   }
   const mode = getAppMode();
-  const required = mode === "staging" ? items.filter(isStagingRequirement) : items;
-  return { mode, items, ready: required.every((i) => i.ok) };
+  return { mode, items, ready: requiredItems(mode, items).every((i) => i.ok) };
+}
+
+/** 접수를 막는 항목 — 테스트: 인프라(운영 전용 제외)+DB 점검 확인일 / 운영: 법적·보안 필수 항목(blocking) */
+function requiredItems(mode: AppMode, items: ReadinessItem[]): ReadinessItem[] {
+  return mode === "staging" ? items.filter(isStagingRequirement) : items.filter((i) => i.blocking);
 }
 
 export interface OperatorInfo {
@@ -148,26 +166,26 @@ export interface SubmissionStatus {
 
 export function getOperatorInfo(): OperatorInfo {
   return {
-    operatorName: env("OPERATOR_NAME"),
-    operatorBizNo: env("OPERATOR_BIZ_NO"),
-    agencyName: env("AGENCY_NAME"),
-    agencyRegNo: env("AGENCY_REG_NO"),
-    plannerName: env("PLANNER_NAME"),
-    plannerRegNo: env("PLANNER_REG_NO"),
-    contactPhone: env("CONTACT_PHONE"),
-    contactEmail: env("CONTACT_EMAIL"),
-    contactHours: env("CONTACT_HOURS"),
-    businessAddress: env("BUSINESS_ADDRESS"),
-    privacyOfficer: env("PRIVACY_OFFICER"),
-    privacyController: env("PRIVACY_CONTROLLER") ?? env("OPERATOR_NAME"),
-    coverageProcessor: env("COVERAGE_PROCESSOR"),
-    thirdPartyProvision: env("THIRD_PARTY_PROVISION"),
-    retentionClaim: env("RETENTION_CLAIM"),
-    retentionCoverage: env("RETENTION_COVERAGE"),
-    adReviewNo: env("AD_REVIEW_NO"),
-    privacyPolicyEffectiveDate: env("PRIVACY_POLICY_EFFECTIVE_DATE"),
-    serverRegion: env("SERVER_REGION"),
-    dbRegion: env("DB_REGION"),
+    operatorName: setting("OPERATOR_NAME"),
+    operatorBizNo: setting("OPERATOR_BIZ_NO"),
+    agencyName: setting("AGENCY_NAME"),
+    agencyRegNo: setting("AGENCY_REG_NO"),
+    plannerName: setting("PLANNER_NAME"),
+    plannerRegNo: setting("PLANNER_REG_NO"),
+    contactPhone: setting("CONTACT_PHONE"),
+    contactEmail: setting("CONTACT_EMAIL"),
+    contactHours: setting("CONTACT_HOURS"),
+    businessAddress: setting("BUSINESS_ADDRESS"),
+    privacyOfficer: setting("PRIVACY_OFFICER"),
+    privacyController: setting("PRIVACY_CONTROLLER") ?? setting("OPERATOR_NAME"),
+    coverageProcessor: setting("COVERAGE_PROCESSOR"),
+    thirdPartyProvision: setting("THIRD_PARTY_PROVISION"),
+    retentionClaim: setting("RETENTION_CLAIM"),
+    retentionCoverage: setting("RETENTION_COVERAGE"),
+    adReviewNo: setting("AD_REVIEW_NO"),
+    privacyPolicyEffectiveDate: setting("PRIVACY_POLICY_EFFECTIVE_DATE"),
+    serverRegion: setting("SERVER_REGION"),
+    dbRegion: setting("DB_REGION"),
   };
 }
 
@@ -199,8 +217,7 @@ export function getPublicConfig(): PublicConfig {
 function lockDiagnostics(): string[] | null {
   if (getDeployEnv() === "production" || isSubmissionEnabled()) return null;
   const { mode, items } = getReadiness();
-  const required = mode === "staging" ? items.filter(isStagingRequirement) : items;
-  return required.filter((i) => !i.ok).map((i) => `${i.key}${i.hint && i.hint !== "미설정" ? `(${i.hint})` : ""}`);
+  return requiredItems(mode, items).filter((i) => !i.ok).map((i) => `${i.key}${i.hint && i.hint !== "미설정" ? `(${i.hint})` : ""}`);
 }
 
 /** 픽셀 ID는 숫자만 허용(스크립트에 그대로 들어가므로 형식이 다르면 로드하지 않는다) */
@@ -209,6 +226,6 @@ function numericId(v: string | null): string | null {
 }
 
 export const PRIVACY_CONSENT_VERSION = "claim-2026-10-18.v3"; // 처리 위탁(국외 이전) 항목 추가 · v2: 수집 항목에서 희망 시간·메모 제외
-export const COVERAGE_CONSENT_VERSION = "coverage-2026-10-15.v1";
+export const COVERAGE_CONSENT_VERSION = "coverage-2026-10-18.v2"; // 보유 기간 확정(신청일로부터 1년, 자동 파기)
 export const MARKETING_CONSENT_VERSION = "marketing-2026-10-18.v2"; // 보유 기간 최대 1년(자동 파기)
 export const THIRD_PARTY_CONSENT_VERSION = "third-party-2026-10-16.v1";
