@@ -1,11 +1,11 @@
-import { expect, test, type Page } from "@playwright/test";
+import { devices, expect, test, type Page } from "@playwright/test";
 
 /**
  * 실제 DB 연결 점검 — 테스트(staging) 모드 배포에서만 실행한다(기본 E2E에서는 건너뜀).
  *   E2E_STAGING=1 E2E_BASE_URL=<테스트 배포 주소> STAGING_ADMIN_EMAIL=… STAGING_ADMIN_PASSWORD=… npx playwright test staging-db --project=desktop
  * 테스트 데이터만 쓴다: 이름 '테스트검증', 휴대전화 010-0000-04xx(가입자에게 배정되지 않는 번호대).
  * 저장된 신청은 모두 '테스트 신청'(운영 지표 제외)으로 기록된다.
- * 신청 API는 IP당 10분 5건 제한이 있어, 이 파일은 정확히 5건만 보낸다(UI 신청 1 + 검증 2 + 재전송 2). 다시 돌릴 땐 10분 뒤에.
+ * 신청 API는 IP당 10분 5건 제한이 있어, 이 파일은 정확히 5건만 보낸다(UI 신청 PC 1 + 모바일 1 + 검증 2 + 재전송 1). 다시 돌릴 땐 10분 뒤에.
  */
 
 const ON = process.env.E2E_STAGING === "1";
@@ -15,10 +15,12 @@ const NAME = "테스트검증";
 const suffix = String(Date.now() % 100).padStart(2, "0");
 const PHONE = `010-0000-04${suffix}`;
 const PHONE_DIGITS = PHONE.replace(/-/g, "");
+const MOBILE_PHONE = `010-0000-06${suffix}`;
 
 test.describe.configure({ mode: "serial" });
 test.skip(!ON, "E2E_STAGING=1 일 때만 실행 (테스트 모드 배포 + 실제 DB)");
-test.skip(({ isMobile }) => isMobile, "데스크톱에서 1회만");
+// 모바일 신청은 아래에서 화면 크기·터치를 직접 지정하므로, 파일 전체는 desktop 프로젝트에서 한 번만 돈다
+test.beforeEach(({}, info) => test.skip(info.project.name !== "desktop", "desktop 프로젝트에서 1회만"));
 
 async function login(page: Page) {
   test.skip(!EMAIL || !PASSWORD, "STAGING_ADMIN_EMAIL / STAGING_ADMIN_PASSWORD 필요");
@@ -30,6 +32,24 @@ async function login(page: Page) {
 }
 
 let refNo = "";
+let mobileRefNo = "";
+let mobileBody: Record<string, unknown> | null = null;
+
+/** 신청 버튼을 누르고 /api/leads 응답을 기다린다. 실패하면 서버 응답 또는 화면 안내를 메시지에 담는다 */
+async function submitAndExpectSaved(page: Page, press: () => Promise<void>) {
+  const request = page.waitForRequest((r) => r.url().endsWith("/api/leads") && r.method() === "POST", { timeout: 15_000 }).catch(() => null);
+  const response = page.waitForResponse((r) => r.url().endsWith("/api/leads") && r.request().method() === "POST", { timeout: 15_000 }).catch(() => null);
+  await press();
+  const [req, res] = await Promise.all([request, response]);
+  const alerts = (await page.getByRole("alert").allInnerTexts()).join(" | ");
+  expect(res, `신청 API 요청이 나가지 않음. 화면 안내: ${alerts || "(없음)"}`).not.toBeNull();
+  expect(res!.status(), `신청 API ${res!.status()}: ${await res!.text()} / 화면 안내: ${alerts || "(없음)"}`).toBe(200);
+  await expect(page).toHaveURL(/\/apply\/complete$/);
+  await expect(page.getByTestId("test-receipt-note")).toBeVisible();
+  const no = (await page.locator("strong.font-mono").first().textContent())!.trim();
+  expect(no).toMatch(/^IC-\d{6}-[A-Z0-9]{5}$/);
+  return { no, body: req!.postDataJSON() as Record<string, unknown> };
+}
 
 test("DB 자동 점검이 모두 통과한다 (공개 키 차단·최소 권한·칼럼·관리자)", async ({ page }) => {
   await login(page);
@@ -60,17 +80,7 @@ test("신청 저장: 사례 버튼 → 유형 자동 선택 → 테스트 데이
   await page.locator("#apply-privacy").check();
   await page.locator("#apply-marketing").check(); // 선택 동의도 기록되는지 확인
   await page.waitForTimeout(2100);
-  // 실패하면 원인(서버 응답 또는 화면 안내)이 로그에 남도록 신청 API 응답을 함께 기다린다
-  const response = page.waitForResponse((r) => r.url().endsWith("/api/leads") && r.request().method() === "POST", { timeout: 15_000 }).catch(() => null);
-  await page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click();
-  const res = await response;
-  const alerts = (await page.getByRole("alert").allInnerTexts()).join(" | ");
-  expect(res, `신청 API 요청이 나가지 않음. 화면 안내: ${alerts || "(없음)"}`).not.toBeNull();
-  expect(res!.status(), `신청 API ${res!.status()}: ${await res!.text()} / 화면 안내: ${alerts || "(없음)"}`).toBe(200);
-  await expect(page).toHaveURL(/\/apply\/complete$/);
-  await expect(page.getByTestId("test-receipt-note")).toBeVisible();
-  refNo = (await page.locator("strong.font-mono").first().textContent())!.trim();
-  expect(refNo).toMatch(/^IC-\d{6}-[A-Z0-9]{5}$/);
+  refNo = (await submitAndExpectSaved(page, () => page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click())).no;
 
   // 보장 분석 상담 동의: 신청과 분리된 별도 화면의 선택 항목, 기본 해제. 동의 없이는 진행되지 않는다(실제 동의는 하지 않음)
   await page.getByRole("link", { name: "무료 보장 분석 상담 신청" }).click();
@@ -79,6 +89,27 @@ test("신청 저장: 사례 버튼 → 유형 자동 선택 → 테스트 데이
   await page.getByRole("button", { name: "동의하고 보장 분석 신청" }).click();
   await expect(page.getByText("보장 분석 상담을 위한 별도 동의가 필요합니다.")).toBeVisible();
   await expect(page).toHaveURL(/\/apply\/coverage$/);
+});
+
+test.describe("모바일 390x844 · 터치", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, userAgent: devices["Pixel 7"].userAgent, deviceScaleFactor: 2 });
+
+  test("신청 저장 (모바일): 사례 버튼 탭 → 이름·번호 타이핑 → 동의 탭 → 신청", async ({ page }) => {
+    await page.goto("/?utm_source=staging_check&utm_medium=qa&utm_campaign=db_connect_mobile");
+    await page.getByTestId("claim-case-cta-maturity").tap();
+    await expect(page.getByTestId("apply-picked-type")).toContainText("숨은·만기보험금");
+    for (const [sel, text] of [["#apply-name", `${NAME}모바일`], ["#apply-phone", MOBILE_PHONE.replace(/-/g, "")]] as const) {
+      await page.locator(sel).tap();
+      await expect(page.locator(sel)).toBeFocused();
+      await page.keyboard.type(text);
+    }
+    await page.locator('label[for="apply-privacy"]').tap();
+    await expect(page.locator("#apply-privacy")).toBeChecked();
+    await page.waitForTimeout(2100);
+    const saved = await submitAndExpectSaved(page, () => page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).tap());
+    mobileRefNo = saved.no;
+    mobileBody = saved.body;
+  });
 });
 
 test("테스트 모드에서도 서버 검증 유지: 필수 동의·형식·봇 차단", async ({ page, baseURL }) => {
@@ -94,25 +125,12 @@ test("테스트 모드에서도 서버 검증 유지: 필수 동의·형식·봇
   expect(foreign.status()).toBe(403);
 });
 
-test("같은 제출 키로 다시 보내면 새로 저장하지 않고 같은 신청번호", async ({ page, baseURL }) => {
+test("같은 제출(제출 키)을 다시 보내면 새로 저장하지 않고 같은 신청번호 — 모바일 신청 재전송", async ({ page, baseURL }) => {
+  expect(mobileBody, "앞 모바일 신청의 요청 본문").not.toBeNull();
   await page.goto("/");
-  const key = `staging-replay-${Date.now()}`;
-  const body = {
-    serviceType: "hidden",
-    name: NAME,
-    phone: `010-0000-05${suffix}`,
-    privacyConsent: true,
-    elapsedMs: 3000,
-    website: "",
-    idempotencyKey: key,
-    attribution: { utmSource: "staging_check" },
-  };
-  const send = () => page.request.post("/api/leads", { data: body, headers: { origin: baseURL!, referer: `${baseURL}/` } });
-  const a = await (await send()).json();
-  const b = await (await send()).json();
-  expect(a.ok).toBe(true);
-  expect(b.ok).toBe(true);
-  expect(b.refNo).toBe(a.refNo);
+  const res = await page.request.post("/api/leads", { data: mobileBody, headers: { origin: baseURL!, referer: `${baseURL}/` } });
+  expect(res.status(), await res.text()).toBe(200);
+  expect((await res.json()).refNo).toBe(mobileRefNo);
 });
 
 test("관리자 CRM: 저장된 신청 조회 — 테스트 표시·마스킹·동의 기록·연락처 복호화", async ({ page }) => {
@@ -137,4 +155,13 @@ test("관리자 CRM: 저장된 신청 조회 — 테스트 표시·마스킹·�
   expect(csv).toContain(refNo);
   expect(csv).toContain("테스트(지표 제외)");
   expect(csv).not.toContain(PHONE_DIGITS);
+
+  // 모바일에서 보낸 신청도 같은 CRM에 한 건으로 보인다
+  expect(mobileRefNo, "모바일 신청번호").not.toBe("");
+  await page.goto(`/admin?q=${encodeURIComponent(mobileRefNo)}`);
+  const mrow = page.getByRole("row").filter({ hasText: mobileRefNo });
+  await expect(mrow).toHaveCount(1);
+  await expect(mrow).toContainText(`010-****-06${suffix}`);
+  await expect(mrow).toContainText("숨은·만기·휴면 보험금");
+  await expect(mrow).toContainText("staging_check");
 });
