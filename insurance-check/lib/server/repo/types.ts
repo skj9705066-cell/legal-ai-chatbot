@@ -86,6 +86,8 @@ export interface Repository {
   listPrivacyRequests(): Promise<PrivacyRequestRow[]>;
   getPrivacyRequest(id: string): Promise<PrivacyRequestRow | null>;
   updatePrivacyRequest(id: string, patch: Partial<PrivacyRequestRow>): Promise<PrivacyRequestRow | null>;
+  /** 보유기간 경과 파기: before 이전에 들어온 신청·개인정보 요청에서 식별 정보를 지운다(이미 지운 행은 건너뜀). 지운 건수 */
+  purgeBefore(beforeIso: string): Promise<{ leads: number; privacyRequests: number }>;
 
   insertReview(r: Review): Promise<void>;
   listReviews(): Promise<Review[]>;
@@ -104,6 +106,31 @@ export interface ReviewImage {
   mime: string;
   base64: string;
 }
+
+/** 파기(익명화)된 신청·개인정보 요청의 이름 자리 */
+export const DELETED_NAME = "(삭제됨)";
+
+/**
+ * 파기 시 신청에서 지우는 값. 통계용 비식별 항목(점검 유형·처리 상태·유입 경로)만 남긴다.
+ * DB 제약 ic_leads_deleted_is_scrubbed(supabase/schema.sql)와 짝을 이룬다.
+ */
+export const LEAD_SCRUB: LeadRowPatch = {
+  name: DELETED_NAME,
+  phoneMasked: "***-****-****",
+  phoneEnc: "",
+  phoneHash: "",
+  memo: "",
+  notes: "",
+  assignee: null,
+  nextContactAt: null,
+  marketingConsent: false,
+  coverageConsent: false,
+  coverageStatus: "withdrawn",
+  privacyStatus: "completed",
+};
+
+/** 파기 시 개인정보 요청 기록에서 지우는 값 */
+export const PRIVACY_REQUEST_SCRUB = { name: DELETED_NAME, phoneMasked: "***-****-****", phoneHash: "" } satisfies Partial<PrivacyRequestRow>;
 
 /** '상담 완료'로 집계하는 보험금 점검 상태 (청구 방법 안내 이후 단계) */
 export const COMPLETED_CLAIM_STATUSES: ClaimStatus[] = ["guided", "docs_pending", "closed"];

@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { AuditLog, FunnelEvent, Review } from "@/lib/types";
-import { COMPLETED_CLAIM_STATUSES, DuplicateSubmissionError, type ReviewImage, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
+import { COMPLETED_CLAIM_STATUSES, DELETED_NAME, DuplicateSubmissionError, LEAD_SCRUB, PRIVACY_REQUEST_SCRUB, type ReviewImage, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
 
 /**
  * 운영 저장소. service role 키로 서버에서만 접근한다.
@@ -373,6 +373,27 @@ export const supabaseRepository: Repository = {
       await db().from("ic_privacy_requests").update(cols).eq("id", id).select("*").maybeSingle(),
     );
     return data ? fromPrivacyRow(data) : null;
+  },
+  async purgeBefore(beforeIso) {
+    // created_at 기준 한 번의 UPDATE로 처리한다. 이미 파기된 행(이름 '(삭제됨)')은 건너뛰어 매일 실행해도 같은 행을 다시 건드리지 않는다
+    const now = new Date().toISOString();
+    const leads = must(
+      await db()
+        .from("ic_leads")
+        .update({ ...toLeadColumns(LEAD_SCRUB), updated_at: now })
+        .lt("created_at", beforeIso)
+        .neq("name", DELETED_NAME)
+        .select("id"),
+    );
+    const reqs = must(
+      await db()
+        .from("ic_privacy_requests")
+        .update({ name: PRIVACY_REQUEST_SCRUB.name, phone_masked: PRIVACY_REQUEST_SCRUB.phoneMasked, phone_hash: PRIVACY_REQUEST_SCRUB.phoneHash })
+        .lt("created_at", beforeIso)
+        .neq("name", DELETED_NAME)
+        .select("id"),
+    );
+    return { leads: leads?.length ?? 0, privacyRequests: reqs?.length ?? 0 };
   },
   async insertReview(r) {
     must(await db().from("ic_reviews").insert({ id: r.id, created_at: r.createdAt, created_by: r.createdBy, ...toReviewColumns(r) }));

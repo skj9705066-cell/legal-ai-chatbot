@@ -16,8 +16,8 @@
 | 승인 | 보장 분석 추가 제안 화면·동의 문구 승인일 | `APPROVAL_COVERAGE_OFFER` |
 | 승인 | 처리 주체·제3자 제공 여부 확정일 | `APPROVAL_THIRD_PARTY` |
 | 승인 | 통계 수치 원문 대조 완료일 | `APPROVAL_STATS_VERIFIED` |
-| 고지 | 운영 주체, GA 명칭·등록번호, 설계사 성명·등록번호, 연락처, 주소, 개인정보 보호책임자, 처리 주체(점검/보장분석), 제3자 제공, 보유기간(점검/보장분석), 광고 심의필 번호, 처리방침 시행일 | `config/requirements.json` 참고 |
-| 인프라 | HTTPS 서비스 URL, Supabase URL/anon/service role 키, `APP_SECRET`, `PII_ENCRYPTION_KEY` | 〃 |
+| 고지 | 운영 주체, GA 명칭·등록번호, 설계사 성명·등록번호, 연락처, 주소, 개인정보 보호책임자, 처리 주체(점검/보장분석), 제3자 제공, 보유기간(점검/보장분석), 광고 심의필 번호, 처리방침 시행일, 서버·DB 위치(`SERVER_REGION`·`DB_REGION`) | `config/requirements.json` 참고 |
+| 인프라 | HTTPS 서비스 URL, Supabase URL/anon/service role 키, `APP_SECRET`, `PII_ENCRYPTION_KEY`, `CRON_SECRET`(운영 전용 — 1년 자동 파기) | 〃 |
 
 승인일은 `YYYY-MM-DD` 형식만 인정된다. 승인 문서(심의필, 승인 메일 등)는 별도로 보관한다.
 
@@ -64,7 +64,9 @@
       → 설정하면 신청 폼에 별도 필수 '제3자 제공 동의'가 나타나고 서버도 이를 요구한다(동의 여부는 `ic_leads.third_party_consent`에 저장).
       없으면 비워 두거나 `none`. 랜딩은 빌드 시 렌더되므로 **값을 바꾸면 재배포**할 것
 - [ ] 동의 문구를 바꿨다면 `lib/config.ts`의 `*_CONSENT_VERSION`을 올렸다
-- [ ] 보유기간 경과 데이터 파기 작업(`supabase/schema.sql` 하단 예시)을 스케줄링했다
+- [ ] 보유기간(1년) 경과 자동 파기: Vercel Production에 `CRON_SECRET`(16자 이상)을 넣고 재배포한 뒤 Vercel → Settings → Cron Jobs에 `/api/cron/purge-expired`(매일 18:00 UTC = 03:00 KST)가 보이는지 확인했다. 실행 기록은 관리자 감사 로그 `privacy.purge_expired`
+- [ ] 처리방침 '처리위탁 및 국외 이전'의 위치: Vercel Function Region을 `SERVER_REGION`, Supabase 프로젝트 Region을 `DB_REGION`에 **대시보드에서 확인한 값으로** 넣었다 (Production 점검 작업이 `x-vercel-id`로 실제 함수 리전을 출력)
+- [ ] 보장 분석 상담 정보도 같은 신청 행에 저장되므로 1년 자동 파기 대상이다. `RETENTION_COVERAGE`는 1년 이내로 정했다(더 길게 하려면 코드 변경 필요)
 - [ ] 삭제 요청의 본인 확인 절차(예: 신청 번호로 회신 전화)를 정했다
 - [ ] 감사로그는 수정·삭제가 막혀 있으므로 보유기간이 지난 감사로그 정리 절차(DB 소유자가 SQL Editor에서 트리거를 잠시 끄고 정리)를 정했다
 

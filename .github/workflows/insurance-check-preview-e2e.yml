@@ -183,6 +183,20 @@ jobs:
           if [ "$code" != "200" ]; then echo "Production 주소를 열 수 없습니다(HTTP $code) — 배포 보호 또는 오류"; exit 1; fi
           if grep -q "내보험 통합 점검" page.html; then echo "app=ic" >> "$GITHUB_OUTPUT"; else echo "다른 앱의 Production — 건너뜀"; echo "app=other" >> "$GITHUB_OUTPUT"; fi
 
+      # 처리방침 '처리위탁 및 국외 이전'의 서버 위치(SERVER_REGION) 확인 근거. x-vercel-id의 마지막 리전 코드가 함수를 실행한 리전이다(예: icn1::iad1::… → iad1)
+      # 자동 파기 Cron: 키 없이 부르면 CRON_SECRET 미설정 503 / 설정됨 401 (값은 출력하지 않음, 파기를 실행하지 않음)
+      - name: 운영 서버 위치·자동 파기 설정 확인 (읽기 전용)
+        if: steps.target.outputs.app == 'ic'
+        run: |
+          vid=$(curl -s -D - -o /dev/null "$DEPLOY_URL/api/status" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-vercel-id"{print $2}')
+          echo "x-vercel-id: $vid → 함수 실행 리전: $(echo "$vid" | awk -F'::' '{print $(NF-1)}')"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$DEPLOY_URL/api/cron/purge-expired")
+          case "$code" in
+            401) echo "자동 파기 Cron: CRON_SECRET 설정됨 (HTTP 401)";;
+            503) echo "::warning::자동 파기 Cron: CRON_SECRET 미설정 (HTTP 503) — 운영 접수는 잠긴 상태로 유지됩니다";;
+            *) echo "::warning::자동 파기 Cron 응답 HTTP $code";;
+          esac
+
       - uses: actions/setup-node@v4
         if: steps.target.outputs.app == 'ic'
         with:

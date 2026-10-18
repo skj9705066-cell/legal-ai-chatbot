@@ -237,7 +237,8 @@ commit;
 -- 최초 관리자 등록 (Auth에서 사용자 생성 후):
 -- insert into public.ic_staff (user_id, name, role) values ('<auth.users.id>', '홍관리', 'admin');
 
--- 보유기간 경과 데이터 파기 예시 (운영 정책 확정 후 pg_cron 등으로 주기 실행). 위 정합성 규칙을 모두 만족하는 형태:
+-- 보유기간(신청일로부터 1년) 경과 파기는 앱이 매일 자동 실행한다: Vercel Cron → /api/cron/purge-expired (vercel.json, CRON_SECRET 필요).
+-- 아래는 같은 동작의 SQL(수동 확인·비상 실행용). 위 정합성 규칙을 모두 만족하는 형태:
 -- update public.ic_leads set name='(삭제됨)', phone_masked='***-****-****', phone_enc='', phone_hash='', memo='', notes='',
 --   marketing_consent=false, coverage_consent=false, coverage_status='withdrawn', privacy_status='completed',
 --   assignee=null, next_contact_at=null, updated_at=now()

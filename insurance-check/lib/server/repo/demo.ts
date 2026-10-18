@@ -12,7 +12,7 @@ import {
 } from "@/lib/types";
 import { encryptPii, hashPhone } from "../crypto";
 import { maskPhone } from "@/lib/validation";
-import { COMPLETED_CLAIM_STATUSES, DuplicateSubmissionError, isRealLead, type ReviewImage, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
+import { COMPLETED_CLAIM_STATUSES, DELETED_NAME, DuplicateSubmissionError, LEAD_SCRUB, PRIVACY_REQUEST_SCRUB, isRealLead, type ReviewImage, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
 import { applyLeadFilter } from "./filter";
 
 /**
@@ -280,6 +280,13 @@ export const demoRepository: Repository = {
     if (!p) return null;
     Object.assign(p, patch);
     return p;
+  },
+  async purgeBefore(beforeIso) {
+    const leads = state().leads.filter((l) => l.createdAt < beforeIso && l.name !== DELETED_NAME);
+    for (const l of leads) Object.assign(l, LEAD_SCRUB);
+    const reqs = state().privacy.filter((p) => p.createdAt < beforeIso && p.name !== DELETED_NAME);
+    for (const p of reqs) Object.assign(p, PRIVACY_REQUEST_SCRUB);
+    return { leads: leads.length, privacyRequests: reqs.length };
   },
   async insertReview(r) {
     state().reviews.unshift(r);

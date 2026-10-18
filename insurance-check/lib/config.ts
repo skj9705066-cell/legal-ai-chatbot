@@ -71,12 +71,16 @@ function checkValue(key: string, group: RequirementGroup): { ok: boolean; hint?:
     return Buffer.from(v, "base64").length === 32 ? { ok: true } : { ok: false, hint: "base64 32바이트" };
   }
   if (key === "NEXT_PUBLIC_SITE_URL") return v.startsWith("https://") ? { ok: true } : { ok: false, hint: "https:// 필수" };
+  if (key === "CRON_SECRET") return v.length >= 16 ? { ok: true } : { ok: false, hint: "16자 이상" };
   return { ok: true };
 }
 
-/** 테스트(staging) 모드에 필요한 항목: 인프라 전부 + 운영 DB 점검 확인일. 운영 주체·광고 승인은 운영 모드에서만 요구 */
+/** 운영에서만 요구하는 인프라 항목(예: 자동 파기 Cron 키 — Vercel Cron은 Production 배포에서만 돈다) */
+const PRODUCTION_ONLY = new Set<string>(requirements.infra.filter((r) => "productionOnly" in r && r.productionOnly).map((r) => r.key));
+
+/** 테스트(staging) 모드에 필요한 항목: 인프라(운영 전용 제외) + 운영 DB 점검 확인일. 운영 주체·광고 승인은 운영 모드에서만 요구 */
 export function isStagingRequirement(i: Pick<ReadinessItem, "group" | "key">): boolean {
-  return i.group === "infra" || i.key === "APPROVAL_DB_VERIFIED";
+  return (i.group === "infra" && !PRODUCTION_ONLY.has(i.key)) || i.key === "APPROVAL_DB_VERIFIED";
 }
 
 export function getReadiness(): { mode: AppMode; items: ReadinessItem[]; ready: boolean } {
@@ -111,6 +115,9 @@ export interface OperatorInfo {
   retentionCoverage: string | null;
   adReviewNo: string | null;
   privacyPolicyEffectiveDate: string | null;
+  /** 처리위탁·국외 이전 고지: 신청 처리 서버(Vercel Functions)·DB(Supabase) 위치. 대시보드에서 확인한 값만 넣는다 */
+  serverRegion: string | null;
+  dbRegion: string | null;
 }
 
 export interface PublicConfig {
@@ -159,6 +166,8 @@ export function getOperatorInfo(): OperatorInfo {
     retentionCoverage: env("RETENTION_COVERAGE"),
     adReviewNo: env("AD_REVIEW_NO"),
     privacyPolicyEffectiveDate: env("PRIVACY_POLICY_EFFECTIVE_DATE"),
+    serverRegion: env("SERVER_REGION"),
+    dbRegion: env("DB_REGION"),
   };
 }
 
@@ -199,7 +208,7 @@ function numericId(v: string | null): string | null {
   return v && /^\d{6,20}$/.test(v) ? v : null;
 }
 
-export const PRIVACY_CONSENT_VERSION = "claim-2026-10-16.v2"; // 수집 항목에서 희망 시간·메모 제외
+export const PRIVACY_CONSENT_VERSION = "claim-2026-10-18.v3"; // 처리 위탁(국외 이전) 항목 추가 · v2: 수집 항목에서 희망 시간·메모 제외
 export const COVERAGE_CONSENT_VERSION = "coverage-2026-10-15.v1";
-export const MARKETING_CONSENT_VERSION = "marketing-2026-10-16.v1";
+export const MARKETING_CONSENT_VERSION = "marketing-2026-10-18.v2"; // 보유 기간 최대 1년(자동 파기)
 export const THIRD_PARTY_CONSENT_VERSION = "third-party-2026-10-16.v1";
