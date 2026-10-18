@@ -153,15 +153,16 @@ describe("production lock: only legal·security items block submissions", () => 
     }
   });
 
-  it("stays locked without the ad review number / registration numbers, and opens once they are set", async () => {
+  it("stays locked without the ad review number only (registration numbers warn), and opens once it is set", async () => {
     const { getReadiness, getOperatorInfo } = await import("@/lib/config");
     Object.assign(process.env, INFRA, { VERCEL_ENV: "production" });
     let r = getReadiness();
     expect(r.mode).toBe("production");
     expect(r.ready).toBe(false);
-    expect(r.items.filter((i) => i.blocking && !i.ok).map((i) => i.key).sort()).toEqual(["AD_REVIEW_NO", "AGENCY_REG_NO", "PLANNER_REG_NO"]);
+    expect(r.items.filter((i) => i.blocking && !i.ok).map((i) => i.key)).toEqual(["AD_REVIEW_NO"]);
+    expect(r.items.filter((i) => ["AGENCY_REG_NO", "PLANNER_REG_NO"].includes(i.key)).every((i) => !i.blocking)).toBe(true);
 
-    Object.assign(process.env, AD);
+    process.env.AD_REVIEW_NO = AD.AD_REVIEW_NO;
     r = getReadiness();
     expect(r.ready).toBe(true);
     // 내부 점검 항목은 비어 있어도 경고만
