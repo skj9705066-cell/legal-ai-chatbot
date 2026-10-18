@@ -11,6 +11,10 @@ export async function adminLogin(page: Page) {
     await page.fill("#login-email", email);
     await page.fill("#login-password", process.env.STAGING_ADMIN_PASSWORD ?? "");
   } else {
+    // 테스트·운영 모드 화면은 이메일 로그인만 있다. 계정 비밀값 없이 데모 로그인을 기다리면 시간 초과만 나므로 바로 알린다
+    await page.locator("#login-password").waitFor();
+    const demoLogin = await page.locator("#login-role").count();
+    expect(demoLogin, "테스트(staging) 배포의 관리자 로그인에는 STAGING_ADMIN_EMAIL·STAGING_ADMIN_PASSWORD(GitHub Secrets)가 필요합니다").toBeGreaterThan(0);
     await page.selectOption("#login-role", "admin");
     await page.fill("#login-password", process.env.DEMO_ADMIN_PASSWORD || "demo-admin-local");
   }

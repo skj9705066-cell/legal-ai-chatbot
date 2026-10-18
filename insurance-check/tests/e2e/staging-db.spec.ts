@@ -60,7 +60,13 @@ test("신청 저장: 사례 버튼 → 유형 자동 선택 → 테스트 데이
   await page.locator("#apply-privacy").check();
   await page.locator("#apply-marketing").check(); // 선택 동의도 기록되는지 확인
   await page.waitForTimeout(2100);
+  // 실패하면 원인(서버 응답 또는 화면 안내)이 로그에 남도록 신청 API 응답을 함께 기다린다
+  const response = page.waitForResponse((r) => r.url().endsWith("/api/leads") && r.request().method() === "POST", { timeout: 15_000 }).catch(() => null);
   await page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click();
+  const res = await response;
+  const alerts = (await page.getByRole("alert").allInnerTexts()).join(" | ");
+  expect(res, `신청 API 요청이 나가지 않음. 화면 안내: ${alerts || "(없음)"}`).not.toBeNull();
+  expect(res!.status(), `신청 API ${res!.status()}: ${await res!.text()} / 화면 안내: ${alerts || "(없음)"}`).toBe(200);
   await expect(page).toHaveURL(/\/apply\/complete$/);
   await expect(page.getByTestId("test-receipt-note")).toBeVisible();
   refNo = (await page.locator("strong.font-mono").first().textContent())!.trim();

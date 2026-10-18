@@ -116,6 +116,14 @@ jobs:
         continue-on-error: true
         run: npx playwright test viewports errors --grep @preview --project=desktop
 
+      # 실패한 테스트의 화면 상태(안내 문구 포함)를 로그에 남긴다 — 첨부 파일을 받지 않고도 원인을 볼 수 있게
+      - name: 실패 화면 상태 출력
+        if: always() && steps.target.outputs.app == 'ic'
+        run: |
+          find test-results -name error-context.md 2>/dev/null | while read -r f; do
+            echo "::group::$f"; head -c 6000 "$f"; echo; echo "::endgroup::"
+          done
+
       - name: 결과 요약
         if: always() && steps.target.outputs.app == 'ic'
         run: |
