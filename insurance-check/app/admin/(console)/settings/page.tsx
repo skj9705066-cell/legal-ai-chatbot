@@ -66,7 +66,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </div>
         <div className="rounded-2xl bg-white shadow-card ring-1 ring-navy-100 p-4">
           <p className="text-[13px] text-navy-600">담당자 알림(문자·알림톡)</p>
-          <p className="mt-1 text-[17px] font-bold text-navy">{notify.provider ? `${notify.provider} (어댑터 미구현 — 발송 안 함)` : "미설정 — 발송 안 함"}</p>
+          <p className="mt-1 text-[17px] font-bold text-navy">{notify.configured ? `${notify.provider} → 010-8822-2341 (결과: 감사 로그)` : "미설정 — 발송 안 함 (SOLAPI_API_KEY·SOLAPI_API_SECRET·SOLAPI_SENDER)"}</p>
         </div>
       </div>
 

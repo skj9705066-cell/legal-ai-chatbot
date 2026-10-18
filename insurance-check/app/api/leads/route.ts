@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
 import { getAppMode, isSubmissionEnabled } from "@/lib/config";
 import { trialMode, type TrialMode } from "@/lib/types";
 import { requiresThirdPartyConsent, validateLeadInput } from "@/lib/validation";
@@ -7,6 +7,7 @@ import { parseAttribution } from "@/lib/server/attribution";
 import { signReceipt } from "@/lib/server/crypto";
 import { normalizeIdempotencyKey, submitLead } from "@/lib/server/service";
 import { getDbCheck } from "@/lib/server/db-check";
+import { notifyNewLead } from "@/lib/server/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,7 +53,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { lead } = await submitLead(parsed.value, parseAttribution(body.attribution), key);
+    const { lead, replayed } = await submitLead(parsed.value, parseAttribution(body.attribution), key);
+    // DB 저장이 끝난 새 신청만 운영자 문자 알림 — 응답을 보낸 뒤 실행하므로 발송이 늦거나 실패해도 고객 신청은 이미 완료된 상태다.
+    // 같은 제출의 재전송(replayed)은 이미 알림을 보낸 신청이라 다시 보내지 않는다.
+    if (!replayed) after(() => notifyNewLead(lead));
     const res: Receipt = { ok: true, refNo: lead.refNo, receiptToken: signReceipt(lead.id), trial: trialMode(getAppMode()) };
     return NextResponse.json(res);
   } catch (err) {

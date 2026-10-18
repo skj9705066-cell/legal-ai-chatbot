@@ -22,7 +22,6 @@ import { decryptPii, encryptPii, hashPhone } from "./crypto";
 import { repo, toLead, type LeadFilter, type LeadRow } from "./repo";
 import { DELETED_NAME, DuplicateSubmissionError, LEAD_SCRUB, PRIVACY_REQUEST_SCRUB } from "./repo/types";
 import { isSalesEligible } from "./repo/filter";
-import { notifyNewLead } from "./notify";
 
 const DUPLICATE_WINDOW_MS = 30 * 86_400_000;
 
@@ -114,7 +113,6 @@ export async function submitLead(
     target: row.id,
     detail: `${row.refNo} 접수${duplicateOf ? ` (중복: ${duplicateOf})` : ""}`,
   });
-  await notifyNewLead(row.refNo);
   return { lead: toLead(row), replayed: false };
 }
 
