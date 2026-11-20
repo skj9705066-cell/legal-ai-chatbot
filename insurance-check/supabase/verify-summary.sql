@@ -52,6 +52,12 @@ missing_constraints as (
   ) as t(name)
   where not exists (select 1 from pg_constraint c where c.conname = t.name)
 ),
+old_type_status_checks as (
+  -- 03이 이전 유형·상태 제약을 지웠는지(남아 있으면 새 값 card_points·visit_booked 저장이 거절된다)
+  select conname from pg_constraint
+  where conrelid = to_regclass('public.ic_leads') and contype = 'c' and conname not like '%_v3'
+    and pg_get_constraintdef(oid) ~ '^CHECK \(\((service_type|claim_status) = ANY'
+),
 audit_fn as (
   select to_regprocedure('public.ic_audit_immutable()') is not null as present
 )
@@ -78,6 +84,10 @@ union all
 select '⑥', '필수 정합성 규칙 22개',
        not exists (select 1 from missing_constraints),
        coalesce('빠짐: ' || (select string_agg(name, ', ') from missing_constraints), '모두 있음')
+union all
+select '⑥-2', '이전 유형·상태 제약이 남아 있지 않음 (03)',
+       not exists (select 1 from old_type_status_checks),
+       coalesce('남아 있음: ' || (select string_agg(conname, ', ') from old_type_status_checks), '없음')
 union all
 select '⑦', '공개 역할이 감사로그 함수 실행 불가',
        case when (select present from audit_fn)

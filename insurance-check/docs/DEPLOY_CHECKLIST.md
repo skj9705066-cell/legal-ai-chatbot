@@ -7,12 +7,14 @@
 
 ## 0. 2026-11 방문 점검 개편 배포 (이번 변경 — 순서 중요, 각 단계 운영자 승인 후 진행)
 
+> 초보자용 상세 안내·검증 SQL·롤백 주의사항: `docs/RELEASE_2026-11_RUNBOOK.md`
+
 1. [ ] **광고·문구 심의**: 새 랜딩 문구(`lib/content.ts`)·신청서·방문 안내 문자 문구를 소속 GA 광고 심의에 제출하고 심의필 번호를 `AD_REVIEW_NO`에 반영했다
 2. [ ] **외부 링크 확인**: 카드포인트 통합조회(여신금융협회 cardpoint.or.kr)·어카운트인포(payinfo.or.kr)·e-클린보험서비스(e-cleanins.or.kr) 주소와 서비스 명칭을 브라우저로 직접 확인했다 (개발 환경에서는 접속 확인을 못 함)
 3. [ ] **개인정보 문구**: 수집 항목(지역·연락 희망 시간·관심 서비스·방문 일정·상담 이력)과 처리방침(`/privacy`)을 GA 승인 버전으로 확정했다 (`PRIVACY_CONSENT_VERSION = visit-2026-11-20.v4`)
 4. [ ] **운영 DB 백업**: Supabase → Database → Backups에서 최신 백업이 있는지 확인했다
-5. [ ] **운영 DB 변경**: SQL Editor에서 `supabase/03-visit-checkup.sql` 전체 실행 (추가만 — 기존 신청·값은 바뀌지 않음, 재실행 안전, 기존 코드도 그대로 동작)
-6. [ ] `supabase/verify-summary.sql` 결과 8행 모두 ok=true (테이블 7개·정합성 규칙 22개·상담 이력 권한 `DELETE, INSERT, SELECT`)
+5. [ ] **사전 점검**: `supabase/03-precheck.sql` 실행 → STOP 없음 확인, 결과 저장 → **운영 DB 변경**: SQL Editor에서 `supabase/03-visit-checkup.sql` 전체 실행 → `03-precheck.sql` 재실행해 기존 데이터 지문·행 수가 같은지 비교 (추가만 — 기존 신청·값은 바뀌지 않음, 재실행 안전, 기존 코드도 그대로 동작)
+6. [ ] `supabase/verify-summary.sql` 결과 9행 모두 ok=true (테이블 7개·정합성 규칙 22개·상담 이력 권한 `DELETE, INSERT, SELECT`)
 7. [ ] Preview 배포에서 관리자 → 환경설정의 **DB 자동 점검 통과**(새 항목: 03 칼럼·상담 이력 테이블·공개 키 차단) → 테스트 신청 → CRM에서 지역·관심 서비스·방문 예약·상담 이력 확인
 8. [ ] (선택) 상담사 사진·인사말: 본인 확인을 받은 사진을 `public/`에 넣고 `COUNSELOR_PHOTO=/파일명.jpg`, 인사말은 `COUNSELOR_INTRO`
 9. [ ] 운영 배포(`vercel --prod`) 후 `npm run verify:deployed`
