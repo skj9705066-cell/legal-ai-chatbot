@@ -128,6 +128,8 @@ test("방문 예약: 일시·장소 저장 → '방문 예약' 상태·방문 �
   test.skip(isMobile, "데스크톱에서 1회");
   test.skip(REAL_DB, "실제 DB에서는 기존 신청을 수정하지 않는다");
   await login(page, "visit");
+  // 데모 저장소는 서버를 다시 띄우기 전까지 이전 실행의 예약도 갖고 있으므로 이번 실행만의 장소 이름을 쓴다
+  const place = `○○역 2번 출구 카페 ${Math.random().toString(36).slice(2, 6).replace(/\d/g, "q")}`;
   await page.goto("/admin?claim=new");
   const firstLink = page.locator("tbody a").first();
   const refNo = (await firstLink.textContent())!.trim();
@@ -135,14 +137,14 @@ test("방문 예약: 일시·장소 저장 → '방문 예약' 상태·방문 �
   const editor = page.locator("form").filter({ has: page.getByRole("button", { name: "저장" }) });
   // 방문 일시는 한국 시간 기준(관리자 PC 시간대와 무관)
   await editor.getByLabel("방문 일시 (한국 시간)").fill("2030-03-05T14:00");
-  await editor.getByLabel("방문 장소").fill("○○역 2번 출구 카페");
+  await editor.getByLabel("방문 장소").fill(place);
   await editor.getByRole("button", { name: "저장" }).click();
   await expect(page.getByText("저장되었습니다.")).toBeVisible();
   await page.reload();
   await expect(editor.getByLabel("진행 상태")).toHaveValue("visit_booked"); // 처음 잡은 방문은 상태 자동 전환
   await expect(editor.getByLabel("방문 일시 (한국 시간)")).toHaveValue("2030-03-05T14:00");
   const log = page.getByTestId("activity-list");
-  await expect(log).toContainText("방문 예약: 3월 5일(화) 오후 2:00 · ○○역 2번 출구 카페");
+  await expect(log).toContainText(`방문 예약: 3월 5일(화) 오후 2:00 · ${place}`);
 
   // 상담 이력 추가(수정 없음, 문자 종류는 손으로 만들 수 없음)
   await page.getByRole("form", { name: "상담 이력 추가" }).getByLabel("종류").selectOption("call");
@@ -163,7 +165,7 @@ test("방문 예약: 일시·장소 저장 → '방문 예약' 상태·방문 �
 
   // 방문 일정 화면·목록에 보인다
   await page.goto("/admin/visits");
-  await expect(page.getByRole("link").filter({ hasText: "○○역 2번 출구 카페" })).toHaveCount(1);
+  await expect(page.getByRole("link").filter({ hasText: place })).toHaveCount(1);
   await page.goto(`/admin?q=${encodeURIComponent(refNo)}`);
   await expect(page.getByRole("row").filter({ hasText: refNo })).toContainText("3월 5일(화) 오후 2:00");
   await page.goto("/admin/audit");
