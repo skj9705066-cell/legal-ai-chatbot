@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { adminLogin } from "./helpers";
+import { adminLogin, waitFormReady } from "./helpers";
 
 /**
  * 신청 전체 흐름(2026-11 방문 점검 신청서) — 실제 사용자처럼 '보이는 버튼'을 누른다(숨은 입력을 강제로 체크하지 않는다).
@@ -54,6 +54,7 @@ async function fillForm(
   o: { name?: string; phone: string; region?: string; time?: string; interests?: readonly string[] },
   isMobile: boolean,
 ) {
+  await waitFormReady(page);
   await page.fill("#apply-name", o.name ?? "흐름검사");
   await page.fill("#apply-phone", o.phone);
   await pick(page, `apply-region-${o.region ?? "seoul"}`, isMobile);
@@ -66,6 +67,7 @@ test("입력: 칸을 누르면 포커스·타이핑·수정이 되고, 선택 �
   const posts: string[] = [];
   page.on("request", (r) => r.url().endsWith("/api/leads") && r.method() === "POST" && posts.push(r.url()));
   await page.goto("/");
+  await waitFormReady(page);
   await page.locator("#hero-cta").getByRole("button").first().click();
   await expect(page.locator("#apply-name")).toBeFocused();
   for (const id of ["#apply-name", "#apply-phone", "#apply-privacy", "#apply-marketing"]) await expect(page.locator(id)).toBeEnabled();
@@ -105,6 +107,7 @@ test("잠김: 접수가 잠겨 있어도 입력·선택·동의는 모두 되고
   const posts: string[] = [];
   page.on("request", (r) => r.url().endsWith("/api/leads") && r.method() === "POST" && posts.push(r.url()));
   await page.goto("/#apply");
+  await waitFormReady(page);
   test.skip(!(await isLocked(page)), "접수가 열린 화면 — 잠김 상태 전용 테스트");
   const submit = submitButton(page);
   await expect(submit).toBeEnabled();
@@ -124,6 +127,7 @@ test("잠김: 접수가 잠겨 있어도 입력·선택·동의는 모두 되고
 test("키보드만으로: 화살표로 지역 이동, 스페이스로 관심 서비스 체크 @preview", async ({ page, isMobile }) => {
   test.skip(isMobile, "키보드 시나리오는 데스크톱");
   await page.goto("/#apply");
+  await waitFormReady(page);
   await page.locator("#apply-region-seoul").focus();
   await page.keyboard.press("Space");
   await expect(page.locator("#apply-region-seoul")).toBeChecked();
@@ -144,6 +148,7 @@ for (const [i, f] of FLOWS.entries()) {
     });
 
     await page.goto("/"); // A
+    await waitFormReady(page);
     await page.locator("#hero-cta").getByRole("button").first().click(); // B
     await fillForm(page, { phone: `010-0000-${phoneTail}`, region: f.region, time: f.time, interests: f.interests }, isMobile); // C·D·E
     await expect(page.locator("#apply-marketing")).not.toBeChecked();
@@ -191,6 +196,7 @@ test("오류: 필수 입력 누락 · 잘못된 연락처 · 동의 누락은 �
   const posts: string[] = [];
   page.on("request", (r) => r.url().endsWith("/api/leads") && r.method() === "POST" && posts.push(r.url()));
   await page.goto("/#apply");
+  await waitFormReady(page);
   const submit = submitButton(page);
   await submit.click();
   await expect(page.getByText("성함을 입력해 주세요.")).toBeVisible();
@@ -215,6 +221,7 @@ test("중복 제출: 신청 버튼을 연달아 눌러도 요청은 한 번", as
   const posts: string[] = [];
   page.on("request", (r) => r.url().endsWith("/api/leads") && r.method() === "POST" && posts.push(r.postData() ?? ""));
   await page.goto("/");
+  await waitFormReady(page);
   await page.getByTestId("money-unclaimed").getByRole("button").click();
   await fillForm(page, { phone: "010-0000-0311" }, isMobile);
   await page.waitForTimeout(2100);
@@ -236,6 +243,7 @@ test("네트워크 오류 → 완료 화면 없이 안내 → 다시 누르면 �
     return route.continue();
   });
   await page.goto("/");
+  await waitFormReady(page);
   await page.getByTestId("money-hidden").getByRole("button").click();
   await fillForm(page, { phone: "010-0000-0321" }, isMobile);
   await page.waitForTimeout(2100);
@@ -257,6 +265,7 @@ test("새로고침·뒤로가기: 완료 화면은 새로고침해도 유지되�
   const posts: string[] = [];
   page.on("request", (r) => r.url().endsWith("/api/leads") && r.method() === "POST" && posts.push(r.url()));
   await page.goto("/");
+  await waitFormReady(page);
   await page.getByTestId("money-card_points").getByRole("button").click();
   await fillForm(page, { phone: "010-0000-0331" }, isMobile);
   await page.waitForTimeout(2100);
@@ -277,6 +286,7 @@ test("중복 제출: 보장 분석 동의·철회 요청도 연타 시 요청은
   page.on("request", (r) => r.method() === "POST" && /\/api\/(leads\/coverage|privacy-requests)$/.test(r.url()) && posts.push(new URL(r.url()).pathname));
   // 보장 분석 별도 동의
   await page.goto("/");
+  await waitFormReady(page);
   await page.getByTestId("money-hidden").getByRole("button").click();
   await fillForm(page, { phone: "010-0000-0341" }, isMobile);
   await page.waitForTimeout(2100);

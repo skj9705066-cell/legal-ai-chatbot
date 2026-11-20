@@ -33,6 +33,7 @@ export async function fillApplyForm(
   page: Page,
   o: { name?: string; phone: string; region?: string; time?: string; interests?: readonly string[]; tap?: boolean },
 ) {
+  await waitFormReady(page);
   const press = async (inputId: string) => {
     const label = page.locator(`label:has(#${inputId})`);
     if (o.tap) await label.tap();
@@ -51,4 +52,9 @@ export async function fillApplyForm(
     if (o.tap) await consent.tap();
     else await consent.click();
   }
+}
+
+/** 신청서 스크립트가 붙을 때까지 기다린다(준비 전에는 신청 버튼이 아무것도 전송하지 않는다) */
+export async function waitFormReady(page: Page) {
+  await page.locator('#apply form[data-ready="true"]').waitFor();
 }

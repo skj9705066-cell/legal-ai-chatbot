@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { adminLogin, applySubmit, fillApplyForm } from "./helpers";
+import { adminLogin, applySubmit, fillApplyForm, waitFormReady } from "./helpers";
 
 /**
  * 오류 상황 — 사용자가 이해할 수 있는 안내가 뜨고, 실패를 성공처럼 보이지 않으며, 권한 없는 접근은 막힌다.
@@ -33,6 +33,7 @@ test("DB 장애(503): 완료 화면 없이 안내 → 복구 후 다시 누르�
     return route.continue();
   });
   await page.goto("/");
+  await waitFormReady(page);
   await page.getByTestId("money-unclaimed").getByRole("button").click();
   await fillApplyForm(page, { name: "오류검사", phone: "010-0000-0481" });
   await page.waitForTimeout(2100);

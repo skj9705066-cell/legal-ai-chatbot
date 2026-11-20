@@ -1,5 +1,5 @@
 import { devices, expect, test, type Page } from "@playwright/test";
-import { applySubmit, fillApplyForm } from "./helpers";
+import { applySubmit, fillApplyForm, waitFormReady } from "./helpers";
 
 /**
  * 실제 DB 연결 점검 — 테스트(staging) 모드 배포에서만 실행한다(기본 E2E에서는 건너뜀).
@@ -74,6 +74,7 @@ test("테스트 모드 화면: 배너 표시, 광고·분석 태그 없음", asy
 
 test("신청 저장: 안내 카드 → 관심 서비스 자동 체크 → 테스트 데이터로 신청", async ({ page }) => {
   await page.goto("/?utm_source=staging_check&utm_medium=qa&utm_campaign=db_connect");
+  await waitFormReady(page);
   await page.getByTestId("money-unclaimed").getByRole("button").click();
   await expect(page.locator("#apply-interest-unclaimed")).toBeChecked();
   await fillApplyForm(page, { name: NAME, phone: PHONE, region: "gyeonggi", time: "weekday_afternoon" });
@@ -95,6 +96,7 @@ test.describe("모바일 390x844 · 터치", () => {
 
   test("신청 저장 (모바일): 안내 카드 탭 → 성함·번호 타이핑 → 선택 버튼·동의 탭 → 신청", async ({ page }) => {
     await page.goto("/?utm_source=staging_check&utm_medium=qa&utm_campaign=db_connect_mobile");
+    await waitFormReady(page);
     await page.getByTestId("money-hidden").getByRole("button").tap();
     await expect(page.locator("#apply-interest-hidden")).toBeChecked();
     for (const [sel, text] of [["#apply-name", `${NAME}모바일`], ["#apply-phone", MOBILE_PHONE.replace(/-/g, "")]] as const) {

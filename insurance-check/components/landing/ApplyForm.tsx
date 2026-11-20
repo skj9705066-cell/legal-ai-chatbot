@@ -70,6 +70,9 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   const [lockedNotice, setLockedNotice] = useState(false);
   // 서버에 다시 물은 실제 접수 가능 여부(DB 자동 점검 포함). 페이지 HTML은 최대 5분 캐시라 이 값을 우선한다
   const [live, setLive] = useState<SubmissionStatus | null>(null);
+  // 화면 스크립트가 붙기 전(느린 회선)에는 신청 버튼이 브라우저 기본 전송을 하지 않게 한다.
+  // 기본 전송(GET)은 성함·전화번호를 주소창(URL)에 그대로 남겨 방문 기록·서버 로그·분석 도구로 새어 나갈 수 있다.
+  const [ready, setReady] = useState(false);
   const mountedAt = useRef(0);
   const idemKey = useRef("");
   // 전송 중 잠금(ref) — 연타 시 요청이 여러 번 나가지 않게 즉시 막는다
@@ -88,6 +91,7 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   useEffect(() => {
     mountedAt.current = Date.now();
     idemKey.current = crypto.randomUUID();
+    setReady(true);
   }, []);
 
   useEffect(() => {
@@ -218,6 +222,9 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
     <form
       ref={formRef}
       noValidate
+      // 방어: 어떤 이유로든 기본 전송이 일어나도 입력값이 URL에 붙지 않도록 POST (실제 전송은 onSubmit의 fetch만 쓴다)
+      method="post"
+      data-ready={ready ? "true" : undefined}
       onSubmit={onSubmit}
       onFocusCapture={() => trackOnce("form_start", { serviceType: eventType() })}
       aria-labelledby="apply-form-title"
@@ -427,7 +434,8 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
         )}
 
         <div className="space-y-3">
-          <Button type="submit" size="xl" className="h-[68px] w-full text-[21px]" aria-disabled={busy}>
+          {/* 스크립트 준비 전에는 submit이 아닌 일반 버튼(눌러도 아무 전송 없음). 준비되면 바로 submit으로 바뀐다 */}
+          <Button type={ready ? "submit" : "button"} size="xl" className="h-[68px] w-full text-[21px]" aria-disabled={busy || !ready}>
             {status === "submitting" ? (
               <>
                 <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />

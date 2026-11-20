@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { applySubmit, fillApplyForm } from "./helpers";
+import { applySubmit, fillApplyForm, waitFormReady } from "./helpers";
 
 async function submitLead(page: Page, phone: string, utm = "") {
   const events: string[] = [];
@@ -11,6 +11,7 @@ async function submitLead(page: Page, phone: string, utm = "") {
   });
   await page.goto(`/${utm}`);
   // 안내 카드를 누르면 그 항목이 관심 서비스에 체크되고 성함 칸으로 (한 화면 신청서, 단계·확인 화면 없음)
+  await waitFormReady(page);
   await page.getByTestId("money-hidden").getByRole("button").click();
   await expect(page.locator("#apply-name")).toBeFocused();
   await expect(page.locator("#apply-interest-hidden")).toBeChecked();
@@ -67,6 +68,7 @@ test("a failed save never shows the completion screen", async ({ page }) => {
   // 저장 API가 실패하는 상황(DB 장애 등)을 흉내 낸다
   await page.route("**/api/leads", (route) => route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ ok: false, error: "일시적인 오류로 신청을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요." }) }));
   await page.goto("/");
+  await waitFormReady(page);
   await page.getByTestId("money-unclaimed").getByRole("button").click();
   await fillApplyForm(page, { name: "테스트", phone: "010-9000-0009" });
   await page.waitForTimeout(2100);

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { waitFormReady } from "./helpers";
 import AxeBuilder from "@axe-core/playwright";
 
 /**
@@ -93,9 +94,11 @@ test("2. money cards: card points / unclaimed / hidden with notes; official stat
   await expect(stat).toContainText("개인별 환급 가능 여부나 환급 금액을 의미하거나 보장하지 않습니다");
   await expect(money).toContainText("지급을 뜻하지 않으며");
   // 카드에서 신청 → 그 항목이 관심 서비스에 체크되고 성함 칸으로
+  await waitFormReady(page);
   await page.getByTestId("money-card_points").getByRole("button", { name: "이 항목 확인 신청하기" }).click();
   await expect(page.locator("#apply-name")).toBeFocused();
   await expect(page.locator("#apply-interest-card_points")).toBeChecked();
+  await waitFormReady(page);
   await page.getByTestId("money-unclaimed").getByRole("button").click();
   await expect(page.locator("#apply-interest-unclaimed")).toBeChecked();
   await expect(page.locator("#apply-interest-card_points")).toBeChecked(); // 앞에서 고른 항목은 그대로
@@ -109,6 +112,7 @@ test("3. visit process: 4 steps, optional coverage only with separate consent, s
   await expect(page.getByTestId("process-optional")).toContainText("따로 동의를 받은 뒤");
   await expect(page.getByTestId("process-safety")).toContainText("비밀번호·인증번호·카드번호는 절대 여쭙지 않아요.");
   await expect(page.getByTestId("process-safety")).toContainText("보험금 지급 여부와 금액은 보험사가 결정해요.");
+  await waitFormReady(page);
   await page.locator("#process-cta").getByRole("button").click();
   await expect(page.locator("#apply")).toBeInViewport();
 });
@@ -155,6 +159,7 @@ test("6. FAQ: 5 key questions first (free, no sign-up, where, passwords, when), 
 
 test("7. form: six simple fields, big targets, validation in screen order, optional consent unchecked, hidden honeypot", async ({ page }) => {
   await page.goto("/#apply");
+  await waitFormReady(page);
   const form = page.locator("#apply form");
   // 입력 순서: 성함 → 휴대전화 → 지역 → 연락 희망 시간 → 관심 서비스 → 동의
   await expect(form.getByLabel("성함")).toBeVisible();
@@ -199,6 +204,22 @@ test("7. form: six simple fields, big targets, validation in screen order, optio
   // 동의 내용은 펼쳐 볼 수 있고, 새 수집 항목(지역·시간·관심 서비스)이 적혀 있다
   await page.locator("#apply-privacy").locator("xpath=ancestor::div[contains(@class,'rounded-2xl')][1]").getByRole("button", { name: "내용 보기" }).click();
   await expect(form.getByText("성함, 휴대전화번호, 지역, 연락 희망 시간, 관심 서비스", { exact: false })).toBeVisible();
+});
+
+test("before the page script loads, the form never submits natively (name/phone must not end up in the URL)", async ({ browser, baseURL }) => {
+  // 스크립트가 늦게 붙는 느린 회선을 JS 비활성으로 재현한다
+  const ctx = await browser.newContext({ javaScriptEnabled: false, baseURL });
+  const page = await ctx.newPage();
+  await page.goto("/");
+  const form = page.locator("#apply form");
+  await expect(form).toHaveAttribute("method", "post");
+  await page.fill("#apply-name", "노출검사");
+  await page.fill("#apply-phone", "010-0000-0999");
+  await page.locator("#apply form").getByRole("button", { name: "무료 점검 신청하기", exact: true }).click();
+  await page.waitForTimeout(500);
+  expect(page.url()).not.toContain("phone");
+  expect(page.url()).not.toContain(encodeURIComponent("노출검사"));
+  await ctx.close();
 });
 
 test("8. operator notice: planner affiliation, free and no insurance condition, not a public agency, privacy links", async ({ page }) => {

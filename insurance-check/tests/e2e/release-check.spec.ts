@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { applySubmit, fillApplyForm } from "./helpers";
+import { applySubmit, fillApplyForm, waitFormReady } from "./helpers";
 
 /**
  * 배포 검증용 점검(2026-11 무료 방문 점검) — 로컬과 배포 사이트에 같은 기준을 적용한다.
@@ -71,6 +71,7 @@ test("⑤ 신청 저장 → 관리자 CRM 조회 (데모 모드)", async ({ page
   await page.goto("/?utm_source=release_check&utm_medium=qa&utm_campaign=deploy_verify");
   test.skip(!(await isDemo(page)), "운영 모드 — 실고객 DB에 테스트 신청을 넣지 않음");
 
+  await waitFormReady(page);
   await page.getByTestId("money-unclaimed").getByRole("button").click();
   await fillApplyForm(page, { name: "배포검증", phone: "010-9000-0452", region: "gyeonggi" });
   await page.waitForTimeout(2100); // 봇 차단용 최소 체류시간

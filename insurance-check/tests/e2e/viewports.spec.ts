@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { adminLogin } from "./helpers";
+import { adminLogin, waitFormReady } from "./helpers";
 
 /**
  * 화면 크기 매트릭스 — 출시 전 점검 기준 5가지 크기에서 같은 흐름을 실제 브라우저로 끝까지 확인한다.
@@ -80,6 +80,7 @@ for (const size of SIZES) {
       await expectNoClippedText(page.locator("main"), "랜딩");
       const heroCta = page.locator("#hero-cta").getByRole("button").first();
       await expectTarget(heroCta, 44, "히어로 CTA");
+      await waitFormReady(page);
       await press(heroCta, size.touch);
       const form = page.locator("#apply");
       await expect(page.locator("#apply-name")).toBeFocused();

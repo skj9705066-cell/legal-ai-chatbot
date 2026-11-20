@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { applySubmit, fillApplyForm } from "./helpers";
+import { applySubmit, fillApplyForm, waitFormReady } from "./helpers";
 import AxeBuilder from "@axe-core/playwright";
 
 const PASSWORD = process.env.DEMO_ADMIN_PASSWORD || "demo-admin-local";
@@ -34,6 +34,7 @@ test.describe("admin", () => {
   test("admin: CRM table, sales view, performance, audit, settings", async ({ page }) => {
     // 저장 검증: 랜딩에서 실제로 신청 → 완료 화면의 신청번호가 CRM에 유입 경로(UTM)와 함께 기록되어 있다
     await page.goto("/?utm_source=e2e_crm&utm_medium=cpc&utm_campaign=save_check");
+    await waitFormReady(page);
     await page.getByTestId("money-unclaimed").getByRole("button").click();
     await fillApplyForm(page, { name: "저장확인", phone: "010-9000-0077", region: "incheon", time: "weekday_evening" });
     await page.waitForTimeout(2100);
