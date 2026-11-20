@@ -208,14 +208,17 @@ test("7. form: six simple fields, big targets, validation in screen order, optio
 
 test("before the page script loads, the form never submits natively (name/phone must not end up in the URL)", async ({ browser, baseURL }) => {
   // 스크립트가 늦게 붙는 느린 회선을 JS 비활성으로 재현한다
-  const ctx = await browser.newContext({ javaScriptEnabled: false, baseURL });
+  // 부드러운 스크롤(scroll-behavior: smooth) 중에는 버튼 위치가 계속 바뀌므로 움직임 줄이기로 연다(CSS가 auto로 바꾼다)
+  const ctx = await browser.newContext({ javaScriptEnabled: false, baseURL, reducedMotion: "reduce" });
   const page = await ctx.newPage();
   await page.goto("/");
   const form = page.locator("#apply form");
   await expect(form).toHaveAttribute("method", "post");
   await page.fill("#apply-name", "노출검사");
   await page.fill("#apply-phone", "010-0000-0999");
-  await page.locator("#apply form").getByRole("button", { name: "무료 점검 신청하기", exact: true }).click();
+  // 페이지 JS가 꺼져 있으면 Playwright의 '안정 대기' 검사가 돌지 않아 force로 누른다(실제 사람의 클릭과 같은 기본 동작)
+  await page.locator("#apply form").getByRole("button", { name: "무료 점검 신청하기", exact: true }).click({ force: true });
+  await page.locator("#apply-phone").press("Enter"); // 입력칸에서 Enter(암묵적 전송)도 막혀야 한다
   await page.waitForTimeout(500);
   expect(page.url()).not.toContain("phone");
   expect(page.url()).not.toContain(encodeURIComponent("노출검사"));
