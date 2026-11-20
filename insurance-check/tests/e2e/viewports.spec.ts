@@ -64,7 +64,7 @@ for (const size of SIZES) {
   test.describe(`화면 ${size.name} @preview`, () => {
     test.use({ viewport: { width: size.width, height: size.height }, hasTouch: size.touch, isMobile: size.width < 768 });
 
-    test(`랜딩 → 유형 선택 → 입력 → 동의 → 신청 → 완료 → CRM (${size.name})`, async ({ page }, info) => {
+    test(`랜딩 → 선택 → 입력 → 동의 → 신청 → 완료 → CRM (${size.name})`, async ({ page }, info) => {
       test.skip(info.project.name !== "desktop", "크기를 직접 지정하므로 한 프로젝트에서만 실행");
       // 로컬 레이트리밋 분리(Vercel에서는 덮어써짐)
       await page.setExtraHTTPHeaders({ "x-real-ip": `vp-${size.name}` });
@@ -164,16 +164,19 @@ for (const size of SIZES) {
       const row = page.getByRole("row").filter({ hasText: refNo });
       await expect(row).toHaveCount(1);
       if (!REAL_DB) {
-        // CRM 표시가 신청 내용과 일치: 유형 · 마스킹된 번호
-        await expect(row).toContainText(size.touch ? "과오납·해지환급금" : "숨은·만기·휴면 보험금");
+        // CRM 표시가 신청 내용과 일치: 관심 서비스 · 지역 · 마스킹된 번호
+        await expect(row).toContainText("카드포인트, 숨은·만기 보험금");
+        await expect(row).toContainText(size.touch ? "인천" : "경기");
         await expect(row).toContainText(phone.replace(/^010-0000-/, "010-****-"));
       }
-      // 유형 필터: 맞는 유형이면 남고, 다른 유형이면 사라진다
-      const typeValue = size.touch ? "refund" : "hidden";
+      // 유형·지역 필터: 맞으면 남고, 다르면 사라진다 (관심 서비스 2개 → 대표 유형 general)
+      const regionValue = size.touch ? "incheon" : "gyeonggi";
       if (!REAL_DB) {
-        await page.goto(`/admin?q=${refNo}&type=${typeValue}`);
+        await page.goto(`/admin?q=${refNo}&type=general&region=${regionValue}`);
         await expect(page.getByRole("row").filter({ hasText: refNo })).toHaveCount(1);
         await page.goto(`/admin?q=${refNo}&type=unclaimed`);
+        await expect(page.getByRole("row").filter({ hasText: refNo })).toHaveCount(0);
+        await page.goto(`/admin?q=${refNo}&region=seoul`);
         await expect(page.getByRole("row").filter({ hasText: refNo })).toHaveCount(0);
         await page.goto(`/admin?q=${refNo}`);
       }
