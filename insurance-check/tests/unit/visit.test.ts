@@ -91,6 +91,13 @@ describe("visit booking, activities and purge (demo store)", () => {
     expect(acts[0]).toMatchObject({ kind: "visit", actor: "상담사T" });
     expect(acts[0].content).toContain("1월 2일(수) 오후 2:00 · 고객 자택");
     expect((await updateLeadByStaff(counselor as never, lead.id, { visitAt: "not a date" })).ok).toBe(false);
+    // 편집 화면처럼 현재 상태를 함께 보내도 자동 전환된다. 상태를 직접 다른 값으로 고르면 그 값을 따른다
+    const other = await newLead();
+    const r2 = await updateLeadByStaff(counselor as never, other.id, { claimStatus: "new", visitAt: "2030-01-02T05:00:00.000Z" });
+    expect(r2.ok && r2.lead.claimStatus).toBe("visit_booked");
+    const third = await newLead();
+    const r3 = await updateLeadByStaff(counselor as never, third.id, { claimStatus: "visited", visitAt: "2030-01-02T05:00:00.000Z" });
+    expect(r3.ok && r3.lead.claimStatus).toBe("visited");
   });
 
   it("records call/visit/memo notes but not hand-written SMS or resident numbers", async () => {

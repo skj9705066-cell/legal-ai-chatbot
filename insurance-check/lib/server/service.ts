@@ -272,7 +272,9 @@ export async function updateLeadByStaff(session: StaffSession, id: string, raw: 
   }
   // 방문 일정을 처음 잡으면 진행 상태를 '방문 예약'으로 옮긴다(상태를 직접 함께 바꾼 경우는 그 값을 따른다)
   const visitNewlyBooked = !!patch.visitAt && !row.visitAt;
-  if (visitNewlyBooked && patch.claimStatus === undefined && (row.claimStatus === "new" || row.claimStatus === "contacting")) {
+  // (편집 화면은 저장할 때마다 현재 상태를 함께 보내므로 '바뀌지 않은 상태'도 직접 바꾸지 않은 것으로 본다)
+  const statusUntouched = patch.claimStatus === undefined || patch.claimStatus === row.claimStatus;
+  if (visitNewlyBooked && statusUntouched && (row.claimStatus === "new" || row.claimStatus === "contacting")) {
     patch.claimStatus = "visit_booked";
     changes.push(`점검상태 ${row.claimStatus}→visit_booked`);
   }
