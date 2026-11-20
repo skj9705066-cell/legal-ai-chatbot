@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, CalendarClock, Copy, Download, Handshake, Inbox, Search, ShieldAlert, Users } from "lucide-react";
+import { AlertTriangle, CalendarCheck, CalendarClock, Copy, Download, Handshake, Inbox, Search, ShieldAlert, Users } from "lucide-react";
 import { getStaffSession } from "@/lib/server/auth";
 import { getLeadForStaff, listLeadsForStaff } from "@/lib/server/service";
 import { isSalesEligible } from "@/lib/server/repo/filter";
@@ -16,9 +16,12 @@ import {
   PREFERRED_TIME_LABEL,
   PRIVACY_STATUSES,
   PRIVACY_STATUS_LABEL,
+  REGIONS,
+  REGION_LABEL,
   SERVICE_TYPES,
+  interestsText,
 } from "@/lib/types";
-import { cn, formatDate, formatDateTime } from "@/lib/utils";
+import { cn, formatDate, formatDateTime, formatVisitAt } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { StatusSelect } from "@/components/admin/StatusSelect";
@@ -57,6 +60,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: SP }) 
     { label: "조회 결과", value: leads.length, icon: <Users className="h-5 w-5" />, tone: "navy" as const },
     { label: "신규 접수", value: leads.filter((l) => l.claimStatus === "new").length, icon: <Inbox className="h-5 w-5" />, tone: "blue" as const },
     { label: "오늘 연락 예정", value: leads.filter((l) => l.nextContactAt?.slice(0, 10) === today).length, icon: <CalendarClock className="h-5 w-5" />, tone: "caution" as const },
+    { label: "방문 예약", value: leads.filter((l) => l.claimStatus === "visit_booked").length, icon: <CalendarCheck className="h-5 w-5" />, tone: "mint" as const },
     { label: "보장 분석 동의", value: leads.filter((l) => isSalesEligible(l)).length, icon: <Handshake className="h-5 w-5" />, tone: "mint" as const },
     { label: "중복 의심", value: leads.filter((l) => l.duplicateOf).length, icon: <Copy className="h-5 w-5" />, tone: "navy" as const },
     { label: "철회·삭제 요청", value: leads.filter((l) => l.privacyStatus !== "none").length, icon: <ShieldAlert className="h-5 w-5" />, tone: "danger" as const },
@@ -82,14 +86,14 @@ export default async function LeadsPage({ searchParams }: { searchParams: SP }) 
         }
       />
 
-      <ul aria-label="주요 지표" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <ul aria-label="주요 지표" className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
         {kpis.map((k) => (
           <Kpi key={k.label} {...k} />
         ))}
       </ul>
 
       <Panel className="p-4 sm:p-5">
-        <nav aria-label="보험금 점검 상태 필터" className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+        <nav aria-label="진행 상태 필터" className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
           {chips.map((c) => {
             const active = (query.claimStatus ?? null) === c.value;
             return (
@@ -129,6 +133,17 @@ export default async function LeadsPage({ searchParams }: { searchParams: SP }) 
             </select>
           </label>
           <label className="flex flex-1 flex-col gap-1.5 text-[13px] font-semibold text-navy-600">
+            지역
+            <select name="region" defaultValue={query.region ?? ""} className={cn(fieldCls, "select-chevron appearance-none pr-9")}>
+              <option value="">전체</option>
+              {REGIONS.map((r) => (
+                <option key={r} value={r}>
+                  {REGION_LABEL[r]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-1 flex-col gap-1.5 text-[13px] font-semibold text-navy-600">
             보장 분석 상태
             <select name="coverage" defaultValue={query.coverageStatus ?? ""} className={cn(fieldCls, "select-chevron appearance-none pr-9")}>
               <option value="">전체</option>
@@ -156,6 +171,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: SP }) 
               <option value="newest">최신 접수순</option>
               <option value="oldest">오래된 접수순</option>
               <option value="next_contact">다음 연락 일정순</option>
+              <option value="visit">방문 일정순</option>
             </select>
           </label>
           <label className="flex flex-1 flex-col gap-1.5 text-[13px] font-semibold text-navy-600">
@@ -189,11 +205,11 @@ export default async function LeadsPage({ searchParams }: { searchParams: SP }) 
         )}
         <Panel className="min-w-0 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1360px]">
+            <table className="w-full min-w-[1560px]">
               <caption className="sr-only">신청 목록 {leads.length}건</caption>
               <thead className="border-b border-navy-100 bg-navy-50/70">
                 <tr>
-                  {["신청번호", "접수일", "유입 채널/UTM", "점검 유형", "고객명", "연락처", "희망 시간", "보험금 점검 상태", "보장 분석 동의", "보장 분석 상태", "다음 연락", "담당자", "처리 메모"].map((h) => (
+                  {["신청번호", "접수일", "광고 출처/UTM", "관심 서비스", "지역", "고객명", "연락처", "연락 희망 시간", "진행 상태", "방문 일정", "보장 분석 동의", "보장 분석 상태", "다음 연락", "담당자", "처리 메모"].map((h) => (
                     <th key={h} scope="col" className={tableHead}>
                       {h}
                     </th>
@@ -203,7 +219,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: SP }) 
               <tbody className="divide-y divide-navy-100">
                 {leads.length === 0 && (
                   <tr>
-                    <td colSpan={13} className="px-4 py-16 text-center text-[15px] text-navy-500">
+                    <td colSpan={15} className="px-4 py-16 text-center text-[15px] text-navy-500">
                       조건에 맞는 신청이 없습니다.
                     </td>
                   </tr>
@@ -239,7 +255,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: SP }) 
                         <div className="font-semibold text-ink">{l.attribution.utmSource ?? "(direct)"}</div>
                         <div className="whitespace-nowrap text-[13px] text-navy-600">{[l.attribution.utmMedium, l.attribution.utmCampaign].filter(Boolean).join(" / ") || "-"}</div>
                       </td>
-                      <td className={cn(tableCell, "whitespace-nowrap text-ink")}>{SERVICE_CONTENT[l.serviceType].shortTitle}</td>
+                      <td className={cn(tableCell, "max-w-[200px] text-ink")}>{interestsText(l.interests) ?? SERVICE_CONTENT[l.serviceType].shortTitle}</td>
+                      <td className={cn(tableCell, "whitespace-nowrap text-ink")}>{l.region ? REGION_LABEL[l.region] : "-"}</td>
                       <td className={cn(tableCell, "whitespace-nowrap")}>
                         <Link prefetch={false}
                           href={hrefWith(sp, { lead: l.id })}
@@ -259,12 +276,15 @@ export default async function LeadsPage({ searchParams }: { searchParams: SP }) 
                             leadId={l.id}
                             field="claimStatus"
                             value={l.claimStatus}
-                            label={`${l.refNo} 보험금 점검 상태`}
+                            label={`${l.refNo} 진행 상태`}
                             options={CLAIM_STATUSES.map((s) => ({ value: s, label: CLAIM_STATUS_LABEL[s] }))}
                           />
                         ) : (
                           <ClaimStatusBadge status={l.claimStatus} />
                         )}
+                      </td>
+                      <td className={cn(tableCell, "whitespace-nowrap text-navy-600")}>
+                        {l.visitAt ? <span className="font-semibold text-ink">{formatVisitAt(l.visitAt)}</span> : "-"}
                       </td>
                       <td className={cn(tableCell, "whitespace-nowrap")}>
                         {l.coverageConsent ? <Badge variant="mint">동의 {formatDate(l.coverageConsentAt)}</Badge> : <Badge>미동의</Badge>}

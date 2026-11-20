@@ -1,4 +1,5 @@
 import { devices, expect, test, type Page } from "@playwright/test";
+import { applySubmit, fillApplyForm } from "./helpers";
 
 /**
  * 실제 DB 연결 점검 — 테스트(staging) 모드 배포에서만 실행한다(기본 E2E에서는 건너뜀).
@@ -71,16 +72,14 @@ test("테스트 모드 화면: 배너 표시, 광고·분석 태그 없음", asy
   expect(thirdParty).toEqual([]);
 });
 
-test("신청 저장: 사례 버튼 → 유형 자동 선택 → 테스트 데이터로 신청", async ({ page }) => {
+test("신청 저장: 안내 카드 → 관심 서비스 자동 체크 → 테스트 데이터로 신청", async ({ page }) => {
   await page.goto("/?utm_source=staging_check&utm_medium=qa&utm_campaign=db_connect");
-  await page.getByTestId("claim-case-cta-surgery-rider").click();
-  await expect(page.getByTestId("apply-picked-type")).toContainText("병원비·수술비");
-  await page.fill("#apply-name", NAME);
-  await page.fill("#apply-phone", PHONE);
-  await page.locator("#apply-privacy").check();
-  await page.locator("#apply-marketing").check(); // 선택 동의도 기록되는지 확인
+  await page.getByTestId("money-unclaimed").getByRole("button").click();
+  await expect(page.locator("#apply-interest-unclaimed")).toBeChecked();
+  await fillApplyForm(page, { name: NAME, phone: PHONE, region: "gyeonggi", time: "weekday_afternoon" });
+  await page.locator('label[for="apply-marketing"]').click(); // 선택 동의도 기록되는지 확인
   await page.waitForTimeout(2100);
-  refNo = (await submitAndExpectSaved(page, () => page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click())).no;
+  refNo = (await submitAndExpectSaved(page, () => applySubmit(page).click())).no;
 
   // 보장 분석 상담 동의: 신청과 분리된 별도 화면의 선택 항목, 기본 해제. 동의 없이는 진행되지 않는다(실제 동의는 하지 않음)
   await page.getByRole("link", { name: "무료 보장 분석 상담 신청" }).click();
@@ -94,19 +93,20 @@ test("신청 저장: 사례 버튼 → 유형 자동 선택 → 테스트 데이
 test.describe("모바일 390x844 · 터치", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, userAgent: devices["Pixel 7"].userAgent, deviceScaleFactor: 2 });
 
-  test("신청 저장 (모바일): 사례 버튼 탭 → 이름·번호 타이핑 → 동의 탭 → 신청", async ({ page }) => {
+  test("신청 저장 (모바일): 안내 카드 탭 → 성함·번호 타이핑 → 선택 버튼·동의 탭 → 신청", async ({ page }) => {
     await page.goto("/?utm_source=staging_check&utm_medium=qa&utm_campaign=db_connect_mobile");
-    await page.getByTestId("claim-case-cta-maturity").tap();
-    await expect(page.getByTestId("apply-picked-type")).toContainText("숨은·만기보험금");
+    await page.getByTestId("money-hidden").getByRole("button").tap();
+    await expect(page.locator("#apply-interest-hidden")).toBeChecked();
     for (const [sel, text] of [["#apply-name", `${NAME}모바일`], ["#apply-phone", MOBILE_PHONE.replace(/-/g, "")]] as const) {
       await page.locator(sel).tap();
       await expect(page.locator(sel)).toBeFocused();
       await page.keyboard.type(text);
     }
+    for (const id of ["apply-region-incheon", "apply-time-anytime"]) await page.locator(`label:has(#${id})`).tap();
     await page.locator('label[for="apply-privacy"]').tap();
     await expect(page.locator("#apply-privacy")).toBeChecked();
     await page.waitForTimeout(2100);
-    const saved = await submitAndExpectSaved(page, () => page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).tap());
+    const saved = await submitAndExpectSaved(page, () => applySubmit(page).tap());
     mobileRefNo = saved.no;
     mobileBody = saved.body;
   });
@@ -139,12 +139,12 @@ const field = (page: Page, label: string) => page.locator("dl > div").filter({ h
 /** 상세 화면 편집: 상태·메모 저장 → 새로고침 후에도 DB 값 유지 */
 async function editAndVerify(page: Page, status: string, memo: string) {
   const editor = page.locator("form").filter({ has: page.getByRole("button", { name: "저장" }) });
-  await editor.getByLabel("보험금 점검 상태").selectOption(status);
+  await editor.getByLabel("진행 상태").selectOption(status);
   await editor.getByLabel("처리 메모").fill(memo);
   await editor.getByRole("button", { name: "저장" }).click();
   await expect(page.getByText("저장되었습니다.")).toBeVisible();
   await page.reload();
-  await expect(editor.getByLabel("보험금 점검 상태")).toHaveValue(status);
+  await expect(editor.getByLabel("진행 상태")).toHaveValue(status);
   await expect(editor.getByLabel("처리 메모")).toHaveValue(memo);
 }
 
@@ -160,15 +160,17 @@ test("관리자 CRM: 신청 조회·DB 값 일치 → 상태·메모 저장 (PC 
   await expect(row).toHaveCount(1);
   await expect(row).toContainText(`010-****-04${suffix}`);
   await expect(row).toContainText("미청구 보험금");
+  await expect(row).toContainText("경기");
   await expect(row).toContainText("staging_check");
   await row.getByRole("link", { name: refNo }).click();
   await expect(page.locator("h1")).toHaveText(refNo);
   await expect(page.getByText("테스트 · 지표 제외")).toBeVisible();
   await expect(field(page, "고객명")).toHaveText(NAME);
-  await expect(field(page, "점검 유형")).toContainText("미청구 보험금");
-  await expect(field(page, "유입")).toContainText("staging_check / qa / db_connect");
+  await expect(field(page, "관심 서비스")).toContainText("미청구 보험금");
+  await expect(field(page, "지역")).toHaveText("경기");
+  await expect(field(page, "광고 출처")).toContainText("staging_check / qa / db_connect");
   // 동의: 여부 · 문구 버전 · 시각
-  await expect(page.locator("dd").filter({ hasText: /^동의 · claim-.+ · \d/ })).toHaveCount(1);
+  await expect(page.locator("dd").filter({ hasText: /^동의 · visit-.+ · \d/ })).toHaveCount(1);
   await expect(page.locator("dd").filter({ hasText: /^동의 · marketing-.+ · \d/ })).toHaveCount(1);
   // 연락처 원문은 권한자만, 서버에서 복호화 (열람은 감사로그에 기록)
   await page.getByRole("button", { name: /원문 보기/ }).click();
@@ -196,7 +198,7 @@ test("관리자 CRM: 신청 조회·DB 값 일치 → 상태·메모 저장 (PC 
   await mrow.getByRole("link", { name: mobileRefNo }).click();
   await expect(page.locator("h1")).toHaveText(mobileRefNo);
   await expect(field(page, "고객명")).toHaveText(`${NAME}모바일`);
-  await expect(field(page, "유입")).toContainText("staging_check / qa / db_connect_mobile");
+  await expect(field(page, "광고 출처")).toContainText("staging_check / qa / db_connect_mobile");
   await page.getByRole("button", { name: /원문 보기/ }).click();
   await expect(field(page, "연락처")).toContainText(MOBILE_PHONE.replace(/-/g, ""));
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), "모바일 가로 스크롤").toBeLessThanOrEqual(0);

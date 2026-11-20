@@ -10,10 +10,12 @@ import {
   COVERAGE_ACTIVE_STATUSES,
   COVERAGE_STATUS_LABEL,
   PREFERRED_TIME_LABEL,
+  REGION_LABEL,
+  interestsText,
   type Lead,
   type StaffRole,
 } from "@/lib/types";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatVisitAt } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { RevealPhone } from "./LeadEditor";
@@ -43,7 +45,8 @@ export function LeadPanel({ lead, role, closeHref }: { lead: Lead; role: StaffRo
             {lead.name}
           </h2>
           <div className="mt-2 flex flex-wrap gap-1">
-            <Badge variant="blue">{SERVICE_CONTENT[lead.serviceType].shortTitle}</Badge>
+            <Badge variant="blue">{interestsText(lead.interests) ?? SERVICE_CONTENT[lead.serviceType].shortTitle}</Badge>
+            {lead.region && <Badge>{REGION_LABEL[lead.region]}</Badge>}
             {lead.duplicateOf && <Badge variant="caution">중복 · {lead.duplicateOf}</Badge>}
             {lead.isDemo && <Badge variant="demo">데모</Badge>}
             {lead.isTest && <Badge>테스트</Badge>}
@@ -60,17 +63,20 @@ export function LeadPanel({ lead, role, closeHref }: { lead: Lead; role: StaffRo
         <Row label="접수 · 희망 시간">
           {formatDateTime(lead.createdAt)} · {PREFERRED_TIME_LABEL[lead.preferredTime]}
         </Row>
-        <Row label="유입">
+        <Row label="방문 예약">
+          {lead.visitAt ? `${formatVisitAt(lead.visitAt)}${lead.visitPlace ? ` · ${lead.visitPlace}` : ""}` : "-"}
+        </Row>
+        <Row label="광고 출처">
           {a.utmSource ?? "(direct)"} / {a.utmMedium ?? "-"} / {a.utmCampaign ?? "-"}
         </Row>
-        <Row label="보험금 점검 상태">
+        <Row label="진행 상태">
           {canEdit ? (
             <StatusSelect
               key={lead.claimStatus}
               leadId={lead.id}
               field="claimStatus"
               value={lead.claimStatus}
-              label="보험금 점검 상태"
+              label="진행 상태"
               options={CLAIM_STATUSES.map((s) => ({ value: s, label: CLAIM_STATUS_LABEL[s] }))}
             />
           ) : (

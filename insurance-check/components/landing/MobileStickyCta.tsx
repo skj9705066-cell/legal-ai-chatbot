@@ -13,7 +13,7 @@ export function MobileStickyCta() {
   const [typing, setTyping] = useState(false);
 
   useEffect(() => {
-    const ids = ["hero-cta", "cases-cta", "proof-cta", "claim-cases-cta", "reviews-cta", "apply", "final-cta"];
+    const ids = ["hero-cta", "process-cta", "reviews-cta", "apply"];
     const targets = ids.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => !!el);
     if (!targets.length) return;
     const visible = new Set<string>();
@@ -50,12 +50,12 @@ export function MobileStickyCta() {
       data-testid="mobile-sticky-cta"
       data-hidden={off}
       className={cn(
-        "pb-safe fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-white via-white to-white/0 px-5 pt-5 transition-[transform,opacity] duration-300 lg:hidden",
+        "pb-safe fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-ivory via-ivory to-ivory/0 px-4 pt-5 transition-[transform,opacity] duration-300 lg:hidden",
         off ? "invisible translate-y-full opacity-0" : "visible translate-y-0 opacity-100",
       )}
     >
-      {/* 문구는 메인 CTA A/B 안을 따른다. 누르면 이미 고른 유형·입력 상태를 유지한 채 신청 폼으로 */}
-      <ApplyCta source="sticky" size="lg" className="w-full" />
+      {/* 문구는 메인 CTA A/B 안을 따른다. 누르면 입력 상태를 유지한 채 신청 폼으로 */}
+      <ApplyCta source="sticky" size="xl" className="h-[60px] w-full text-[19px]" />
     </div>
   );
 }

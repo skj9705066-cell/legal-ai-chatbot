@@ -4,6 +4,8 @@ import type {
   CoverageStatus,
   FunnelEvent,
   Lead,
+  LeadActivity,
+  Region,
   PrivacyRequest,
   PrivacyStatus,
   Review,
@@ -42,7 +44,7 @@ export function toPrivacyRequest(row: PrivacyRequestRow): PrivacyRequest {
   return req;
 }
 
-export type LeadSort = "newest" | "oldest" | "next_contact";
+export type LeadSort = "newest" | "oldest" | "next_contact" | "visit";
 
 export interface LeadFilter {
   /** 이름 부분일치 또는 신청번호 */
@@ -50,7 +52,10 @@ export interface LeadFilter {
   /** 검색어가 전화번호일 때 서비스 계층이 계산해 넣는 해시 */
   phoneHash?: string;
   serviceType?: ServiceType;
+  region?: Region;
   claimStatus?: ClaimStatus;
+  /** 방문 일정이 이 시각 이후로 잡힌 신청만 (방문 일정 화면) */
+  visitFrom?: string;
   coverageStatus?: CoverageStatus;
   privacyStatus?: PrivacyStatus;
   duplicatesOnly?: boolean;
@@ -76,6 +81,11 @@ export interface Repository {
   findLeadsByPhoneHash(phoneHash: string): Promise<LeadRow[]>;
   updateLead(id: string, patch: LeadRowPatch): Promise<LeadRow | null>;
 
+  /** 상담 이력. 수정은 없고, 파기 때 해당 신청의 이력을 지운다 */
+  addActivity(a: LeadActivity): Promise<void>;
+  listActivities(leadId: string): Promise<LeadActivity[]>;
+  deleteActivities(leadIds: string[]): Promise<void>;
+
   addAudit(entry: Omit<AuditLog, "id" | "at">): Promise<void>;
   listAudit(opts: { target?: string; limit?: number }): Promise<AuditLog[]>;
 
@@ -86,7 +96,7 @@ export interface Repository {
   listPrivacyRequests(): Promise<PrivacyRequestRow[]>;
   getPrivacyRequest(id: string): Promise<PrivacyRequestRow | null>;
   updatePrivacyRequest(id: string, patch: Partial<PrivacyRequestRow>): Promise<PrivacyRequestRow | null>;
-  /** 보유기간 경과 파기: before 이전에 들어온 신청·개인정보 요청에서 식별 정보를 지운다(이미 지운 행은 건너뜀). 지운 건수 */
+  /** 보유기간 경과 파기: before 이전에 들어온 신청·개인정보 요청에서 식별 정보를 지우고 상담 이력도 삭제한다(이미 지운 행은 건너뜀). 지운 건수 */
   purgeBefore(beforeIso: string): Promise<{ leads: number; privacyRequests: number }>;
 
   insertReview(r: Review): Promise<void>;
@@ -123,6 +133,8 @@ export const LEAD_SCRUB: LeadRowPatch = {
   notes: "",
   assignee: null,
   nextContactAt: null,
+  visitAt: null,
+  visitPlace: null,
   marketingConsent: false,
   coverageConsent: false,
   coverageStatus: "withdrawn",
@@ -132,8 +144,8 @@ export const LEAD_SCRUB: LeadRowPatch = {
 /** 파기 시 개인정보 요청 기록에서 지우는 값 */
 export const PRIVACY_REQUEST_SCRUB = { name: DELETED_NAME, phoneMasked: "***-****-****", phoneHash: "" } satisfies Partial<PrivacyRequestRow>;
 
-/** '상담 완료'로 집계하는 보험금 점검 상태 (청구 방법 안내 이후 단계) */
-export const COMPLETED_CLAIM_STATUSES: ClaimStatus[] = ["guided", "docs_pending", "closed"];
+/** '상담 완료'로 집계하는 진행 상태 (방문 점검·확인 방법 안내 이후 단계) */
+export const COMPLETED_CLAIM_STATUSES: ClaimStatus[] = ["visited", "guided", "docs_pending", "closed"];
 
 export function isRealLead(l: Pick<LeadRow, "isDemo" | "isTest" | "duplicateOf">): boolean {
   return !l.isDemo && !l.isTest && !l.duplicateOf;

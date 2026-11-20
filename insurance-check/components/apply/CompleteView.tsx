@@ -16,7 +16,7 @@ const COVERAGE_POINTS = [
   { icon: RefreshCcw, label: "갱신 조건" },
 ];
 
-const NEXT = ["남겨주신 번호로 담당자가 연락드려요", "확인할 항목과 필요한 서류를 안내해 드려요", "보험사에 직접 청구하시면 보험사가 지급을 결정해요"];
+const NEXT = ["고르신 시간에 담당 상담사가 전화드려요", "통화하며 방문 날짜와 장소를 함께 정해요", "찾아뵙고 고객님 휴대폰으로 함께 확인해요 (비밀번호는 묻지 않아요)"];
 
 /**
  * 신청 완료 + 보장 분석 별도 제안. 서버 저장에 성공한 경우에만 영수증이 생기므로(ApplyForm), 이 화면은 실제 접수 후에만 보인다.
@@ -125,7 +125,7 @@ export function CompleteView({ contactPhone, contactHours }: { contactPhone: str
             </Button>
           </div>
           <p className="mt-5 text-[14px] leading-relaxed text-navy-500">
-            보장 분석 상담을 신청해도 보험 계약이나 보험금·환급금 지급을 보장하지 않습니다. 신청하지 않아도 보험금 점검 안내는 그대로 진행돼요.
+            보장 분석 상담을 신청해도 보험 계약이나 보험금·환급금 지급을 보장하지 않습니다. 신청하지 않아도 무료 방문 점검은 그대로 진행돼요.
           </p>
         </section>
       ) : (

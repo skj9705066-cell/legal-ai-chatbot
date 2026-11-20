@@ -1,11 +1,14 @@
 import {
   CLAIM_STATUS_LABEL,
   COVERAGE_STATUS_LABEL,
+  INTEREST_SHORT,
+  REGION_LABEL,
   PREFERRED_TIME_LABEL,
   PRIVACY_STATUS_LABEL,
   type Lead,
 } from "@/lib/types";
 import { SERVICE_CONTENT } from "@/lib/content";
+import { formatVisitAt } from "@/lib/utils";
 
 /** 스프레드시트 수식 주입(CSV injection) 방지 + 따옴표 이스케이프. */
 export function csvCell(v: unknown): string {
@@ -14,7 +17,7 @@ export function csvCell(v: unknown): string {
   return `"${s.replace(/"/g, '""')}"`;
 }
 
-/** CSV에는 마스킹 연락처만 들어간다. 원문 연락처·메모는 내보내지 않는다. */
+/** CSV에는 마스킹 연락처만 들어간다. 원문 연락처·메모·방문 장소(주소가 섞일 수 있음)는 내보내지 않는다. */
 export function leadsToCsv(leads: Lead[]): string {
   const header = [
     "신청번호",
@@ -23,10 +26,13 @@ export function leadsToCsv(leads: Lead[]): string {
     "매체(utm_medium)",
     "캠페인(utm_campaign)",
     "점검 유형",
+    "관심 서비스",
+    "지역",
     "고객명",
     "연락처(마스킹)",
-    "상담 희망 시간",
-    "보험금 점검 상태",
+    "연락 희망 시간",
+    "진행 상태",
+    "방문 일시",
     "보장 분석 별도 동의",
     "보장 분석 상태",
     "다음 연락 일정",
@@ -42,10 +48,13 @@ export function leadsToCsv(leads: Lead[]): string {
     l.attribution.utmMedium,
     l.attribution.utmCampaign,
     SERVICE_CONTENT[l.serviceType].shortTitle,
+    l.interests.map((i) => INTEREST_SHORT[i]).join(", "),
+    l.region ? REGION_LABEL[l.region] : "",
     l.name,
     l.phoneMasked,
     PREFERRED_TIME_LABEL[l.preferredTime],
     CLAIM_STATUS_LABEL[l.claimStatus],
+    l.visitAt ? formatVisitAt(l.visitAt) : "",
     l.coverageConsent ? "동의" : "미동의",
     COVERAGE_STATUS_LABEL[l.coverageStatus],
     l.nextContactAt,

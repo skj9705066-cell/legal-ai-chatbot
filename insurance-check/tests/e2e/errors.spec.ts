@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { adminLogin } from "./helpers";
+import { adminLogin, applySubmit, fillApplyForm } from "./helpers";
 
 /**
  * 오류 상황 — 사용자가 이해할 수 있는 안내가 뜨고, 실패를 성공처럼 보이지 않으며, 권한 없는 접근은 막힌다.
@@ -12,11 +12,8 @@ test("전화번호 미입력: 안내 문구가 뜨고 전송하지 않는다 @pr
   const posts: string[] = [];
   page.on("request", (r) => r.url().endsWith("/api/leads") && r.method() === "POST" && posts.push(r.url()));
   await page.goto("/#apply");
-  await page.locator("#apply").getByRole("radiogroup").locator("label").filter({ hasText: "병원비·수술비" }).click();
-  await page.locator("#apply").getByRole("button", { name: "다음", exact: true }).click();
-  await page.fill("#apply-name", "오류검사");
-  await page.locator("#apply-privacy").check();
-  await page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click();
+  await fillApplyForm(page, { name: "오류검사", phone: "", interests: ["unclaimed"] });
+  await applySubmit(page).click();
   await expect(page.getByText("휴대전화번호를 입력해 주세요.")).toBeVisible();
   await expect(page.locator("#apply-phone")).toBeFocused();
   expect(posts).toHaveLength(0);
@@ -36,12 +33,10 @@ test("DB 장애(503): 완료 화면 없이 안내 → 복구 후 다시 누르�
     return route.continue();
   });
   await page.goto("/");
-  await page.getByTestId("claim-case-cta-small-bills").click();
-  await page.fill("#apply-name", "오류검사");
-  await page.fill("#apply-phone", "010-0000-0481");
-  await page.locator("#apply-privacy").check();
+  await page.getByTestId("money-unclaimed").getByRole("button").click();
+  await fillApplyForm(page, { name: "오류검사", phone: "010-0000-0481" });
   await page.waitForTimeout(2100);
-  const submit = page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true });
+  const submit = applySubmit(page);
   await submit.click();
   await expect(page.getByRole("alert").filter({ hasText: "일시 중단" })).toBeVisible();
   await expect(page).not.toHaveURL(/\/apply\/complete/);

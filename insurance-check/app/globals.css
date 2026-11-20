@@ -9,8 +9,8 @@
     scroll-padding-top: 5.5rem;
   }
   body {
-    @apply bg-white font-sans text-ink antialiased;
-    font-size: 16px;
+    @apply bg-ivory font-sans text-ink antialiased;
+    font-size: 17px;
     word-break: keep-all;
     overflow-wrap: anywhere;
     -webkit-tap-highlight-color: transparent;
@@ -19,7 +19,7 @@
     @apply bg-blue-100 text-navy;
   }
   :focus-visible {
-    outline: 2px solid #1463d9;
+    outline: 3px solid #31594C;
     outline-offset: 2px;
   }
 }
@@ -40,7 +40,7 @@
 @layer components {
   /* tailwind-merge가 배경색 클래스를 지우지 않도록 화살표 아이콘은 CSS 클래스로 분리 */
   .select-chevron {
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m5 8 5 5 5-5'/></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='%235F6B64' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m5 8 5 5 5-5'/></svg>");
     background-position: right 1rem center;
     background-repeat: no-repeat;
   }
@@ -50,53 +50,6 @@
     font-feature-settings: "tnum";
     letter-spacing: -0.035em;
   }
-}
-
-/* ── 오도미터: 자릿수 세로 롤링 ─────────────────────────────── */
-.odo {
-  display: inline-flex;
-  align-items: flex-end;
-  white-space: nowrap;
-  line-height: 1.12;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
-}
-.odo-col {
-  position: relative;
-  display: inline-block;
-  height: 1.12em;
-  overflow: hidden;
-}
-.odo-strip {
-  display: block;
-  will-change: transform;
-}
-.odo-strip > span {
-  display: block;
-  height: 1.12em;
-  text-align: center;
-}
-.odo-char {
-  display: inline-block;
-  height: 1.12em;
-}
-.odo[data-state="done"] {
-  animation: odo-settle 1400ms ease-out 1;
-}
-@keyframes odo-settle {
-  0% { text-shadow: 0 0 0 rgba(77, 147, 255, 0); }
-  30% { text-shadow: 0 0 28px rgba(77, 147, 255, 0.55); }
-  100% { text-shadow: 0 0 0 rgba(77, 147, 255, 0); }
-}
-
-/* 장식 링: 오도미터가 대기 중일 땐 비워 두고, 돌기 시작하면 같은 시간 동안 그려진다. (:has 미지원 브라우저는 처음부터 완성 상태) */
-.ring-arc {
-  stroke-dashoffset: 0;
-  transition: stroke-dashoffset 2800ms cubic-bezier(0.33, 1, 0.68, 1);
-}
-.stat-main:has(.odo[data-state="idle"]) .ring-arc {
-  stroke-dashoffset: 100;
-  transition: none;
 }
 
 /* ── 섹션 진입 Fade Up (JS가 화면 밖 요소에만 pending을 건다 → JS 없이도 내용은 항상 보임) ── */

@@ -1,9 +1,14 @@
 import "server-only";
 import { SolapiMessageService } from "solapi";
-import { getAppMode } from "@/lib/config";
+import { randomUUID } from "node:crypto";
+import { getAppMode, getOperatorInfo, type OperatorInfo } from "@/lib/config";
 import { SERVICE_CONTENT } from "@/lib/content";
-import type { Lead } from "@/lib/types";
+import { INTEREST_SHORT, REGION_LABEL, type Lead } from "@/lib/types";
+import type { StaffSession } from "@/lib/session";
+import { formatVisitAt } from "@/lib/utils";
+import { decryptPii } from "./crypto";
 import { repo } from "./repo";
+import { DELETED_NAME } from "./repo/types";
 
 /**
  * 신규 상담 신청 → 운영자 휴대폰 문자 알림 (솔라피 SMS/LMS).
@@ -24,7 +29,8 @@ export type NotifyResult =
   | { sent: true; groupId: string | null }
   | { sent: false; reason: "not-production" | "test-lead" | "duplicate" | "not-configured" | "failed"; error?: string };
 
-type LeadForNotice = Pick<Lead, "refNo" | "name" | "serviceType" | "createdAt" | "isTest" | "duplicateOf">;
+type LeadForNotice = Pick<Lead, "refNo" | "name" | "serviceType" | "createdAt" | "isTest" | "duplicateOf"> &
+  Partial<Pick<Lead, "region" | "interests">>;
 
 function solapiConfig() {
   const apiKey = process.env.SOLAPI_API_KEY?.trim();
@@ -38,12 +44,14 @@ function kstMinute(iso: string): string {
   return new Date(Date.parse(iso) + 9 * 3_600_000).toISOString().slice(0, 16).replace("T", " ");
 }
 
-export function newLeadMessage(lead: Pick<Lead, "name" | "serviceType" | "createdAt">): string {
+export function newLeadMessage(lead: Pick<Lead, "name" | "serviceType" | "createdAt"> & Partial<Pick<Lead, "region" | "interests">>): string {
+  const interests = lead.interests?.length ? lead.interests.map((i) => INTEREST_SHORT[i]).join(", ") : null;
   return [
     "[내보험 통합 점검]",
     "신규 상담 신청이 접수되었습니다.",
     `고객명: ${lead.name}`,
-    `상담 유형: ${SERVICE_CONTENT[lead.serviceType]?.pickTitle ?? lead.serviceType}`,
+    ...(lead.region ? [`지역: ${REGION_LABEL[lead.region]}`] : []),
+    `관심 서비스: ${interests ?? SERVICE_CONTENT[lead.serviceType]?.pickTitle ?? lead.serviceType}`,
     `신청 시간: ${kstMinute(lead.createdAt)}`,
     "관리자 CRM에서 확인하세요.",
   ].join("\n");
@@ -93,6 +101,78 @@ export async function notifyNewLead(lead: LeadForNotice): Promise<NotifyResult> 
     .addAudit({ actor: "system", role: "system", action: result.sent ? "notify.sms_sent" : result.reason === "failed" ? "notify.sms_failed" : "notify.sms_skipped", target: null, detail })
     .catch((err) => console.error("[notify] audit failed", safeError(err)));
   return result;
+}
+
+/* ───────────── 고객 방문 안내 문자 (상담사가 관리자 화면에서 직접 보냄) ───────────── */
+
+/**
+ * 방문 일정 안내 문자. 고객이 신청한 상담의 일정 확인용(광고 아님)이라 광고 수신 동의와 무관하게 보낼 수 있다.
+ * 담당자 소속·변경 연락처를 함께 적고, 비밀번호·인증번호를 묻지 않는다는 안내를 넣어 사칭 문자와 구분되게 한다.
+ * 금액·보험 상품·건강정보는 넣지 않는다.
+ */
+export function visitConfirmMessage(lead: Pick<Lead, "name" | "visitAt" | "visitPlace">, op: Pick<OperatorInfo, "plannerName" | "agencyName" | "contactPhone">): string {
+  const who = [op.plannerName, op.agencyName ? `(${op.agencyName} 소속 보험설계사)` : null].filter(Boolean).join(" ");
+  return [
+    "[무료 방문 점검 안내]",
+    `${lead.name}님, 방문 일정을 알려드립니다.`,
+    `일시: ${formatVisitAt(lead.visitAt)}`,
+    ...(lead.visitPlace ? [`장소: ${lead.visitPlace}`] : []),
+    ...(who ? [`담당: ${who}`] : []),
+    ...(op.contactPhone ? [`일정 변경·취소: ${op.contactPhone}`] : []),
+    "비밀번호·인증번호는 절대 여쭙지 않습니다.",
+  ].join("\n");
+}
+
+export type VisitSmsResult =
+  | { ok: true; sent: boolean; message: string; note: string }
+  | { ok: false; status: number; error: string };
+
+/**
+ * 방문 안내 문자 발송. 운영 모드 + 실제 신청 + 솔라피 설정이 있을 때만 실제로 보낸다.
+ * 데모·테스트 모드에서는 보내지 않고 '발송 안 함(데모)'으로 이력만 남긴다(테스트 번호로 문자가 나가지 않게).
+ * 상담 이력에는 보낸 문구를, 감사 로그에는 신청번호·결과만 남긴다(전화번호는 어디에도 남기지 않음).
+ */
+export async function sendVisitConfirmSms(session: StaffSession, leadId: string): Promise<VisitSmsResult> {
+  const r = repo();
+  const lead = await r.getLead(leadId);
+  if (!lead) return { ok: false, status: 404, error: "신청을 찾을 수 없습니다." };
+  if (lead.name === DELETED_NAME || lead.privacyStatus === "delete_requested" || lead.privacyStatus === "processing") {
+    return { ok: false, status: 409, error: "삭제 요청된 고객에게는 문자를 보낼 수 없습니다." };
+  }
+  if (!lead.visitAt) return { ok: false, status: 409, error: "먼저 방문 일시를 저장해 주세요." };
+  if (Date.parse(lead.visitAt) < Date.now()) return { ok: false, status: 409, error: "이미 지난 방문 일정입니다. 일시를 확인해 주세요." };
+
+  const message = visitConfirmMessage(lead, getOperatorInfo());
+  const mode = getAppMode();
+  const cfg = solapiConfig();
+  let sent = false;
+  let note: string;
+  if (mode !== "production" || lead.isTest || lead.isDemo) {
+    note = `발송 안 함 — ${mode === "demo" ? "데모" : "테스트"} 모드(실제 문자는 운영 모드에서만 발송)`;
+  } else if (!cfg) {
+    return { ok: false, status: 503, error: "문자 발송 설정(SOLAPI_API_KEY·SOLAPI_API_SECRET·SOLAPI_SENDER)이 없습니다." };
+  } else {
+    try {
+      const to = decryptPii(lead.phoneEnc);
+      const service = new SolapiMessageService(cfg.apiKey, cfg.apiSecret);
+      const res = await Promise.race([
+        service.send({ to, from: cfg.sender, text: message }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), SEND_TIMEOUT_MS)),
+      ]);
+      const failed = res.failedMessageList?.[0];
+      if (failed) throw Object.assign(new Error(failed.statusMessage), { name: failed.statusCode });
+      sent = true;
+      note = "발송 접수";
+    } catch (err) {
+      const error = safeError(err);
+      console.error("[notify] visit sms failed", lead.refNo, error);
+      await r.addAudit({ actor: session.name, role: session.role, action: "notify.visit_sms_failed", target: leadId, detail: `${lead.refNo} 방문 안내 문자 실패 — ${error}` });
+      return { ok: false, status: 502, error: "문자를 보내지 못했습니다. 잠시 후 다시 시도하거나 전화로 안내해 주세요." };
+    }
+  }
+  await r.addActivity({ id: randomUUID(), leadId, at: new Date().toISOString(), actor: session.name, kind: "sms", content: `방문 안내 문자 ${sent ? "발송" : "(발송 안 함)"}\n${message}` });
+  await r.addAudit({ actor: session.name, role: session.role, action: sent ? "notify.visit_sms_sent" : "notify.visit_sms_skipped", target: leadId, detail: `${lead.refNo} 방문 안내 문자 ${note}` });
+  return { ok: true, sent, message, note };
 }
 
 export function notifyStatus(): { configured: boolean; provider: string | null } {

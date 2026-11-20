@@ -37,7 +37,7 @@ export function ConsentBox({
   return (
     <div className={cn("rounded-2xl border-2 bg-white transition-colors", error ? "border-danger" : checked ? "border-blue/60" : "border-navy-100")}>
       <div className="flex items-center gap-3 px-4 py-4 sm:px-5">
-        <span className="relative flex h-6 w-6 shrink-0">
+        <span className="relative flex h-7 w-7 shrink-0">
           <input
             id={id}
             type="checkbox"
@@ -46,11 +46,11 @@ export function ConsentBox({
             onChange={(e) => onChange(e.target.checked)}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? errorId : undefined}
-            className="peer h-6 w-6 cursor-pointer appearance-none rounded-lg border-2 border-navy-300 bg-white transition-colors checked:border-blue checked:bg-blue focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue/25"
+            className="peer h-7 w-7 cursor-pointer appearance-none rounded-lg border-2 border-navy-300 bg-white transition-colors checked:border-blue checked:bg-blue focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue/25"
           />
-          <Check className="pointer-events-none absolute inset-0 m-auto h-4 w-4 text-white opacity-0 peer-checked:opacity-100" strokeWidth={3} aria-hidden="true" />
+          <Check className="pointer-events-none absolute inset-0 m-auto h-5 w-5 text-white opacity-0 peer-checked:opacity-100" strokeWidth={3} aria-hidden="true" />
         </span>
-        <label htmlFor={id} className="flex-1 cursor-pointer text-[16px] font-semibold leading-snug text-ink">
+        <label htmlFor={id} className="flex-1 cursor-pointer text-[17px] font-semibold leading-snug text-ink sm:text-[18px]">
           <span className={cn("mr-1.5", required ? "text-blue" : "text-navy-500")}>[{required ? "필수" : "선택"}]</span>
           {title}
         </label>
@@ -59,7 +59,7 @@ export function ConsentBox({
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-controls={detailId}
-          className="flex shrink-0 items-center gap-0.5 rounded-lg px-1.5 py-1 text-[14px] font-medium text-navy-500 hover:bg-navy-50 hover:text-navy"
+          className="flex min-h-[44px] shrink-0 items-center gap-0.5 rounded-lg px-2 py-1 text-[15px] font-semibold text-navy-600 underline-offset-2 hover:bg-navy-50 hover:text-navy"
         >
           내용 보기
           <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} aria-hidden="true" />
@@ -69,8 +69,8 @@ export function ConsentBox({
         <dl className="space-y-3">
           {rows.map((r) => (
             <div key={r.label} className="grid gap-0.5 sm:grid-cols-[92px_1fr] sm:gap-3">
-              <dt className="text-[14px] font-semibold text-navy">{r.label}</dt>
-              <dd className={cn("text-[15px] leading-relaxed text-navy-600", isPlaceholder(r.value) && "font-medium text-caution")}>{r.value}</dd>
+              <dt className="text-[15px] font-semibold text-navy">{r.label}</dt>
+              <dd className={cn("text-[16px] leading-relaxed text-navy-600", isPlaceholder(r.value) && "font-medium text-caution")}>{r.value}</dd>
             </div>
           ))}
         </dl>

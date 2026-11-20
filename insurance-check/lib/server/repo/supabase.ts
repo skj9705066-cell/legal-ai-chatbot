@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { AuditLog, FunnelEvent, Review } from "@/lib/types";
+import type { AuditLog, FunnelEvent, LeadActivity, Review } from "@/lib/types";
 import { COMPLETED_CLAIM_STATUSES, DELETED_NAME, DuplicateSubmissionError, LEAD_SCRUB, PRIVACY_REQUEST_SCRUB, type ReviewImage, type LeadFilter, type LeadRow, type LeadRowPatch, type PrivacyRequestRow, type Repository } from "./types";
 
 /**
@@ -30,6 +30,10 @@ function fromLeadRow(r: Row): LeadRow {
     serviceType: r.service_type as LeadRow["serviceType"],
     name: r.name as string,
     phoneMasked: r.phone_masked as string,
+    region: (r.region as LeadRow["region"]) ?? null,
+    interests: (r.interests as LeadRow["interests"]) ?? [],
+    visitAt: (r.visit_at as string) ?? null,
+    visitPlace: (r.visit_place as string) ?? null,
     phoneEnc: (r.phone_enc as string) ?? "",
     phoneHash: (r.phone_hash as string) ?? "",
     idempotencyKey: (r.idempotency_key as string) ?? null,
@@ -77,6 +81,10 @@ const LEAD_COLUMNS: Record<string, string> = {
   phoneHash: "phone_hash",
   preferredTime: "preferred_time",
   memo: "memo",
+  region: "region",
+  interests: "interests",
+  visitAt: "visit_at",
+  visitPlace: "visit_place",
   claimStatus: "claim_status",
   marketingConsent: "marketing_consent",
   thirdPartyConsent: "third_party_consent",
@@ -235,6 +243,8 @@ export const supabaseRepository: Repository = {
     let q = db().from("ic_leads").select("*");
     if (f.serviceType) q = q.eq("service_type", f.serviceType);
     if (f.claimStatus) q = q.eq("claim_status", f.claimStatus);
+    if (f.region) q = q.eq("region", f.region);
+    if (f.visitFrom) q = q.gte("visit_at", f.visitFrom);
     if (f.coverageStatus) q = q.eq("coverage_status", f.coverageStatus);
     if (f.privacyStatus) q = q.eq("privacy_status", f.privacyStatus);
     if (f.duplicatesOnly) q = q.not("duplicate_of", "is", null);
@@ -252,7 +262,8 @@ export const supabaseRepository: Repository = {
       if (s) q = q.or(`name.ilike.%${s}%,ref_no.ilike.%${s}%`);
     }
     const sort = f.sort ?? "newest";
-    if (sort === "next_contact") q = q.order("next_contact_at", { ascending: true, nullsFirst: false });
+    if (sort === "visit") q = q.order("visit_at", { ascending: true, nullsFirst: false });
+    else if (sort === "next_contact") q = q.order("next_contact_at", { ascending: true, nullsFirst: false });
     else q = q.order("created_at", { ascending: sort === "oldest" });
     const data = must(await q.limit(f.limit ?? 500));
     return (data ?? []).map(fromLeadRow);
@@ -271,6 +282,28 @@ export const supabaseRepository: Repository = {
         .maybeSingle(),
     );
     return data ? fromLeadRow(data) : null;
+  },
+  async addActivity(a) {
+    must(await db().from("ic_lead_activities").insert({ id: a.id, lead_id: a.leadId, at: a.at, actor: a.actor, kind: a.kind, content: a.content }));
+  },
+  async listActivities(leadId) {
+    const data = must(await db().from("ic_lead_activities").select("*").eq("lead_id", leadId).order("at", { ascending: false }).limit(200));
+    return (data ?? []).map(
+      (r: Row): LeadActivity => ({
+        id: r.id as string,
+        leadId: r.lead_id as string,
+        at: r.at as string,
+        actor: r.actor as string,
+        kind: r.kind as LeadActivity["kind"],
+        content: r.content as string,
+      }),
+    );
+  },
+  async deleteActivities(leadIds) {
+    if (!leadIds.length) return;
+    for (let i = 0; i < leadIds.length; i += 200) {
+      must(await db().from("ic_lead_activities").delete().in("lead_id", leadIds.slice(i, i + 200)));
+    }
   },
   async addAudit(entry) {
     must(
@@ -385,6 +418,8 @@ export const supabaseRepository: Repository = {
         .neq("name", DELETED_NAME)
         .select("id"),
     );
+    // 파기한 신청의 상담 이력(전화·방문 메모 등)도 함께 지운다
+    await supabaseRepository.deleteActivities((leads ?? []).map((l: Row) => l.id as string));
     const reqs = must(
       await db()
         .from("ic_privacy_requests")

@@ -31,7 +31,7 @@ export function processorRows(o: OperatorInfo, mode: DisplayMode): ProcessorInfo
       name: "Vercel Inc. (미국)",
       contact: "privacy@vercel.com",
       task: "웹사이트 호스팅, 신청 접수·관리자 화면 서버 운영",
-      items: "신청 시 입력한 정보(이름, 휴대전화번호, 점검 유형 등)와 접속 기록(IP 주소, 브라우저 정보)",
+      items: "신청 시 입력한 정보(성함, 휴대전화번호, 지역, 관심 서비스 등)와 접속 기록(IP 주소, 브라우저 정보)",
       location: orSetting(o.serverRegion, "서버 위치", mode),
       retention: "신청 정보는 저장하지 않고 처리 즉시 아래 데이터베이스로 전달합니다. 접속 기록은 Vercel의 로그 보관 기간 동안 보관됩니다.",
     },
@@ -39,7 +39,7 @@ export function processorRows(o: OperatorInfo, mode: DisplayMode): ProcessorInfo
       name: "Supabase, Inc. (미국)",
       contact: "privacy@supabase.com",
       task: "신청 정보 데이터베이스 저장·관리, 관리자 로그인 인증",
-      items: "이름, 휴대전화번호(암호화 저장), 점검 유형, 동의 기록, 상담 진행 기록, 유입 경로",
+      items: "성함, 휴대전화번호(암호화 저장), 지역, 연락 희망 시간, 관심 서비스, 방문 일정, 동의 기록, 상담 진행 기록, 유입 경로",
       location: orSetting(o.dbRegion, "DB 위치", mode),
       retention: "신청일로부터 1년 (삭제 요청 시 그 전에 파기)",
     },
@@ -48,10 +48,10 @@ export function processorRows(o: OperatorInfo, mode: DisplayMode): ProcessorInfo
 
 export function claimConsentRows(o: OperatorInfo, mode: DisplayMode): ConsentRow[] {
   return [
-    { label: "수집 목적", value: "보험금 점검(청구 방법) 안내를 위한 상담 연락 및 신청 이력 관리" },
+    { label: "수집 목적", value: "무료 점검(카드포인트·보험금 확인 방법) 안내를 위한 상담 연락, 방문 일정 조율 및 신청 이력 관리" },
     {
       label: "수집 항목",
-      value: "이름, 휴대전화번호, 점검 유형, 유입 경로(광고 캠페인 정보)",
+      value: "성함, 휴대전화번호, 지역, 연락 희망 시간, 관심 서비스, 유입 경로(광고 캠페인 정보). 방문을 정하시면 방문 일시·장소, 상담 진행 기록",
     },
     { label: "보유 기간", value: orSetting(o.retentionClaim, "보유기간", mode) + " (기간 경과 또는 삭제 요청 시 지체 없이 파기)" },
     { label: "처리 주체", value: orSetting(o.privacyController, "개인정보 처리 주체", mode) },
@@ -62,13 +62,13 @@ export function claimConsentRows(o: OperatorInfo, mode: DisplayMode): ConsentRow
 }
 
 export const CLAIM_CONSENT_FOOTNOTE =
-  "주민등록번호, 상세 병력 등 건강정보, 보험증권 원본은 수집하지 않습니다. 이 동의에는 보험 상품 권유가 포함되지 않습니다.";
+  "주민등록번호, 상세 병력 등 건강정보, 카드번호·비밀번호, 보험증권 원본은 수집하지 않습니다. 이 동의에는 보험 상품 권유가 포함되지 않습니다.";
 
 /** 제3자 제공이 실제로 있는 경우에만 쓰는 별도 동의 문구 */
 export function thirdPartyConsentRows(o: OperatorInfo, mode: DisplayMode): ConsentRow[] {
   return [
     { label: "제공 내용", value: thirdPartyText(o.thirdPartyProvision, mode) },
-    { label: "제공 항목", value: "이름, 휴대전화번호, 점검 유형" },
+    { label: "제공 항목", value: "성함, 휴대전화번호, 지역, 관심 서비스" },
     { label: "거부 권리", value: "동의를 거부할 수 있으며, 거부 시 제3자 제공이 필요한 상담 신청이 제한됩니다." },
   ];
 }
@@ -79,7 +79,7 @@ export function marketingConsentRows(o: OperatorInfo, mode: DisplayMode): Consen
     { label: "항목", value: "이름, 휴대전화번호" },
     { label: "보유 기간", value: "동의 철회 시 또는 신청일로부터 1년이 지난 때 중 먼저 오는 때까지 (철회 즉시 발송 중단)" },
     { label: "처리 주체", value: orSetting(o.privacyController, "개인정보 처리 주체", mode) },
-    { label: "거부 권리", value: "동의하지 않아도 보험금 점검 신청과 상담에 아무런 영향이 없습니다." },
+    { label: "거부 권리", value: "동의하지 않아도 무료 점검 신청과 상담에 아무런 영향이 없습니다." },
   ];
 }
 

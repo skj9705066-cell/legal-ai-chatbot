@@ -30,18 +30,18 @@ export function MobileMenu({ items }: { items: { href: string; label: string }[]
         aria-controls={id}
         aria-label={open ? "메뉴 닫기" : "메뉴 열기"}
         onClick={() => setOpen((v) => !v)}
-        className="flex h-10 w-10 items-center justify-center rounded-xl text-navy hover:bg-navy-50"
+        className="flex h-11 w-11 items-center justify-center rounded-xl text-charcoal hover:bg-sage"
       >
         {open ? <X className="h-6 w-6" aria-hidden="true" /> : <Menu className="h-6 w-6" aria-hidden="true" />}
       </button>
-      <div id={id} hidden={!open} className="absolute inset-x-0 top-full border-b border-navy-100 bg-white shadow-lift">
+      <div id={id} hidden={!open} className="absolute inset-x-0 top-full border-b border-navy-100 bg-ivory shadow-lift">
         <nav aria-label="모바일 메뉴" className="container flex flex-col py-3">
           {items.map((n) => (
             <Link
               key={n.href}
               href={n.href}
               onClick={() => setOpen(false)}
-              className="rounded-xl px-2 py-3.5 text-[17px] font-semibold text-ink hover:bg-navy-50"
+              className="rounded-xl px-3 py-4 text-[19px] font-semibold text-charcoal hover:bg-sage"
             >
               {n.label}
             </Link>

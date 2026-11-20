@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getStaffSession } from "@/lib/server/auth";
-import { getLeadForStaff } from "@/lib/server/service";
+import { getLeadForStaff, listActivitiesForStaff } from "@/lib/server/service";
+import { visitConfirmMessage } from "@/lib/server/notify";
+import { getAppMode, getOperatorInfo } from "@/lib/config";
 import { isSalesEligible } from "@/lib/server/repo/filter";
 import { repo } from "@/lib/server/repo";
 import { can } from "@/lib/session";
@@ -13,12 +15,15 @@ import {
   COVERAGE_STATUS_LABEL,
   PREFERRED_TIME_LABEL,
   PRIVACY_STATUS_LABEL,
+  REGION_LABEL,
   STAFF_ROLE_LABEL,
+  interestsText,
 } from "@/lib/types";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatVisitAt } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { LeadEditor, RevealPhone } from "@/components/admin/LeadEditor";
+import { ActivityLog } from "@/components/admin/ActivityLog";
 
 function Item({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -35,7 +40,9 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const lead = await getLeadForStaff(session, id);
   if (!lead) notFound();
-  const history = await repo().listAudit({ target: id, limit: 50 });
+  const [history, activities] = await Promise.all([repo().listAudit({ target: id, limit: 50 }), listActivitiesForStaff(id)]);
+  const smsPreview = lead.visitAt ? visitConfirmMessage(lead, getOperatorInfo()) : null;
+  const smsLive = getAppMode() === "production" && !lead.isTest && !lead.isDemo;
   const eligible = isSalesEligible(lead);
   const a = lead.attribution;
 
@@ -58,14 +65,16 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
           <h2 className="text-[17px] font-bold text-navy">신청 정보</h2>
           <dl className="mt-2 divide-y divide-navy-100">
             <Item label="접수일시">{formatDateTime(lead.createdAt)}</Item>
-            <Item label="점검 유형">{SERVICE_CONTENT[lead.serviceType].title}</Item>
+            <Item label="관심 서비스">{interestsText(lead.interests) ?? SERVICE_CONTENT[lead.serviceType].title}</Item>
+            <Item label="지역">{lead.region ? REGION_LABEL[lead.region] : "- (개편 이전 신청)"}</Item>
             <Item label="고객명">{lead.name}</Item>
             <Item label="연락처">
               <RevealPhone leadId={lead.id} masked={lead.phoneMasked} allowed={can(session.role, "revealPhone")} />
             </Item>
-            <Item label="상담 희망 시간">{PREFERRED_TIME_LABEL[lead.preferredTime]}</Item>
+            <Item label="방문 예약">{lead.visitAt ? `${formatVisitAt(lead.visitAt)}${lead.visitPlace ? ` · ${lead.visitPlace}` : ""}` : "-"}</Item>
+            <Item label="연락 희망 시간">{PREFERRED_TIME_LABEL[lead.preferredTime]}</Item>
             <Item label="상담 메모">{lead.memo || "-"}</Item>
-            <Item label="유입">
+            <Item label="광고 출처">
               {a.utmSource ?? "(direct)"} / {a.utmMedium ?? "-"} / {a.utmCampaign ?? "-"}
               {a.utmContent || a.utmTerm ? ` / ${a.utmContent ?? "-"} / ${a.utmTerm ?? "-"}` : ""}
               <div className="text-[13px] text-navy-600">
@@ -105,7 +114,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
               )}
             </Item>
             <Item label="현재 상태">
-              점검: {CLAIM_STATUS_LABEL[lead.claimStatus]} · 보장 분석: {COVERAGE_STATUS_LABEL[lead.coverageStatus]}
+              진행: {CLAIM_STATUS_LABEL[lead.claimStatus]} · 보장 분석: {COVERAGE_STATUS_LABEL[lead.coverageStatus]}
             </Item>
           </dl>
         </Card>
@@ -114,6 +123,11 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
       <Card className="rounded-2xl p-6">
         <h2 className="mb-4 text-[17px] font-bold text-navy">처리</h2>
         <LeadEditor lead={lead} role={session.role} salesEligible={eligible} canEdit={can(session.role, "edit")} />
+      </Card>
+
+      <Card className="rounded-2xl p-6">
+        <h2 className="mb-4 text-[17px] font-bold text-navy">상담 이력</h2>
+        <ActivityLog leadId={lead.id} activities={activities} canEdit={can(session.role, "edit") && lead.name !== "(삭제됨)"} visitAt={lead.visitAt} smsPreview={smsPreview} smsLive={smsLive} />
       </Card>
 
       <Card className="rounded-2xl p-6">

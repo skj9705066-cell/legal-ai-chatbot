@@ -1,3 +1,4 @@
+import { applySubmit, fillApplyForm } from "./helpers";
 import { expect, test, type Page } from "@playwright/test";
 
 /**
@@ -58,16 +59,10 @@ test("③ 준비 전 접수 잠금: 동의 화면은 그대로, 신청은 전송
   await expect(page.getByText("현재 신청 접수를 준비하고 있어요")).toBeVisible();
   await expect(page.getByTestId("lock-diagnostics")).toHaveCount(0);
 
-  const card = page.locator("#apply").getByRole("radiogroup").locator("label").filter({ hasText: "병원비·수술비" });
-  if (isMobile) await card.tap();
-  else await card.click();
-  await page.locator("#apply").getByRole("button", { name: "다음", exact: true }).click();
   await expect(page.locator("#apply").getByText("개인정보 수집·이용 동의").first()).toBeVisible();
-  await page.fill("#apply-name", "운영점검");
-  await page.fill("#apply-phone", "01000000398");
   // force 금지: 이 화면은 부드러운 스크롤(scroll-behavior: smooth)을 쓰므로, 안정 대기 없이 누르면 스크롤 중 좌표를 놓쳐 체크가 안 될 수 있다
-  await page.locator("#apply-privacy").check();
-  await page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click();
+  await fillApplyForm(page, { name: "운영점검", phone: "01000000398", interests: ["unclaimed"], tap: isMobile });
+  await applySubmit(page).click();
   await expect(page.getByTestId("apply-locked-notice")).toContainText("지금은 신청을 접수할 수 없어요");
   await expect(page.getByTestId("lock-diagnostics-notice")).toHaveCount(0);
   expect(posts).toHaveLength(0);

@@ -136,6 +136,12 @@ export interface OperatorInfo {
   /** 처리위탁·국외 이전 고지: 신청 처리 서버(Vercel Functions)·DB(Supabase) 위치. 대시보드에서 확인한 값만 넣는다 */
   serverRegion: string | null;
   dbRegion: string | null;
+  /**
+   * 상담사 소개(선택). 상담사 본인이 확인한 사진·인사말만 넣는다 — 비어 있으면 이니셜 아이콘·사실 안내만 보인다.
+   * COUNSELOR_PHOTO: public/ 아래 경로(예: /counselor.jpg). COUNSELOR_INTRO: 본인 인사말(200자 이내)
+   */
+  counselorPhoto: string | null;
+  counselorIntro: string | null;
 }
 
 export interface PublicConfig {
@@ -186,6 +192,8 @@ export function getOperatorInfo(): OperatorInfo {
     privacyPolicyEffectiveDate: setting("PRIVACY_POLICY_EFFECTIVE_DATE"),
     serverRegion: setting("SERVER_REGION"),
     dbRegion: setting("DB_REGION"),
+    counselorPhoto: localImagePath(env("COUNSELOR_PHOTO")),
+    counselorIntro: env("COUNSELOR_INTRO")?.slice(0, 200) ?? null,
   };
 }
 
@@ -220,12 +228,17 @@ function lockDiagnostics(): string[] | null {
   return requiredItems(mode, items).filter((i) => !i.ok).map((i) => `${i.key}${i.hint && i.hint !== "미설정" ? `(${i.hint})` : ""}`);
 }
 
+/** 같은 사이트의 이미지 경로만 허용(외부 주소·스크립트 삽입 방지) */
+function localImagePath(v: string | null): string | null {
+  return v && /^\/[A-Za-z0-9._/-]+\.(jpe?g|png|webp)$/i.test(v) && !v.includes("..") ? v : null;
+}
+
 /** 픽셀 ID는 숫자만 허용(스크립트에 그대로 들어가므로 형식이 다르면 로드하지 않는다) */
 function numericId(v: string | null): string | null {
   return v && /^\d{6,20}$/.test(v) ? v : null;
 }
 
-export const PRIVACY_CONSENT_VERSION = "claim-2026-10-18.v3"; // 처리 위탁(국외 이전) 항목 추가 · v2: 수집 항목에서 희망 시간·메모 제외
+export const PRIVACY_CONSENT_VERSION = "visit-2026-11-20.v4"; // 방문 점검: 지역·연락 희망 시간·관심 서비스·방문 일정 추가 · v3: 처리 위탁(국외 이전) · v2: 희망 시간·메모 제외
 export const COVERAGE_CONSENT_VERSION = "coverage-2026-10-18.v2"; // 보유 기간 확정(신청일로부터 1년, 자동 파기)
 export const MARKETING_CONSENT_VERSION = "marketing-2026-10-18.v2"; // 보유 기간 최대 1년(자동 파기)
 export const THIRD_PARTY_CONSENT_VERSION = "third-party-2026-10-16.v1";

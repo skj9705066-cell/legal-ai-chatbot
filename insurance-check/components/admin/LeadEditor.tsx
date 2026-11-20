@@ -14,6 +14,8 @@ import {
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/field";
+import { fromKstInput, toKstInput } from "@/lib/utils";
+import { VISIT_PLACE_MAX } from "@/lib/validation";
 
 function toLocalInput(iso: string | null): string {
   if (!iso) return "";
@@ -27,6 +29,8 @@ export function LeadEditor({ lead, role, salesEligible, canEdit }: { lead: Lead;
   const [claimStatus, setClaimStatus] = useState(lead.claimStatus);
   const [coverageStatus, setCoverageStatus] = useState(lead.coverageStatus);
   const [nextContactAt, setNextContactAt] = useState(toLocalInput(lead.nextContactAt));
+  const [visitAt, setVisitAt] = useState(toKstInput(lead.visitAt));
+  const [visitPlace, setVisitPlace] = useState(lead.visitPlace ?? "");
   const [assignee, setAssignee] = useState(lead.assignee ?? "");
   const [notes, setNotes] = useState(lead.notes);
   const [isTest, setIsTest] = useState(lead.isTest);
@@ -39,6 +43,9 @@ export function LeadEditor({ lead, role, salesEligible, canEdit }: { lead: Lead;
     const body: Record<string, unknown> = {
       claimStatus,
       nextContactAt: nextContactAt ? new Date(nextContactAt).toISOString() : null,
+      // 방문 일시는 관리자 PC 시간대와 상관없이 한국 시간으로 해석한다(고객 문자에 그대로 나가므로)
+      visitAt: visitAt ? fromKstInput(visitAt) : null,
+      visitPlace,
       assignee,
       notes,
     };
@@ -63,7 +70,7 @@ export function LeadEditor({ lead, role, salesEligible, canEdit }: { lead: Lead;
     <form onSubmit={save} className="space-y-4">
       <fieldset disabled={!canEdit || state === "saving"} className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-navy">
-          보험금 점검 상태
+          진행 상태
           <Select value={claimStatus} onChange={(e) => setClaimStatus(e.target.value as Lead["claimStatus"])}>
             {CLAIM_STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -89,6 +96,17 @@ export function LeadEditor({ lead, role, salesEligible, canEdit }: { lead: Lead;
               ))}
           </Select>
         </label>
+        <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-navy">
+          방문 일시 (한국 시간)
+          <Input type="datetime-local" value={visitAt} onChange={(e) => setVisitAt(e.target.value)} aria-describedby="visit-help" />
+        </label>
+        <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-navy">
+          방문 장소
+          <Input value={visitPlace} maxLength={VISIT_PLACE_MAX} onChange={(e) => setVisitPlace(e.target.value)} placeholder="예: 고객 자택, ○○역 2번 출구 카페" aria-describedby="visit-help" />
+        </label>
+        <p id="visit-help" className="-mt-2 text-[12.5px] leading-snug text-navy-500 sm:col-span-2">
+          방문 일시를 처음 저장하면 진행 상태가 &lsquo;방문 예약&rsquo;으로 바뀌고 상담 이력에 남습니다. 장소는 필요한 만큼만 짧게 적고, 상세 주소는 꼭 필요할 때만 적어 주세요.
+        </p>
         <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-navy">
           다음 연락 일정
           <Input type="datetime-local" value={nextContactAt} onChange={(e) => setNextContactAt(e.target.value)} />

@@ -2,10 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, Loader2, Lock } from "lucide-react";
+import { ArrowRight, Check, Info, Loader2, Lock, Phone } from "lucide-react";
 import type { PublicConfig, SubmissionStatus } from "@/lib/config";
-import { SERVICE_TYPES, TRIAL_LABEL, trialMode, type ServiceType } from "@/lib/types";
-import { SERVICE_CONTENT } from "@/lib/content";
+import {
+  INTERESTS,
+  INTEREST_LABEL,
+  PREFERRED_TIMES,
+  PREFERRED_TIME_LABEL,
+  REGIONS,
+  REGION_LABEL,
+  TRIAL_LABEL,
+  serviceTypeFor,
+  trialMode,
+  type Interest,
+  type PreferredTime,
+  type Region,
+} from "@/lib/types";
+import { APPLY } from "@/lib/content";
 import { formatPhoneInput, LIMITS, requiresThirdPartyConsent, validateLeadInput, type FieldErrors } from "@/lib/validation";
 import { claimConsentRows, CLAIM_CONSENT_FOOTNOTE, marketingConsentRows, thirdPartyConsentRows } from "@/lib/consent-text";
 import { getAttribution, saveReceipt, track, trackOnce } from "@/lib/analytics";
@@ -15,45 +28,38 @@ import { Alert } from "@/components/ui/alert";
 import { FieldError, Input, Label } from "@/components/ui/field";
 import { ConsentBox } from "@/components/apply/ConsentBox";
 import { OfficialLink } from "@/components/site/OfficialLink";
-import { TypeArt } from "@/components/illustrations/Art";
-import { useApply } from "./ApplyContext";
+import { interestType, useApply } from "./ApplyContext";
 
-type Field = "serviceType" | "name" | "phone" | "privacyConsent" | "thirdPartyConsent";
+type Field = "name" | "phone" | "region" | "preferredTime" | "interests" | "privacyConsent" | "thirdPartyConsent";
 
-/**
- * 초기 신청은 최소 정보만, 2단계: 점검 유형 → 이름·연락처 + 필수 동의 + 신청.
- * 랜딩 카드·CTA에서 유형을 이미 골랐으면 1단계를 건너뛰어 한 화면에서 바로 신청한다(유형은 '변경'으로만 수정).
- * 희망 시간·메모는 상담 때 확인. 보장 분석 상담은 신청 완료 후 별도 화면에서 선택 동의.
- */
-const STEPS: { label: string; title: string; description?: string; fields: Field[] }[] = [
-  { label: "점검 유형", title: "점검 유형을 선택해 주세요", fields: ["serviceType"] },
-  {
-    label: "연락처·동의",
-    title: "연락받으실 분을 알려주세요",
-    description: "남겨주신 번호로 담당자가 연락드려요.",
-    fields: ["name", "phone", "privacyConsent", "thirdPartyConsent"],
-  },
-];
-
+/** 오류가 나면 이 순서대로 첫 칸으로 포커스를 옮긴다(화면 위→아래 순서와 같다) */
 const FIELD_DOM_ID: Record<Field, string> = {
-  serviceType: "apply-type-unclaimed",
   name: "apply-name",
   phone: "apply-phone",
+  region: "apply-region-seoul",
+  preferredTime: "apply-time-weekday_morning",
+  interests: "apply-interest-card_points",
   privacyConsent: "apply-privacy",
   thirdPartyConsent: "apply-third-party",
 };
 
-const stepOf = (f: Field) => STEPS.findIndex((s) => s.fields.includes(f));
-
 type Status = "idle" | "submitting" | "success";
 
+/**
+ * 7. 간단한 방문 상담 신청서 — 한 화면, 위에서 아래로: 성함 → 휴대전화 → 지역 → 연락 희망 시간 → 관심 서비스 → 동의 → 신청.
+ * 고르기 항목은 모두 크게 누르는 버튼(라디오·체크박스)이라 작은 글씨 목록을 펼칠 필요가 없다.
+ * 보험 상담(보장분석)은 여기서 받지 않고, 신청 완료 후 원하시는 분께만 별도 동의를 받는다.
+ *
+ * 접수 잠금 원칙: 잠금은 실제 전송만 막는다. 입력·선택·동의·신청 버튼 같은 화면 조작에는 절대 연결하지 않는다.
+ */
 export function ApplyForm({ config }: { config: PublicConfig }) {
   const router = useRouter();
-  const { serviceType: ctxType, selectType, request } = useApply();
-  const [step, setStep] = useState(0);
-  const [serviceType, setServiceType] = useState<ServiceType | "">("");
+  const { request } = useApply();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [region, setRegion] = useState<Region | "">("");
+  const [preferredTime, setPreferredTime] = useState<PreferredTime | "">("");
+  const [interests, setInterests] = useState<Interest[]>([]);
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [thirdPartyConsent, setThirdPartyConsent] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
@@ -61,34 +67,29 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
-  // 접수 잠김 상태에서 신청 버튼을 누른 경우의 안내(입력값은 전송하지 않는다)
   const [lockedNotice, setLockedNotice] = useState(false);
   // 서버에 다시 물은 실제 접수 가능 여부(DB 자동 점검 포함). 페이지 HTML은 최대 5분 캐시라 이 값을 우선한다
   const [live, setLive] = useState<SubmissionStatus | null>(null);
   const mountedAt = useRef(0);
   const idemKey = useRef("");
-  // 전송 중 잠금. busy(state)는 다음 렌더링 전까지 반영되지 않아 연타 시 요청이 여러 번 나갈 수 있으므로 ref로 즉시 막는다
+  // 전송 중 잠금(ref) — 연타 시 요청이 여러 번 나가지 않게 즉시 막는다
   const inFlight = useRef(false);
-  const cardRef = useRef<HTMLFormElement>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const stepChanged = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
-  // 접수 잠김: 실제 전송(submit)만 막는다. 입력·선택·단계 이동 같은 화면 조작에는 절대 연결하지 않는다
-  // (잠김 상태로 필드를 disabled 처리했다가 Preview에서 유형 카드·이름·전화번호가 눌리지 않는 문제가 두 번 있었다)
   const disabled = live ? !live.submissionEnabled : !config.submissionEnabled;
   const diagnostics: SubmissionStatus["diagnostics"] =
     live?.diagnostics ?? (!live && config.lockedBy?.length ? { lockedBy: config.lockedBy, dbFailures: [], deployment: null } : null);
   const busy = status !== "idle";
   const needThirdParty = requiresThirdPartyConsent(config.operator.thirdPartyProvision);
-  const payload = { serviceType, name, phone, privacyConsent, marketingConsent, thirdPartyConsent };
+  const payload = { name, phone, region, preferredTime, interests, privacyConsent, marketingConsent, thirdPartyConsent };
   const validate = () => validateLeadInput(payload, { requireThirdParty: needThirdParty });
+  const eventType = () => (interests.length ? serviceTypeFor(interests) : null);
 
   useEffect(() => {
     mountedAt.current = Date.now();
     idemKey.current = crypto.randomUUID();
   }, []);
 
-  // 실제 DB를 쓰는 모드: 설정·DB 자동 점검 결과를 서버에 다시 확인(접수 API와 같은 기준). 실패하면 화면의 값을 그대로 쓴다
   useEffect(() => {
     if (config.mode === "demo") return;
     let alive = true;
@@ -103,9 +104,9 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
     };
   }, [config.mode]);
 
-  // 신청 폼 진입(화면에 보임) — 세션당 한 번, 개인정보 없음
+  // 신청서가 화면에 보임 — 세션당 한 번, 개인정보 없음
   useEffect(() => {
-    const el = cardRef.current;
+    const el = formRef.current;
     if (!el) return;
     const io = new IntersectionObserver(
       (entries) => {
@@ -114,86 +115,52 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
           io.disconnect();
         }
       },
-      { threshold: 0.3 },
+      { threshold: 0.2 },
     );
     io.observe(el);
     return () => io.disconnect();
   }, []);
 
-  // 랜딩의 유형 카드·탭에서 고른 값을 폼에 반영
-  useEffect(() => {
-    if (ctxType) setServiceType(ctxType);
-  }, [ctxType]);
-
-  // CTA로 들어온 경우: 유형이 정해졌으면 바로 연락처 단계로
+  // 안내 카드·CTA로 들어온 경우: 누른 항목을 관심 서비스에 미리 체크하고 성함 칸으로 포커스
   useEffect(() => {
     if (!request.n) return;
-    let target = "heading";
-    if (request.type) {
-      // 카드·CTA에서 이미 고른 유형 → 유형 단계를 건너뛰고 연락처로(바꾸고 싶을 때만 '변경')
-      setServiceType(request.type);
-      setErrors((e) => ({ ...e, serviceType: undefined }));
-      setStep((s) => (s === 0 ? 1 : s));
-      target = "apply-name";
-    } else if (request.choose) {
-      setStep(0);
+    if (request.interest) {
+      const i = request.interest;
+      setInterests((prev) => (prev.includes(i) ? prev : [...prev.filter((x) => x !== "not_sure"), i]));
+      setErrors((e) => ({ ...e, interests: undefined }));
     }
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const t = window.setTimeout(() => {
-      const el = target === "heading" ? headingRef.current : document.getElementById(target);
-      (el ?? headingRef.current)?.focus({ preventScroll: true });
-    }, reduce ? 50 : 500);
+    const t = window.setTimeout(() => document.getElementById("apply-name")?.focus({ preventScroll: true }), reduce ? 50 : 600);
     return () => window.clearTimeout(t);
   }, [request]);
 
-  // 단계가 바뀌면 질문 제목으로 포커스 이동(스크린리더가 새 질문을 읽도록), 카드 상단이 가려졌으면 맞춰 스크롤
-  useEffect(() => {
-    if (!stepChanged.current) return;
-    stepChanged.current = false;
-    const card = cardRef.current;
-    if (card && card.getBoundingClientRect().top < 64) card.scrollIntoView({ block: "start", behavior: "smooth" });
-    headingRef.current?.focus({ preventScroll: true });
-  }, [step]);
-
-  const goTo = (i: number) => {
-    stepChanged.current = true;
-    setStep(i);
-  };
-
   const clearError = (k: Field) => setErrors((e) => (e[k] ? { ...e, [k]: undefined } : e));
 
-  function errorsFor(fields: Field[]): FieldErrors {
-    const v = validate();
-    if (v.ok) return {};
-    return Object.fromEntries(fields.filter((f) => v.errors[f]).map((f) => [f, v.errors[f]]));
+  function toggleInterest(i: Interest, on: boolean) {
+    setInterests((prev) => {
+      if (!on) return prev.filter((x) => x !== i);
+      // '잘 모르겠어요'와 구체 항목은 함께 고르지 않는다(고른 쪽을 따른다)
+      if (i === "not_sure") return ["not_sure"];
+      return [...prev.filter((x) => x !== "not_sure" && x !== i), i];
+    });
+    if (on) track("check_type_select", { serviceType: interestType(i) });
+    clearError("interests");
   }
 
-  function next() {
-    const errs = errorsFor(STEPS[step].fields);
-    if (Object.keys(errs).length) {
-      setErrors((e) => ({ ...e, ...errs }));
-      const first = STEPS[step].fields.find((f) => errs[f]);
-      if (first) document.getElementById(FIELD_DOM_ID[first])?.focus();
-      return;
-    }
-    goTo(Math.min(step + 1, STEPS.length - 1));
+  function focusFirst(errs: FieldErrors) {
+    const first = (Object.keys(FIELD_DOM_ID) as Field[]).find((f) => errs[f]);
+    if (first) document.getElementById(FIELD_DOM_ID[first])?.focus();
   }
 
   async function submit() {
-    if (!disabled) track("form_submit_attempt", { serviceType: serviceType || null });
+    if (!disabled) track("form_submit_attempt", { serviceType: eventType() });
     const v = validate();
     if (!v.ok) {
       setErrors(v.errors);
-      const first = (Object.keys(FIELD_DOM_ID) as Field[]).find((f) => v.errors[f]);
-      if (first) {
-        const s = stepOf(first);
-        if (s !== step) goTo(s);
-        else document.getElementById(FIELD_DOM_ID[first])?.focus();
-      }
+      focusFirst(v.errors);
       return;
     }
     if (disabled) {
-      // 입력은 정상이지만 접수가 열리지 않은 환경(운영 준비 중·미승인 Preview): 전송하지 않고 안내만 한다
       setLockedNotice(true);
       return;
     }
@@ -217,10 +184,9 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
       if (!res.ok || !data?.ok) {
         if (data?.fieldErrors) {
           setErrors(data.fieldErrors);
-          const first = (Object.keys(FIELD_DOM_ID) as Field[]).find((f) => data.fieldErrors[f]);
-          if (first && stepOf(first) !== step) goTo(stepOf(first));
+          focusFirst(data.fieldErrors);
         }
-        setServerError(data?.error ?? "신청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        setServerError(data?.error ?? "신청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.");
         setStatus("idle");
         inFlight.current = false;
         track("lead_submit_error", { serviceType: v.value.serviceType });
@@ -228,11 +194,11 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
       }
       setStatus("success");
       saveReceipt({ refNo: data.refNo, receiptToken: data.receiptToken, serviceType: v.value.serviceType, trial: data.trial ?? null, coverage: "offered" });
-      // 광고 전환의 유일한 기준 이벤트. 개인정보 없이 점검 유형만 전달.
+      // 광고 전환의 유일한 기준 이벤트. 개인정보 없이 대표 유형만 전달.
       track("lead_submit_success", { serviceType: v.value.serviceType });
       router.push("/apply/complete");
     } catch {
-      setServerError("네트워크 연결을 확인한 뒤 다시 시도해 주세요. 입력하신 내용은 그대로 남아 있어요.");
+      setServerError("인터넷 연결을 확인한 뒤 다시 눌러 주세요. 입력하신 내용은 그대로 남아 있어요.");
       setStatus("idle");
       inFlight.current = false;
       track("lead_submit_error", { serviceType: v.value.serviceType });
@@ -242,234 +208,208 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
-    // 접수가 잠겨 있어도 단계 이동·입력 검증은 그대로. 실제 전송 여부는 submit()이 판단한다(서버도 잠김 상태면 503으로 거절)
-    if (step < STEPS.length - 1) next();
-    else void submit();
+    void submit();
   }
 
-  const current = STEPS[step];
-  const isLast = step === STEPS.length - 1;
+  const trial = trialMode(config.mode);
+  const phoneNo = config.operator.contactPhone;
 
   return (
     <form
-      ref={cardRef}
+      ref={formRef}
       noValidate
       onSubmit={onSubmit}
-      onFocusCapture={() => trackOnce("form_start", { serviceType: serviceType || null })}
-      aria-labelledby="apply-step-title"
-      className="scroll-mt-24 sm:rounded-[28px] sm:bg-white sm:p-9 sm:shadow-lift sm:ring-1 sm:ring-navy-100"
+      onFocusCapture={() => trackOnce("form_start", { serviceType: eventType() })}
+      aria-labelledby="apply-form-title"
+      className="rounded-[28px] bg-white p-5 shadow-lift ring-1 ring-navy-100 sm:p-9"
     >
-      {trialMode(config.mode) && (
-        <p className="mb-6 flex items-center gap-2 rounded-xl bg-caution-50 px-3.5 py-2.5 text-[14px] font-medium text-caution">
-          <Lock className="h-4 w-4 shrink-0" aria-hidden="true" />
-          {TRIAL_LABEL[trialMode(config.mode)!]} 모드 · 실제 이름·연락처는 입력하지 마세요.
+      <h3 id="apply-form-title" className="text-[24px] font-extrabold tracking-[-0.02em] text-charcoal sm:text-[28px]">
+        신청서 작성
+      </h3>
+      <p className="mt-1.5 text-[17px] text-navy-600">모든 칸을 채우는 데 1분이면 충분해요.</p>
+
+      {trial && (
+        <p className="mt-5 flex items-center gap-2 rounded-xl bg-caution-50 px-4 py-3 text-[16px] font-semibold text-caution">
+          <Lock className="h-5 w-5 shrink-0" aria-hidden="true" />
+          {TRIAL_LABEL[trial]} 모드 · 실제 성함·연락처는 입력하지 마세요.
         </p>
       )}
 
-      {/* 진행 단계 */}
-      <div>
-        <p className="flex items-baseline justify-between text-[14px] font-semibold">
-          <span className="text-blue">
-            {step + 1}단계 <span className="text-navy-600">/ {STEPS.length}</span>
-          </span>
-          <span className="text-navy-600">{current.label}</span>
-        </p>
-        <ol className="mt-3 grid grid-cols-2 gap-1.5" aria-label="신청 진행 단계">
-          {STEPS.map((s, i) => (
-            <li key={s.label} aria-current={i === step ? "step" : undefined}>
-              <span className={cn("block h-1.5 rounded-full transition-colors duration-300", i <= step ? "bg-blue" : "bg-navy-100")} />
-              <span className={cn("mt-2 hidden text-[14px] font-medium sm:block", i === step ? "text-navy" : "text-navy-600")}>
-                {i < step && <Check className="mr-0.5 inline h-3.5 w-3.5 text-blue" aria-hidden="true" />}
-                {s.label}
-                <span className="sr-only">{i < step ? " (완료)" : i === step ? " (현재 단계)" : ""}</span>
-              </span>
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      <h3
-        id="apply-step-title"
-        ref={headingRef}
-        tabIndex={-1}
-        className="mt-8 text-[24px] font-bold leading-snug tracking-[-0.025em] text-navy focus:outline-none sm:text-[26px]"
-      >
-        {current.title}
-      </h3>
-      {current.description && <p className="mt-2 text-[16px] text-navy-600">{current.description}</p>}
-
       {disabled && (
-        <Alert tone="caution" className="mt-6" title="현재 신청 접수를 준비하고 있어요" role="status">
-          접수가 시작되면 이 화면에서 바로 신청하실 수 있어요.{" "}
-          {config.operator.contactPhone ? `문의: ${config.operator.contactPhone}. ` : ""}숨은보험금은 지금 바로{" "}
-          <OfficialLink className="font-semibold text-blue underline underline-offset-2" />할 수 있어요.
+        <Alert tone="caution" className="mt-5 text-[16px]" title="현재 신청 접수를 준비하고 있어요" role="status">
+          접수가 시작되면 이 화면에서 바로 신청하실 수 있어요. {phoneNo ? `궁금하신 점은 ${phoneNo}로 전화 주세요. ` : ""}숨은보험금은 지금 바로{" "}
+          <OfficialLink className="font-semibold text-forest-700 underline underline-offset-2" />할 수 있어요.
         </Alert>
       )}
       {disabled && diagnostics && <LockDiagnostics mode={config.mode} diagnostics={diagnostics} testId="lock-diagnostics" />}
 
-      <div aria-live="assertive">
-        {serverError && <Alert tone="error" role="alert" className="mt-6" title={serverError} />}
-      </div>
+      <div aria-live="assertive">{serverError && <Alert tone="error" role="alert" className="mt-5 text-[16px]" title={serverError} />}</div>
 
       {/* 전송 중(busy)에만 잠근다. 접수 잠김(disabled)은 여기에 연결하지 않는다 */}
-      <fieldset key={step} disabled={busy} className="step-in mt-7">
-        <legend className="sr-only">{current.title}</legend>
+      <fieldset disabled={busy} className="mt-7 space-y-8">
+        <legend className="sr-only">무료 방문 점검 신청 정보</legend>
 
-        {step === 0 && (
-          <div role="radiogroup" aria-labelledby="apply-step-title" aria-describedby={errors.serviceType ? "apply-type-error" : undefined} className="grid gap-3">
-            {SERVICE_TYPES.map((t) => {
-              const checked = serviceType === t;
+        <div data-testid="apply-contact-fields" className="space-y-6">
+          <div>
+            <Label htmlFor="apply-name" required className="text-[19px]">
+              성함
+            </Label>
+            <Input
+              id="apply-name"
+              name="name"
+              autoComplete="name"
+              value={name}
+              maxLength={LIMITS.nameMax}
+              invalid={!!errors.name}
+              aria-required="true"
+              aria-describedby={errors.name ? "apply-name-error" : undefined}
+              onChange={(e) => {
+                setName(e.target.value);
+                clearError("name");
+              }}
+              placeholder="예: 홍길순"
+              className="h-16 text-[19px]"
+            />
+            <FieldError id="apply-name-error">{errors.name}</FieldError>
+          </div>
+          <div>
+            <Label htmlFor="apply-phone" required className="text-[19px]">
+              휴대전화번호
+            </Label>
+            <Input
+              id="apply-phone"
+              name="phone"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel-national"
+              value={phone}
+              invalid={!!errors.phone}
+              aria-required="true"
+              aria-describedby={errors.phone ? "apply-phone-error" : "apply-phone-help"}
+              onChange={(e) => {
+                setPhone(formatPhoneInput(e.target.value));
+                clearError("phone");
+              }}
+              placeholder="010-0000-0000"
+              className="h-16 text-[19px]"
+            />
+            {errors.phone ? <FieldError id="apply-phone-error">{errors.phone}</FieldError> : <p id="apply-phone-help" className="mt-2 text-[15px] text-navy-600">숫자만 누르시면 자동으로 나눠져요.</p>}
+          </div>
+        </div>
+
+        <ChoiceGroup
+          name="region"
+          legend="사시는 지역"
+          error={errors.region}
+          cols={2}
+          options={REGIONS.map((r) => ({ value: r, label: REGION_LABEL[r] }))}
+          value={region}
+          onChange={(v) => {
+            setRegion(v as Region);
+            clearError("region");
+          }}
+          idPrefix="apply-region"
+          hint={region === "other" ? "서울·경기·인천 밖은 방문 대신 전화로 친절히 안내해 드려요." : "서울·경기·인천은 직접 찾아뵈어요."}
+        />
+
+        <ChoiceGroup
+          name="preferredTime"
+          legend="연락받기 편한 시간"
+          error={errors.preferredTime}
+          cols={2}
+          options={PREFERRED_TIMES.map((t) => {
+            // "오전 (9시~12시)" → 큰 글씨 "오전" + 작은 글씨 "9시~12시" (좁은 화면에서 어색하게 줄바꿈되지 않게)
+            const [main, sub] = PREFERRED_TIME_LABEL[t].split(" (");
+            return { value: t, label: main, sub: sub?.replace(")", "") };
+          })}
+          value={preferredTime}
+          onChange={(v) => {
+            setPreferredTime(v as PreferredTime);
+            clearError("preferredTime");
+          }}
+          idPrefix="apply-time"
+        />
+
+        <fieldset aria-describedby={errors.interests ? "apply-interests-error" : undefined} data-testid="apply-interests">
+          <legend className="mb-1 text-[19px] font-semibold text-navy">
+            궁금하신 내용 <span className="text-[16px] font-medium text-navy-600">(여러 개 고르셔도 돼요)</span>
+          </legend>
+          <div className="mt-2 grid gap-3">
+            {INTERESTS.map((i) => {
+              const checked = interests.includes(i);
               return (
                 <label
-                  key={t}
+                  key={i}
                   className={cn(
-                    "flex min-h-[76px] cursor-pointer items-center gap-4 rounded-2xl border-2 bg-white px-4 py-3 transition-colors has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-blue/20 sm:px-5",
-                    checked ? "border-blue bg-blue-50/60" : errors.serviceType ? "border-danger" : "border-navy-100 hover:border-navy-200",
+                    "flex min-h-[64px] cursor-pointer items-center gap-4 rounded-2xl border-2 bg-white px-4 py-3 transition-colors has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-forest/25 sm:px-5",
+                    checked ? "border-forest bg-forest-50" : errors.interests ? "border-danger" : "border-navy-200 hover:border-navy-300",
                   )}
                 >
                   <input
-                    id={`apply-type-${t}`}
-                    type="radio"
-                    name="serviceType"
-                    value={t}
+                    id={`apply-interest-${i}`}
+                    type="checkbox"
+                    name="interests"
+                    value={i}
                     checked={checked}
-                    onChange={() => {
-                      setServiceType(t);
-                      selectType(t);
-                      clearError("serviceType");
-                    }}
+                    onChange={(e) => toggleInterest(i, e.target.checked)}
                     className="sr-only"
                   />
-                  <TypeArt kind={t} idPrefix="form" className="h-12 w-12 shrink-0" />
-                  <span className="flex-1 text-[17px] font-semibold leading-snug text-ink">{SERVICE_CONTENT[t].pickTitle}</span>
                   <span
                     aria-hidden="true"
-                    className={cn(
-                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2",
-                      checked ? "border-blue bg-blue text-white" : "border-navy-200 text-transparent",
-                    )}
+                    className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2", checked ? "border-forest bg-forest text-white" : "border-navy-300 text-transparent")}
                   >
-                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                    <Check className="h-5 w-5" strokeWidth={3} />
                   </span>
+                  <span className="flex-1 text-[18px] font-semibold leading-snug text-charcoal">{INTEREST_LABEL[i]}</span>
                 </label>
               );
             })}
-            <FieldError id="apply-type-error">{errors.serviceType}</FieldError>
-            {/* 선택하면 그 유형에서 무엇을 확인하는지 한 줄로 */}
-            <p aria-live="polite" className="text-[14.5px] leading-relaxed text-navy-600" data-testid="apply-type-desc">
-              {serviceType ? (
-                <>
-                  {SERVICE_CONTENT[serviceType].cardDesc}
-                  {SERVICE_CONTENT[serviceType].cardNote && <span className="mt-1 block font-medium text-caution">{SERVICE_CONTENT[serviceType].cardNote}</span>}
-                </>
-              ) : null}
-            </p>
           </div>
-        )}
+          <FieldError id="apply-interests-error">{errors.interests}</FieldError>
+        </fieldset>
 
-        {step === 1 && (
-          <div className="space-y-6">
-            {serviceType && (
-              <div className="flex items-center gap-3 rounded-2xl bg-white px-3.5 py-3 ring-1 ring-navy-100 sm:bg-navy-50 sm:ring-0" data-testid="apply-picked-type">
-                <TypeArt kind={serviceType} idPrefix="picked" className="h-11 w-11 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[15.5px] font-bold text-navy">{SERVICE_CONTENT[serviceType].pickTitle}</p>
-                  <p className="text-[13.5px] leading-snug text-navy-600">{SERVICE_CONTENT[serviceType].cardDesc}</p>
-                </div>
-                <button type="button" onClick={() => goTo(0)} className="shrink-0 rounded-lg px-2 py-2 text-[14px] font-semibold text-blue-700 hover:bg-white" aria-label="점검 유형 변경">
-                  변경
-                </button>
-              </div>
-            )}
-            <div className="space-y-6" data-testid="apply-contact-fields">
-              <div>
-                <Label htmlFor="apply-name" required>
-                  이름
-                </Label>
-                <Input
-                  id="apply-name"
-                  name="name"
-                  autoComplete="name"
-                  value={name}
-                  maxLength={LIMITS.nameMax}
-                  invalid={!!errors.name}
-                  aria-required="true"
-                  aria-describedby={errors.name ? "apply-name-error" : undefined}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    clearError("name");
-                  }}
-                  placeholder="이름을 입력해 주세요"
-                />
-                <FieldError id="apply-name-error">{errors.name}</FieldError>
-              </div>
-              <div>
-                <Label htmlFor="apply-phone" required>
-                  휴대전화번호
-                </Label>
-                <Input
-                  id="apply-phone"
-                  name="phone"
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel-national"
-                  value={phone}
-                  invalid={!!errors.phone}
-                  aria-required="true"
-                  aria-describedby={errors.phone ? "apply-phone-error" : undefined}
-                  onChange={(e) => {
-                    setPhone(formatPhoneInput(e.target.value));
-                    clearError("phone");
-                  }}
-                  placeholder="010-0000-0000"
-                />
-                <FieldError id="apply-phone-error">{errors.phone}</FieldError>
-              </div>
+        <div className="space-y-3" data-testid="apply-consents">
+          <ConsentBox
+            id="apply-privacy"
+            required
+            title="개인정보 수집·이용 동의"
+            checked={privacyConsent}
+            onChange={(v) => {
+              setPrivacyConsent(v);
+              clearError("privacyConsent");
+            }}
+            rows={claimConsentRows(config.operator, config.mode)}
+            footnote={CLAIM_CONSENT_FOOTNOTE}
+            error={errors.privacyConsent}
+          />
+          {needThirdParty && (
+            <ConsentBox
+              id="apply-third-party"
+              required
+              title="개인정보 제3자 제공 동의"
+              checked={thirdPartyConsent}
+              onChange={(v) => {
+                setThirdPartyConsent(v);
+                clearError("thirdPartyConsent");
+              }}
+              rows={thirdPartyConsentRows(config.operator, config.mode)}
+              error={errors.thirdPartyConsent}
+            />
+          )}
+          <ConsentBox
+            id="apply-marketing"
+            required={false}
+            title="광고성 정보 수신 동의 (문자)"
+            checked={marketingConsent}
+            onChange={setMarketingConsent}
+            rows={marketingConsentRows(config.operator, config.mode)}
+          />
+        </div>
 
-              <div className="space-y-3 pt-1" data-testid="apply-consents">
-                <ConsentBox
-                  id="apply-privacy"
-                  required
-                  title="개인정보 수집·이용 동의"
-                  checked={privacyConsent}
-                  onChange={(v) => {
-                    setPrivacyConsent(v);
-                    clearError("privacyConsent");
-                  }}
-                  rows={claimConsentRows(config.operator, config.mode)}
-                  footnote={CLAIM_CONSENT_FOOTNOTE}
-                  error={errors.privacyConsent}
-                />
-                {needThirdParty && (
-                  <ConsentBox
-                    id="apply-third-party"
-                    required
-                    title="개인정보 제3자 제공 동의"
-                    checked={thirdPartyConsent}
-                    onChange={(v) => {
-                      setThirdPartyConsent(v);
-                      clearError("thirdPartyConsent");
-                    }}
-                    rows={thirdPartyConsentRows(config.operator, config.mode)}
-                    error={errors.thirdPartyConsent}
-                  />
-                )}
-                <ConsentBox
-                  id="apply-marketing"
-                  required={false}
-                  title="광고성 정보 수신 동의 (문자)"
-                  checked={marketingConsent}
-                  onChange={setMarketingConsent}
-                  rows={marketingConsentRows(config.operator, config.mode)}
-                />
-              </div>
-              <p className="flex gap-2 text-[14px] leading-relaxed text-navy-600">
-                <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                선택 동의는 하지 않아도 신청할 수 있어요. 보장 분석 상담은 신청이 끝난 뒤 원하시는 경우에만 따로 동의받습니다.
-              </p>
-            </div>
-          </div>
-        )}
+        <p className="flex gap-2.5 rounded-2xl bg-sage px-4 py-4 text-[16.5px] leading-relaxed text-charcoal" data-testid="apply-insurance-note">
+          <Info className="mt-0.5 h-5 w-5 shrink-0 text-forest" aria-hidden="true" />
+          {APPLY.insuranceNote}
+        </p>
 
         {/* 봇 차단용 숨김 필드: 사람에게는 보이지 않고 보조기기에서도 제외 */}
         <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
@@ -477,60 +417,104 @@ export function ApplyForm({ config }: { config: PublicConfig }) {
           <input id="apply-website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
         </div>
 
-        {isLast && disabled && lockedNotice && (
-          <div className="mt-8" data-testid="apply-locked-notice">
-            <Alert tone="caution" role="alert" title="지금은 신청을 접수할 수 없어요">
+        {disabled && lockedNotice && (
+          <div data-testid="apply-locked-notice">
+            <Alert tone="caution" role="alert" className="text-[16px]" title="지금은 신청을 접수할 수 없어요">
               입력하신 정보는 전송되지 않았어요. 접수가 시작되면 다시 신청해 주세요.
             </Alert>
             {diagnostics && <LockDiagnostics mode={config.mode} diagnostics={diagnostics} testId="lock-diagnostics-notice" />}
           </div>
         )}
 
-        {/* 마지막 단계는 신청 버튼 문구가 길어 좁은 화면에서 세로로 쌓는다(신청 버튼이 위·전체 너비) */}
-        <div className={cn("mt-9 flex gap-2.5", isLast && "flex-col-reverse sm:flex-row")}>
-          {step > 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className={cn("min-w-[96px] px-3", isLast ? "w-full sm:w-[30%]" : "w-[30%]")}
-              onClick={() => goTo(step - 1)}
-            >
-              <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-              이전
-            </Button>
-          )}
-          <Button
-            type="submit"
-            size="lg"
-            className={cn("min-w-0", isLast ? "w-full sm:w-auto sm:flex-1" : "flex-1")}
-            aria-disabled={busy}
-          >
+        <div className="space-y-3">
+          <Button type="submit" size="xl" className="h-[68px] w-full text-[21px]" aria-disabled={busy}>
             {status === "submitting" ? (
               <>
-                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
                 신청하는 중…
               </>
             ) : status === "success" ? (
               "신청 완료 — 이동 중…"
-            ) : isLast ? (
-              <>
-                무료 점검 상담 신청하기
-                <ArrowRight className="h-5 w-5" aria-hidden="true" />
-              </>
             ) : (
               <>
-                다음
-                <ArrowRight className="h-5 w-5" aria-hidden="true" />
+                {APPLY.submit}
+                <ArrowRight className="h-6 w-6" aria-hidden="true" />
               </>
             )}
           </Button>
+          {phoneNo && (
+            <p className="text-center text-[16px] text-navy-600">
+              <Phone className="mr-1 inline h-4 w-4 align-[-2px]" aria-hidden="true" />
+              전화가 편하시면{" "}
+              <a href={`tel:${phoneNo.replace(/[^\d+]/g, "")}`} onClick={() => track("call_click")} className="font-bold text-forest-700 underline underline-offset-4">
+                {phoneNo}
+              </a>
+            </p>
+          )}
         </div>
         <p className="sr-only" aria-live="polite">
           {status === "submitting" ? "신청을 전송하고 있습니다." : status === "success" ? "신청이 완료되었습니다." : ""}
         </p>
       </fieldset>
     </form>
+  );
+}
+
+/** 큰 버튼형 단일 선택(라디오). 화살표 키로도 움직일 수 있는 네이티브 라디오를 그대로 쓴다 */
+function ChoiceGroup({
+  name,
+  legend,
+  options,
+  value,
+  onChange,
+  error,
+  cols,
+  idPrefix,
+  hint,
+}: {
+  name: string;
+  legend: string;
+  options: { value: string; label: string; sub?: string }[];
+  value: string;
+  onChange: (v: string) => void;
+  error?: string;
+  cols: 2;
+  idPrefix: string;
+  hint?: string;
+}) {
+  const errId = `${idPrefix}-error`;
+  const hintId = `${idPrefix}-hint`;
+  return (
+    <fieldset aria-describedby={[error ? errId : null, hint ? hintId : null].filter(Boolean).join(" ") || undefined} data-testid={idPrefix}>
+      <legend className="mb-1 text-[19px] font-semibold text-navy">{legend}</legend>
+      <div className={cn("mt-2 grid gap-3", cols === 2 && "grid-cols-2")}>
+        {options.map((o) => {
+          const checked = value === o.value;
+          return (
+            <label
+              key={o.value}
+              className={cn(
+                "flex min-h-[60px] cursor-pointer items-center justify-center rounded-2xl border-2 px-3 py-2 text-center text-[18px] font-semibold leading-snug transition-colors has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-forest/25",
+                checked ? "border-forest bg-forest text-white" : error ? "border-danger bg-white text-charcoal" : "border-navy-200 bg-white text-charcoal hover:border-navy-300",
+              )}
+            >
+              <input id={`${idPrefix}-${o.value}`} type="radio" name={name} value={o.value} checked={checked} onChange={() => onChange(o.value)} className="sr-only" />
+              {checked && <Check className="mr-1.5 h-5 w-5 shrink-0" strokeWidth={3} aria-hidden="true" />}
+              <span>
+                {o.label}
+                {o.sub && <span className={cn("block text-[15px] font-medium", checked ? "text-white/90" : "text-navy-600")}>{o.sub}</span>}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+      {hint && (
+        <p id={hintId} className="mt-2 text-[15.5px] text-navy-600" aria-live="polite">
+          {hint}
+        </p>
+      )}
+      <FieldError id={errId}>{error}</FieldError>
+    </fieldset>
   );
 }
 

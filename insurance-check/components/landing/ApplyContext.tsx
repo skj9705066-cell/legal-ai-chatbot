@@ -1,28 +1,24 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { FunnelEventName, ServiceType } from "@/lib/types";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import type { FunnelEventName, Interest, ServiceType } from "@/lib/types";
 import { CTA_VARIANTS, type CtaVariant } from "@/lib/content";
 import { track } from "@/lib/analytics";
 
-export type CtaSource = "hero" | "stats" | "type_card" | "cases" | "claim_case" | "reviews" | "process" | "final" | "sticky" | "header";
+export type CtaSource = "hero" | "money" | "process" | "counselor" | "reviews" | "faq" | "sticky" | "header";
 
 export interface ApplyRequest {
   n: number;
-  type: ServiceType | null;
-  /** 유형을 폼에서 다시 고르게 할 때(유형이 정해지지 않은 카드) */
-  choose: boolean;
+  /** 안내 카드에서 누른 항목(관심 서비스에 미리 체크). 없으면 null */
+  interest: Interest | null;
 }
 
 interface ApplyCtx {
-  serviceType: ServiceType | null;
-  selectType: (t: ServiceType) => void;
   /**
-   * 모든 CTA의 목적지 = 같은 신청 폼. 폼이 request를 보고 단계·포커스를 맞춘다.
-   * t를 넘기면 그 유형으로, 생략하면 이미 고른 유형을 그대로 유지해 연락처 단계로(고른 적 없으면 유형 단계),
-   * null이면 유형을 비우고 유형 단계에서 고르게 한다.
+   * 모든 CTA의 목적지 = 같은 신청 폼(#apply). 안내 카드에서 누르면 그 항목을 관심 서비스에 미리 체크한다
+   * (다른 항목은 그대로 두고, 고객이 폼에서 자유롭게 고치거나 더 고를 수 있다).
    */
-  startApply: (source: CtaSource, t?: ServiceType | null) => void;
+  startApply: (source: CtaSource, interest?: Interest | null) => void;
   request: ApplyRequest;
   /** 메인 CTA 문구 A/B 안(?cta=a~d). 기본 A */
   ctaVariant: CtaVariant;
@@ -34,18 +30,21 @@ const Ctx = createContext<ApplyCtx | null>(null);
 /** 출처별 클릭 이벤트 (전환 아님) */
 const CLICK_EVENT: Partial<Record<CtaSource, FunnelEventName>> = {
   hero: "hero_cta_click",
-  stats: "stats_cta_click",
-  cases: "scenario_card_click",
-  claim_case: "case_cta_click",
+  money: "scenario_card_click",
 };
 
 const VARIANT_KEY = "ic.ctaVariant";
+
+/** 관심 서비스 → 이벤트용 유형(개인정보 아님) */
+export function interestType(i: Interest | null | undefined): ServiceType | null {
+  if (!i) return null;
+  return i === "not_sure" ? "general" : i;
+}
 
 function smoothScrollTo(id: string) {
   const el = document.getElementById(id);
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   el?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-  return reduce;
 }
 
 /** 광고 URL의 ?cta=b 등을 세션 동안 유지한다(페이지 이동·새로고침에도 같은 안). */
@@ -65,37 +64,22 @@ function readVariant(): CtaVariant {
 }
 
 export function ApplyProvider({ children }: { children: React.ReactNode }) {
-  const [serviceType, setServiceType] = useState<ServiceType | null>(null);
-  const [request, setRequest] = useState<ApplyRequest>({ n: 0, type: null, choose: false });
+  const [request, setRequest] = useState<ApplyRequest>({ n: 0, interest: null });
   const [ctaVariant, setCtaVariant] = useState<CtaVariant>("a");
-  const typeRef = useRef<ServiceType | null>(null);
-  typeRef.current = serviceType;
 
   useEffect(() => setCtaVariant(readVariant()), []);
 
-  const selectType = useCallback((t: ServiceType) => {
-    setServiceType((prev) => {
-      if (prev !== t) track("check_type_select", { serviceType: t });
-      return t;
-    });
+  const startApply = useCallback((source: CtaSource, interest: Interest | null = null) => {
+    const ev = CLICK_EVENT[source];
+    if (ev) track(ev, { serviceType: interestType(interest) });
+    if (interest) track("check_type_select", { serviceType: interestType(interest) });
+    setRequest((r) => ({ n: r.n + 1, interest }));
+    smoothScrollTo("apply");
   }, []);
 
-  const startApply = useCallback(
-    (source: CtaSource, t?: ServiceType | null) => {
-      const type = t === undefined ? typeRef.current : t;
-      const ev = CLICK_EVENT[source];
-      if (ev) track(ev, { serviceType: type });
-      if (type) selectType(type);
-      else if (t === null) setServiceType(null);
-      setRequest((r) => ({ n: r.n + 1, type, choose: t === null }));
-      smoothScrollTo("apply");
-    },
-    [selectType],
-  );
-
   const value = useMemo(
-    () => ({ serviceType, selectType, startApply, request, ctaVariant, ctaLabel: CTA_VARIANTS[ctaVariant] }),
-    [serviceType, selectType, startApply, request, ctaVariant],
+    () => ({ startApply, request, ctaVariant, ctaLabel: CTA_VARIANTS[ctaVariant] }),
+    [startApply, request, ctaVariant],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

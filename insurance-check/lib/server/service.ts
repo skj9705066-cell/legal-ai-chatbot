@@ -2,6 +2,8 @@ import "server-only";
 import { randomBytes, randomUUID } from "node:crypto";
 import { COVERAGE_CONSENT_VERSION, MARKETING_CONSENT_VERSION, PRIVACY_CONSENT_VERSION, THIRD_PARTY_CONSENT_VERSION, getAppMode } from "@/lib/config";
 import {
+  ACTIVITY_KINDS,
+  ACTIVITY_KIND_LABEL,
   COVERAGE_ACTIVE_STATUSES,
   CONTACT_METHOD_LABEL,
   CLAIM_STATUSES,
@@ -10,13 +12,16 @@ import {
   type ClaimStatus,
   type ContactMethod,
   type CoverageStatus,
+  type ActivityKind,
   type Lead,
+  type LeadActivity,
   type PreferredTime,
   type PrivacyRequestStatus,
   type PrivacyRequestType,
   type StaffRole,
 } from "@/lib/types";
-import { maskPhone, normalizePhone, type LeadInput } from "@/lib/validation";
+import { maskPhone, normalizePhone, validateVisitPlace, type LeadInput } from "@/lib/validation";
+import { formatVisitAt } from "@/lib/utils";
 import type { StaffSession } from "@/lib/session";
 import { decryptPii, encryptPii, hashPhone } from "./crypto";
 import { repo, toLead, type LeadFilter, type LeadRow } from "./repo";
@@ -69,6 +74,10 @@ export async function submitLead(
     phoneEnc: encryptPii(input.phone),
     phoneHash,
     idempotencyKey,
+    region: input.region,
+    interests: input.interests,
+    visitAt: null,
+    visitPlace: null,
     preferredTime: input.preferredTime,
     memo: input.memo,
     attribution,
@@ -192,6 +201,8 @@ export interface StaffLeadPatch {
   claimStatus?: ClaimStatus;
   coverageStatus?: CoverageStatus;
   nextContactAt?: string | null;
+  visitAt?: string | null;
+  visitPlace?: string | null;
   assignee?: string | null;
   notes?: string;
   isTest?: boolean;
@@ -201,7 +212,9 @@ export type PatchResult = { ok: true; lead: Lead } | { ok: false; status: number
 
 export async function updateLeadByStaff(session: StaffSession, id: string, raw: Record<string, unknown>): Promise<PatchResult> {
   const r = repo();
-  const row = await r.getLead(id);
+  const found = await r.getLead(id);
+  // 변경 전 값을 복사해 둔다(데모 저장소는 같은 객체를 고쳐 쓰므로, 저장 후 비교가 어긋나지 않게)
+  const row = found ? { ...found } : null;
   if (!row) return { ok: false, status: 404, error: "신청을 찾을 수 없습니다." };
   if (row.privacyStatus === "completed" && row.name === DELETED_NAME) {
     return { ok: false, status: 409, error: "삭제 처리된 신청은 수정할 수 없습니다." };
@@ -242,6 +255,28 @@ export async function updateLeadByStaff(session: StaffSession, id: string, raw: 
     }
     if (patch.nextContactAt !== row.nextContactAt) changes.push("다음 연락 일정 변경");
   }
+  if (raw.visitAt !== undefined) {
+    if (raw.visitAt === null || raw.visitAt === "") patch.visitAt = null;
+    else {
+      const d = new Date(String(raw.visitAt));
+      if (Number.isNaN(d.getTime())) return { ok: false, status: 400, error: "방문 일시 형식이 잘못되었습니다." };
+      patch.visitAt = d.toISOString();
+    }
+    if (patch.visitAt !== row.visitAt) changes.push(patch.visitAt ? `방문 예약 ${formatVisitAt(patch.visitAt)}` : "방문 예약 취소");
+  }
+  if (raw.visitPlace !== undefined) {
+    const v = validateVisitPlace(raw.visitPlace);
+    if (!v.ok) return { ok: false, status: 400, error: v.error };
+    patch.visitPlace = v.value;
+    if (patch.visitPlace !== row.visitPlace) changes.push("방문 장소 변경");
+  }
+  // 방문 일정을 처음 잡으면 진행 상태를 '방문 예약'으로 옮긴다(상태를 직접 함께 바꾼 경우는 그 값을 따른다)
+  const visitNewlyBooked = !!patch.visitAt && !row.visitAt;
+  if (visitNewlyBooked && patch.claimStatus === undefined && (row.claimStatus === "new" || row.claimStatus === "contacting")) {
+    patch.claimStatus = "visit_booked";
+    changes.push(`점검상태 ${row.claimStatus}→visit_booked`);
+  }
+
   if (raw.assignee !== undefined) {
     const a = typeof raw.assignee === "string" ? raw.assignee.trim().slice(0, 30) : "";
     patch.assignee = a || null;
@@ -263,6 +298,17 @@ export async function updateLeadByStaff(session: StaffSession, id: string, raw: 
   const updated = await r.updateLead(id, patch);
   if (!updated) return { ok: false, status: 404, error: "신청을 찾을 수 없습니다." };
 
+  if (patch.visitAt !== undefined && patch.visitAt !== row.visitAt) {
+    const place = patch.visitPlace !== undefined ? patch.visitPlace : row.visitPlace;
+    await r.addActivity({
+      id: randomUUID(),
+      leadId: id,
+      at: new Date().toISOString(),
+      actor: session.name,
+      kind: "visit",
+      content: patch.visitAt ? `방문 예약: ${formatVisitAt(patch.visitAt)}${place ? ` · ${place}` : ""}` : "방문 예약 취소",
+    });
+  }
   if (patch.coverageStatus === "booked" && row.coverageStatus !== "booked") {
     await r.addEvent({
       name: "consultation_booked",
@@ -354,6 +400,7 @@ export async function updatePrivacyRequestByStaff(
   if (req.type === "delete_all" && status === "completed") {
     // 파기: 식별 정보 제거. 통계용 비식별 필드(유형·상태·UTM)만 남긴다.
     for (const leadId of req.matchedLeadIds) await r.updateLead(leadId, LEAD_SCRUB);
+    await r.deleteActivities(req.matchedLeadIds);
   } else if (req.type === "delete_all" && status === "processing") {
     for (const leadId of req.matchedLeadIds) await r.updateLead(leadId, { privacyStatus: "processing" });
   }
@@ -405,6 +452,43 @@ export async function purgeExpiredPersonalData(now: Date = new Date()) {
     detail: `보유기간(${LEAD_RETENTION_YEARS}년) 경과 파기 — 기준 ${before.slice(0, 10)} 이전, 신청 ${result.leads}건, 개인정보 요청 ${result.privacyRequests}건`,
   });
   return { before, ...result };
+}
+
+/* ───────────── 상담 이력 ───────────── */
+
+export const ACTIVITY_MAX = 1000;
+
+export async function listActivitiesForStaff(id: string): Promise<LeadActivity[]> {
+  return repo().listActivities(id);
+}
+
+export async function addActivityByStaff(
+  session: StaffSession,
+  id: string,
+  raw: Record<string, unknown>,
+): Promise<{ ok: true; activity: LeadActivity } | { ok: false; status: number; error: string }> {
+  const r = repo();
+  const row = await r.getLead(id);
+  if (!row) return { ok: false, status: 404, error: "신청을 찾을 수 없습니다." };
+  if (row.name === DELETED_NAME) return { ok: false, status: 409, error: "삭제 처리된 신청에는 기록할 수 없습니다." };
+  // 문자 기록은 실제 발송 기능(방문 안내 문자)만 남긴다 — 직원이 손으로 '문자' 이력을 만들지 않게
+  const kinds: ActivityKind[] = ACTIVITY_KINDS.filter((k) => k !== "sms");
+  if (!(kinds as string[]).includes(raw.kind as string)) return { ok: false, status: 400, error: "기록 종류를 선택해 주세요." };
+  const content = typeof raw.content === "string" ? raw.content.trim() : "";
+  if (!content) return { ok: false, status: 400, error: "상담 내용을 입력해 주세요." };
+  if (content.length > ACTIVITY_MAX) return { ok: false, status: 400, error: `상담 내용은 ${ACTIVITY_MAX.toLocaleString()}자 이내로 입력해 주세요.` };
+  if (/\d{6}\s*-?\s*[1-8]\d{6}/.test(content)) return { ok: false, status: 400, error: "주민등록번호는 기록하지 말아 주세요." };
+  const activity: LeadActivity = {
+    id: randomUUID(),
+    leadId: id,
+    at: new Date().toISOString(),
+    actor: session.name,
+    kind: raw.kind as ActivityKind,
+    content,
+  };
+  await r.addActivity(activity);
+  await r.addAudit({ actor: session.name, role: session.role, action: "lead.activity", target: id, detail: `${row.refNo} 상담 이력 추가 (${ACTIVITY_KIND_LABEL[activity.kind]})` });
+  return { ok: true, activity };
 }
 
 export async function recordStaffAudit(actor: { name: string; role: StaffRole }, action: string, detail: string, target: string | null = null) {

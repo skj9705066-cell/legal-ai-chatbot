@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, ClipboardList, FileClock, MessageSquareQuote, Settings, ShieldCheck, Target } from "lucide-react";
+import { BarChart3, CalendarCheck, ClipboardList, FileClock, MessageSquareQuote, Settings, ShieldCheck, Target } from "lucide-react";
 import type { StaffSession } from "@/lib/session";
 import { can } from "@/lib/session";
 import { STAFF_ROLE_LABEL, TRIAL_LABEL, type TrialMode } from "@/lib/types";
@@ -10,6 +10,7 @@ import { NavLink } from "./NavLink";
 export function AdminShell({ session, trial, children }: { session: StaffSession; trial: TrialMode; children: React.ReactNode }) {
   const nav = [
     { href: "/admin", label: "상담 DB", icon: ClipboardList, show: true },
+    { href: "/admin/visits", label: "방문 일정", icon: CalendarCheck, show: true },
     { href: "/admin?view=sales", label: "보장 분석 영업 대상", icon: Target, show: true },
     { href: "/admin/performance", label: "광고 성과", icon: BarChart3, show: true },
     { href: "/admin/reviews", label: "후기·지급 사례", icon: MessageSquareQuote, show: true },
@@ -19,7 +20,7 @@ export function AdminShell({ session, trial, children }: { session: StaffSession
   ].filter((n) => n.show);
 
   return (
-    <div className="min-h-[100svh] bg-navy-50 lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:bg-[linear-gradient(to_right,#102B4E_256px,#F4F7FB_256px)]">
+    <div className="min-h-[100svh] bg-navy-50 lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:bg-[linear-gradient(to_right,#1F3B32_256px,#F3F1EB_256px)]">
       <aside className="bg-navy text-white lg:sticky lg:top-0 lg:flex lg:h-[100svh] lg:flex-col">
         <div className="flex items-center justify-between gap-2 px-4 py-4 lg:block lg:px-6 lg:pb-6 lg:pt-7">
           <Link prefetch={false} href="/admin" className="flex items-center gap-2.5">

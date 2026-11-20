@@ -21,3 +21,34 @@ export async function adminLogin(page: Page) {
   await page.getByRole("button", { name: "로그인" }).click();
   await expect(page).toHaveURL(/\/admin$/);
 }
+
+/** 신청서(2026-11 방문 점검)의 신청 버튼 */
+export const applySubmit = (page: Page) => page.locator("#apply form").getByRole("button", { name: "무료 점검 신청하기", exact: true });
+
+/**
+ * 신청서 채우기 — 보이는 선택 버튼(라벨)을 누른다. 안내 카드에서 이미 고른 관심 서비스는 그대로 둔다.
+ * 가상 이름·테스트 번호(010-0000-xxxx)만 넘길 것.
+ */
+export async function fillApplyForm(
+  page: Page,
+  o: { name?: string; phone: string; region?: string; time?: string; interests?: readonly string[]; tap?: boolean },
+) {
+  const press = async (inputId: string) => {
+    const label = page.locator(`label:has(#${inputId})`);
+    if (o.tap) await label.tap();
+    else await label.click();
+  };
+  await page.fill("#apply-name", o.name ?? "흐름검사");
+  await page.fill("#apply-phone", o.phone);
+  await press(`apply-region-${o.region ?? "seoul"}`);
+  await press(`apply-time-${o.time ?? "anytime"}`);
+  const interests = o.interests ?? [];
+  for (const i of interests) if (!(await page.locator(`#apply-interest-${i}`).isChecked())) await press(`apply-interest-${i}`);
+  // 아무 항목도 고르지 않은 상태라면 '잘 모르겠어요'
+  if (!interests.length && (await page.locator('#apply input[name="interests"]:checked').count()) === 0) await press("apply-interest-not_sure");
+  const consent = page.locator('label[for="apply-privacy"]');
+  if (!(await page.locator("#apply-privacy").isChecked())) {
+    if (o.tap) await consent.tap();
+    else await consent.click();
+  }
+}

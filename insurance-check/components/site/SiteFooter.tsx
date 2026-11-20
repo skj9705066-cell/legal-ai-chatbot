@@ -20,7 +20,7 @@ export function SiteFooter({ operator, trial }: { operator: OperatorInfo; trial:
   const o = operator;
   const m = trial ?? "production";
   return (
-    <footer className="border-t border-navy-100 bg-navy-50">
+    <footer className="border-t border-navy-100 bg-navy-50 text-[16px]">
       <div className="container py-14 lg:py-16">
         <div className="grid gap-12 lg:grid-cols-[1.5fr_1fr]">
           <div>
@@ -73,8 +73,8 @@ export function SiteFooter({ operator, trial }: { operator: OperatorInfo; trial:
         <div className="mt-12 space-y-2.5 border-t border-navy-200 pt-8 text-[14px] leading-relaxed text-navy-600">
           <p>{SERVICE_DISCLAIMER}</p>
           <p>
-            보험금 지급 여부와 금액은 각 보험회사의 약관 및 심사에 따라 결정됩니다. 본 서비스는 보험금 청구 방법을 안내하며, 보험금 지급 판단이나
-            손해사정 업무를 수행하지 않습니다.
+            보험금 지급 여부와 금액은 각 보험회사의 약관 및 심사에 따라, 카드포인트 사용·이전 조건은 각 카드사 기준에 따라 결정됩니다. 본 서비스는 확인·청구
+            방법을 안내하며, 보험금 지급 판단이나 손해사정 업무를 수행하지 않습니다. 무료 점검은 보험 가입을 조건으로 하지 않습니다.
           </p>
           <p>
             보험계약자가 기존 보험계약을 해지하고 새로운 보험계약을 체결하는 과정에서 질병 이력, 연령 증가 등으로 보험 인수가 거절되거나 보험료가

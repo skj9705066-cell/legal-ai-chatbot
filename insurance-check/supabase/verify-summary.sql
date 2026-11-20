@@ -2,6 +2,7 @@
 -- SQL Editor는 여러 쿼리를 한 번에 실행하면 마지막 결과만 보여 주므로, 이 파일은 결과 표 하나로 나온다.
 -- 모든 행의 ok가 true면 통과 → 그 날짜를 APPROVAL_DB_VERIFIED에 적는다. false인 행은 detail을 확인.
 -- "relation ... does not exist" 오류가 나면 supabase/schema.sql을 먼저 실행한다.
+-- 2026-11 방문 점검 개편부터 03-visit-checkup.sql(상담 이력 테이블·지역·방문 칼럼)까지 적용된 상태를 기준으로 한다(테이블 7개·규칙 22개).
 -- 항목별 원본 쿼리와 설명은 supabase/verify.sql.
 
 with
@@ -26,7 +27,8 @@ server_grants as (
 ),
 expected_grants(table_name, privileges) as (
   values ('ic_audit_logs', 'INSERT, SELECT'), ('ic_events', 'INSERT, SELECT'), ('ic_leads', 'INSERT, SELECT, UPDATE'),
-         ('ic_privacy_requests', 'INSERT, SELECT, UPDATE'), ('ic_reviews', 'DELETE, INSERT, SELECT, UPDATE'), ('ic_staff', 'SELECT')
+         ('ic_privacy_requests', 'INSERT, SELECT, UPDATE'), ('ic_reviews', 'DELETE, INSERT, SELECT, UPDATE'), ('ic_staff', 'SELECT'),
+         ('ic_lead_activities', 'DELETE, INSERT, SELECT')
 ),
 grant_diff as (
   select coalesce(e.table_name, s.table_name) || ' (기대: ' || coalesce(e.privileges, '없음') || ' / 실제: ' || coalesce(s.privileges, '없음') || ')' as name
@@ -44,15 +46,17 @@ missing_constraints as (
     ('ic_privacy_handled_record'), ('ic_privacy_delete_completed_scrubbed'),
     ('ic_reviews_amount_requires_payment'), ('ic_reviews_approved_requires_consent'), ('ic_reviews_payout_requires_payment'),
     ('ic_reviews_image_requires_masking'), ('ic_reviews_has_content'), ('ic_reviews_consent_has_time'),
-    ('ic_reviews_approved_has_reviewer'), ('ic_reviews_image_fields_paired'), ('ic_reviews_approved_image_present')
+    ('ic_reviews_approved_has_reviewer'), ('ic_reviews_image_fields_paired'), ('ic_reviews_approved_image_present'),
+    ('ic_leads_service_type_check_v3'), ('ic_leads_claim_status_check_v3'), ('ic_leads_region_check'),
+    ('ic_leads_interests_check'), ('ic_leads_visit_place_len'), ('ic_leads_deleted_visit_scrubbed')
   ) as t(name)
   where not exists (select 1 from pg_constraint c where c.conname = t.name)
 ),
 audit_fn as (
   select to_regprocedure('public.ic_audit_immutable()') is not null as present
 )
-select '①' as no, '6개 테이블 RLS 켜짐' as check_name,
-       (select count(*) = 6 and bool_and(relrowsecurity) from tables) as ok,
+select '①' as no, '7개 테이블 RLS 켜짐' as check_name,
+       (select count(*) = 7 and bool_and(relrowsecurity) from tables) as ok,
        (select count(*) || '개 테이블, RLS 꺼짐: ' || coalesce(string_agg(relname::text, ', ') filter (where not relrowsecurity), '없음') from tables) as detail
 union all
 select '②', 'ic_* 테이블에 정책 없음',
@@ -71,7 +75,7 @@ select '⑤', '감사로그 보호 트리거 2개',
        (select count(*) filter (where tgname in ('ic_audit_no_truncate', 'ic_audit_no_update')) = 2 from triggers),
        coalesce((select string_agg(tgname::text, ', ' order by tgname) from triggers), '없음')
 union all
-select '⑥', '필수 정합성 규칙 16개',
+select '⑥', '필수 정합성 규칙 22개',
        not exists (select 1 from missing_constraints),
        coalesce('빠짐: ' || (select string_agg(name, ', ') from missing_constraints), '모두 있음')
 union all

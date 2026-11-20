@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { applySubmit, fillApplyForm } from "./helpers";
 import AxeBuilder from "@axe-core/playwright";
 
 const PASSWORD = process.env.DEMO_ADMIN_PASSWORD || "demo-admin-local";
@@ -33,12 +34,10 @@ test.describe("admin", () => {
   test("admin: CRM table, sales view, performance, audit, settings", async ({ page }) => {
     // 저장 검증: 랜딩에서 실제로 신청 → 완료 화면의 신청번호가 CRM에 유입 경로(UTM)와 함께 기록되어 있다
     await page.goto("/?utm_source=e2e_crm&utm_medium=cpc&utm_campaign=save_check");
-    await page.getByTestId("story-hospital").click();
-    await page.fill("#apply-name", "저장확인");
-    await page.fill("#apply-phone", "010-9000-0077");
-    await page.locator("#apply-privacy").check();
+    await page.getByTestId("money-unclaimed").getByRole("button").click();
+    await fillApplyForm(page, { name: "저장확인", phone: "010-9000-0077", region: "incheon", time: "weekday_evening" });
     await page.waitForTimeout(2100);
-    await page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click();
+    await applySubmit(page).click();
     await expect(page).toHaveURL(/\/apply\/complete$/);
     const refNo = (await page.locator("strong.font-mono").first().textContent())!.trim();
 
@@ -49,17 +48,19 @@ test.describe("admin", () => {
     await expect(saved).toContainText("e2e_crm");
     await expect(saved).toContainText("save_check");
     await expect(saved).toContainText("010-****-0077"); // 목록에서도 연락처 마스킹
-    await expect(saved).toContainText("미청구 보험금"); // 고른 점검 유형이 그대로 저장
+    await expect(saved).toContainText("미청구 보험금"); // 고른 관심 서비스가 그대로 저장
+    await expect(saved).toContainText("인천");
+    await expect(saved).toContainText("저녁 (6시~8시)");
     // 상세: 필수·선택 동의가 구분되어 기록된다(선택 동의는 하지 않음)
     await saved.getByRole("link", { name: refNo }).click();
     await expect(page.getByText("개인정보(필수)")).toBeVisible();
-    await expect(page.locator("dd").filter({ hasText: /^동의 · claim-/ })).toHaveCount(1);
+    await expect(page.locator("dd").filter({ hasText: /^동의 · visit-/ })).toHaveCount(1);
     await expect(page.locator("div").filter({ has: page.getByText("광고성 정보(선택)", { exact: true }) }).last()).toContainText("미동의/철회");
     await expect(page.locator("div").filter({ has: page.getByText("제3자 제공", { exact: true }) }).last()).toContainText("해당 없음/미동의");
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "상담 DB" })).toBeVisible();
     await expect(page.getByRole("link", { name: "CSV 내보내기" })).toBeVisible();
-    for (const h of ["신청번호", "유입 채널/UTM", "보험금 점검 상태", "보장 분석 동의", "보장 분석 상태", "다음 연락", "담당자", "처리 메모"]) {
+    for (const h of ["신청번호", "광고 출처/UTM", "관심 서비스", "지역", "연락 희망 시간", "진행 상태", "방문 일정", "보장 분석 동의", "보장 분석 상태", "다음 연락", "담당자", "처리 메모"]) {
       await expect(page.getByRole("columnheader", { name: h })).toBeVisible();
     }
     const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
@@ -101,7 +102,7 @@ test.describe("admin", () => {
     await page.locator("tbody a[aria-label$='상세 패널 열기']").first().click();
     await expect(page.locator("#lead-panel-title")).toBeVisible();
     await expect(page).toHaveURL(/lead=/);
-    await page.getByRole("navigation", { name: "보험금 점검 상태 필터" }).getByRole("link", { name: "신규 접수" }).click();
+    await page.getByRole("navigation", { name: "진행 상태 필터" }).getByRole("link", { name: "신규 접수" }).click();
     await expect(page).toHaveURL(/claim=new/);
   });
 

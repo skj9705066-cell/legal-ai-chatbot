@@ -33,6 +33,8 @@ const NIL_UUID = "00000000-0000-0000-0000-000000000000";
 const LEAD_COLUMNS_02 =
   "idempotency_key, privacy_consent_at, marketing_consent_at, marketing_consent_version, marketing_withdrawn_at, third_party_consent_at, third_party_consent_version";
 const REVIEW_COLUMNS_02 = "payment_confirmed_by, payment_confirmed_at, payment_evidence_note";
+/** 03-visit-checkup(지역·관심 서비스·방문 예약) 칼럼 — 새 신청서가 저장에 쓴다. 03을 실행하기 전에 배포되면 여기서 막힌다 */
+const LEAD_COLUMNS_03 = "region, interests, visit_at, visit_place";
 
 const g = globalThis as unknown as { __icDbCheck?: { at: number; result: DbCheckResult } };
 
@@ -63,7 +65,7 @@ export async function runDbCheck(): Promise<DbCheckResult> {
 
   try {
     // 서로 독립적인 점검이라 동시에 보낸다(차례로 보내면 Supabase 왕복 시간이 9번 쌓여 첫 신청·환경설정 화면이 수 초 늦어진다)
-    const [read, cols, rcols, aRead, aStaff, aWrite, sDelete, sAudit, admins] = await Promise.all([
+    const [read, cols, rcols, aRead, aStaff, aWrite, sDelete, sAudit, admins, cols03, acts, aActs] = await Promise.all([
       server.from("ic_leads").select("id", { count: "exact", head: true }),
       server.from("ic_leads").select(LEAD_COLUMNS_02).limit(0),
       server.from("ic_reviews").select(REVIEW_COLUMNS_02).limit(0),
@@ -73,10 +75,17 @@ export async function runDbCheck(): Promise<DbCheckResult> {
       server.from("ic_leads").delete().eq("id", NIL_UUID),
       server.from("ic_audit_logs").update({ detail: "" }).eq("id", -1),
       server.from("ic_staff").select("user_id", { count: "exact", head: true }).eq("role", "admin").eq("active", true),
+      server.from("ic_leads").select(LEAD_COLUMNS_03).limit(0),
+      server.from("ic_lead_activities").select("id").limit(0),
+      anon.from("ic_lead_activities").select("id").limit(1),
     ]);
     add("server_read", "서버가 신청 테이블을 조회할 수 있음", !read.error, read.error ? errText(read.error) : "정상");
     add("lead_columns", "동의 기록·중복 방지 칼럼 존재 (02-hardening)", !cols.error, cols.error ? errText(cols.error) : "정상");
     add("review_columns", "후기 지급 증빙 칼럼 존재 (02-hardening)", !rcols.error, rcols.error ? errText(rcols.error) : "정상");
+    add("lead_columns_03", "지역·관심 서비스·방문 예약 칼럼 존재 (03-visit-checkup)", !cols03.error, cols03.error ? errText(cols03.error) : "정상");
+    add("activities_table", "상담 이력 테이블 존재 (03-visit-checkup)", !acts.error, acts.error ? errText(acts.error) : "정상");
+    add("anon_activities_blocked", "공개 키로 상담 이력 조회 차단", isPermissionDenied(aActs.error),
+      isPermissionDenied(aActs.error) ? "권한 없음으로 거절됨" : aActs.error ? `예상과 다른 오류: ${errText(aActs.error)}` : "🔴 조회가 허용됨");
     add("anon_read_blocked", "공개 키로 신청 조회 차단", isPermissionDenied(aRead.error),
       isPermissionDenied(aRead.error) ? "권한 없음으로 거절됨" : aRead.error ? `예상과 다른 오류: ${errText(aRead.error)}` : "🔴 조회가 허용됨");
     add("anon_staff_blocked", "공개 키로 직원 정보 조회 차단", isPermissionDenied(aStaff.error),

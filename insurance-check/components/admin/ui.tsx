@@ -48,6 +48,8 @@ export function Kpi({ label, value, icon, tone = "navy" }: { label: string; valu
 const CLAIM_DOT: Record<ClaimStatus, string> = {
   new: "bg-blue",
   contacting: "bg-caution",
+  visit_booked: "bg-gold",
+  visited: "bg-mint",
   guided: "bg-mint",
   docs_pending: "bg-navy-400",
   closed: "bg-navy-300",

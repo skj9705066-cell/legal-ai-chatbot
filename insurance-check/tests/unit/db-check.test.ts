@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
- * DB 자동 점검 — 9가지 확인을 동시에 보내는지(차례로 보내면 Supabase 왕복이 쌓여 첫 신청·환경설정 화면이 수 초 늦어짐),
+ * DB 자동 점검 — 12가지 확인을 동시에 보내는지(차례로 보내면 Supabase 왕복이 쌓여 첫 신청·환경설정 화면이 수 초 늦어짐),
  * 결과 항목 순서·판정은 그대로인지. Supabase 클라이언트는 가짜로 바꿔 지연·동시 요청 수를 잰다.
  */
 
@@ -44,13 +44,13 @@ afterEach(() => {
 });
 
 describe("runDbCheck", () => {
-  it("sends the 9 independent checks at once and keeps the item order and verdicts", async () => {
+  it("sends the 12 independent checks at once and keeps the item order and verdicts", async () => {
     process.env.SUPABASE_URL = "https://example.supabase.co";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "sb_secret_test";
     process.env.SUPABASE_ANON_KEY = "sb_publishable_test";
     const { runDbCheck } = await import("@/lib/server/db-check");
     const r = await runDbCheck();
-    expect(maxInFlight).toBe(9);
+    expect(maxInFlight).toBe(12);
     expect(r.items.map((i) => i.id)).toEqual([
       "env",
       "server_key_kind",
@@ -58,6 +58,9 @@ describe("runDbCheck", () => {
       "server_read",
       "lead_columns",
       "review_columns",
+      "lead_columns_03",
+      "activities_table",
+      "anon_activities_blocked",
       "anon_read_blocked",
       "anon_staff_blocked",
       "anon_write_blocked",

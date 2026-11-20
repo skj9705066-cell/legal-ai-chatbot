@@ -131,7 +131,7 @@ describe("lead save records consent and dedupes by key (demo store)", () => {
     const { lead } = await submitLead(input("010-7000-0001", { marketingConsent: true }), ATTR, "unit-key-consent-0001");
     const row = (await repo().getLead(lead.id))!;
     expect(row.privacyConsentAt).toBe(row.createdAt);
-    expect(row.privacyConsentVersion).toMatch(/^claim-/);
+    expect(row.privacyConsentVersion).toMatch(/^visit-/);
     expect(row.marketingConsent).toBe(true);
     expect(row.marketingConsentAt).toBe(row.createdAt);
     expect(row.marketingConsentVersion).toMatch(/^marketing-/);

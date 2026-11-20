@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { applySubmit, fillApplyForm } from "./helpers";
 
 async function submitLead(page: Page, phone: string, utm = "") {
   const events: string[] = [];
@@ -9,19 +10,16 @@ async function submitLead(page: Page, phone: string, utm = "") {
     if (req.url().endsWith("/api/events")) events.push(req.postData() ?? "");
   });
   await page.goto(`/${utm}`);
-  // 스토리 카드를 누르면 그 유형이 신청서에 반영되어 유형 단계 없이 바로 이름 입력
-  await page.getByTestId("story-old-policy").click();
+  // 안내 카드를 누르면 그 항목이 관심 서비스에 체크되고 성함 칸으로 (한 화면 신청서, 단계·확인 화면 없음)
+  await page.getByTestId("money-hidden").getByRole("button").click();
   await expect(page.locator("#apply-name")).toBeFocused();
-  await page.fill("#apply-name", "테스트");
-  await page.fill("#apply-phone", phone);
-  // 2단계 한 화면: 고른 유형 표시 + 이름·연락처 + 동의 + 신청 (유형 재선택·확인 화면 없음)
-  await expect(page.getByTestId("apply-picked-type")).toContainText("숨은·만기보험금");
+  await expect(page.locator("#apply-interest-hidden")).toBeChecked();
   await expect(page.getByRole("button", { name: "다음", exact: true })).toHaveCount(0);
   // 선택 동의(마케팅)는 기본 해제 상태이고, 하지 않아도 신청된다
   await expect(page.locator("#apply-marketing")).not.toBeChecked();
-  await page.locator("#apply-privacy").check();
+  await fillApplyForm(page, { name: "테스트", phone, region: "gyeonggi", time: "weekday_morning" });
   await page.waitForTimeout(2100); // 봇 차단용 최소 체류시간
-  await page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click();
+  await applySubmit(page).click();
   await expect(page).toHaveURL(/\/apply\/complete$/);
   await expect(page.getByRole("heading", { name: "무료 점검 상담 신청이 접수되었습니다." })).toBeVisible();
   await expect(page.getByTestId("contact-info")).toBeVisible();
@@ -57,7 +55,7 @@ test("A: claim → coverage offer → separate consent → coverage complete", a
   for (const ev of ["landing_view", "scenario_card_click", "check_type_select", "form_view", "form_start", "form_submit_attempt", "lead_submit_success"]) expect(joined).toContain(ev);
   expect(joined).toContain("coverage_opt_in");
   expect(joined).toContain('"utmSource":"e2e"');
-  for (const pii of ["테스트", "9000"]) expect(joined).not.toContain(pii);
+  for (const pii of ["테스트", "9000", "gyeonggi", "weekday_morning"]) expect(joined).not.toContain(pii); // 이름·연락처·지역·시간은 이벤트에 없음
 });
 
 test("a failed save never shows the completion screen", async ({ page }) => {
@@ -69,12 +67,10 @@ test("a failed save never shows the completion screen", async ({ page }) => {
   // 저장 API가 실패하는 상황(DB 장애 등)을 흉내 낸다
   await page.route("**/api/leads", (route) => route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ ok: false, error: "일시적인 오류로 신청을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요." }) }));
   await page.goto("/");
-  await page.getByTestId("story-hospital").click();
-  await page.fill("#apply-name", "테스트");
-  await page.fill("#apply-phone", "010-9000-0009");
-  await page.locator("#apply-privacy").check();
+  await page.getByTestId("money-unclaimed").getByRole("button").click();
+  await fillApplyForm(page, { name: "테스트", phone: "010-9000-0009" });
   await page.waitForTimeout(2100);
-  await page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true }).click();
+  await applySubmit(page).click();
   await expect(page.getByRole("alert").filter({ hasText: "저장하지 못했습니다" })).toBeVisible();
   await expect(page).not.toHaveURL(/\/apply\/complete/);
   await page.waitForTimeout(300);

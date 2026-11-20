@@ -18,7 +18,7 @@ async function login(page: Page, key: string) {
 /** 상담 목록 화면의 필터·목록이 정확히 하나씩인지 */
 async function expectSingleListView(page: Page) {
   await expect(page.locator('form[aria-label="상세 필터"]')).toHaveCount(1);
-  await expect(page.locator('nav[aria-label="보험금 점검 상태 필터"]')).toHaveCount(1);
+  await expect(page.locator('nav[aria-label="진행 상태 필터"]')).toHaveCount(1);
   await expect(page.locator("table")).toHaveCount(1);
   await expect(page.locator("h1")).toHaveCount(1);
 }
@@ -32,6 +32,7 @@ test("모든 메뉴가 열리고, 화면 이동·뒤로가기 중 필터·목록
   await login(page, `menus-${isMobile ? "m" : "d"}`);
   const menu = page.getByRole("navigation", { name: "관리자 메뉴" });
   const pages: [string, RegExp, string][] = [
+    ["방문 일정", /\/admin\/visits$/, "방문 일정"],
     ["보장 분석 영업 대상", /view=sales/, "보장 분석 영업 대상"],
     ["광고 성과", /\/admin\/performance$/, "광고 성과"],
     ["후기·지급 사례", /\/admin\/reviews$/, "후기"],
@@ -79,14 +80,14 @@ test("상태·다음 연락 일정·담당자·메모 저장 → 새로고침해
   await firstLink.click();
   await expect(page.locator("h1")).toContainText(refNo);
   const editor = page.locator("form").filter({ has: page.getByRole("button", { name: "저장" }) });
-  await editor.getByLabel("보험금 점검 상태").selectOption("contacting");
+  await editor.getByLabel("진행 상태").selectOption("contacting");
   await editor.getByLabel("다음 연락 일정").fill("2026-12-01T10:30");
   await editor.getByLabel("담당자").fill("테스트담당");
   await editor.getByLabel("처리 메모").fill("E2E 저장 확인 메모");
   await editor.getByRole("button", { name: "저장" }).click();
   await expect(page.getByText("저장되었습니다.")).toBeVisible();
   await page.reload();
-  await expect(editor.getByLabel("보험금 점검 상태")).toHaveValue("contacting");
+  await expect(editor.getByLabel("진행 상태")).toHaveValue("contacting");
   await expect(editor.getByLabel("다음 연락 일정")).toHaveValue("2026-12-01T10:30");
   await expect(editor.getByLabel("담당자")).toHaveValue("테스트담당");
   await expect(editor.getByLabel("처리 메모")).toHaveValue("E2E 저장 확인 메모");
@@ -121,4 +122,50 @@ test("테스트 신청: 배지·필터로 구분되고, 영업 대상 목록에�
   // CSV에도 테스트 표시
   const csv = await (await page.request.get(`/api/admin/export?q=${encodeURIComponent(refNo)}`)).text();
   expect(csv).toContain("테스트(지표 제외)");
+});
+
+test("방문 예약: 일시·장소 저장 → '방문 예약' 상태·방문 일정 화면 → 상담 이력 → 방문 안내 문자(데모는 발송 안 함)", async ({ page, isMobile }) => {
+  test.skip(isMobile, "데스크톱에서 1회");
+  test.skip(REAL_DB, "실제 DB에서는 기존 신청을 수정하지 않는다");
+  await login(page, "visit");
+  await page.goto("/admin?claim=new");
+  const firstLink = page.locator("tbody a").first();
+  const refNo = (await firstLink.textContent())!.trim();
+  await firstLink.click();
+  const editor = page.locator("form").filter({ has: page.getByRole("button", { name: "저장" }) });
+  // 방문 일시는 한국 시간 기준(관리자 PC 시간대와 무관)
+  await editor.getByLabel("방문 일시 (한국 시간)").fill("2030-03-05T14:00");
+  await editor.getByLabel("방문 장소").fill("○○역 2번 출구 카페");
+  await editor.getByRole("button", { name: "저장" }).click();
+  await expect(page.getByText("저장되었습니다.")).toBeVisible();
+  await page.reload();
+  await expect(editor.getByLabel("진행 상태")).toHaveValue("visit_booked"); // 처음 잡은 방문은 상태 자동 전환
+  await expect(editor.getByLabel("방문 일시 (한국 시간)")).toHaveValue("2030-03-05T14:00");
+  const log = page.getByTestId("activity-list");
+  await expect(log).toContainText("방문 예약: 3월 5일(화) 오후 2:00 · ○○역 2번 출구 카페");
+
+  // 상담 이력 추가(수정 없음, 문자 종류는 손으로 만들 수 없음)
+  await page.getByRole("form", { name: "상담 이력 추가" }).getByLabel("종류").selectOption("call");
+  await expect(page.getByRole("form", { name: "상담 이력 추가" }).locator('option[value="sms"]')).toHaveCount(0);
+  await page.getByLabel("상담 내용").fill("E2E 통화 — 방문 전날 다시 연락");
+  await page.getByRole("button", { name: "기록 추가" }).click();
+  await expect(log).toContainText("E2E 통화 — 방문 전날 다시 연락");
+
+  // 방문 안내 문자: 문구 확인 후 보내기, 데모에서는 실제 발송하지 않고 이력만
+  const sms = page.getByTestId("visit-sms");
+  await expect(sms).toContainText("실제 발송 안 함");
+  await sms.getByRole("button", { name: "문구 확인 후 보내기" }).click();
+  await expect(sms.locator("pre")).toContainText("비밀번호·인증번호는 절대 여쭙지 않습니다.");
+  await expect(sms.locator("pre")).toContainText("소속 보험설계사");
+  await sms.getByRole("button", { name: "이대로 보내기" }).click();
+  await expect(sms).toContainText("기록만 남겼습니다");
+  await expect(log).toContainText("방문 안내 문자 (발송 안 함)");
+
+  // 방문 일정 화면·목록에 보인다
+  await page.goto("/admin/visits");
+  await expect(page.getByRole("link").filter({ hasText: "○○역 2번 출구 카페" })).toHaveCount(1);
+  await page.goto(`/admin?q=${encodeURIComponent(refNo)}`);
+  await expect(page.getByRole("row").filter({ hasText: refNo })).toContainText("3월 5일(화) 오후 2:00");
+  await page.goto("/admin/audit");
+  await expect(page.getByText("notify.visit_sms_skipped").first()).toBeVisible();
 });

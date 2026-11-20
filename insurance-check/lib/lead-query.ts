@@ -2,7 +2,9 @@ import {
   CLAIM_STATUSES,
   COVERAGE_STATUSES,
   PRIVACY_STATUSES,
+  REGIONS,
   SERVICE_TYPES,
+  type Region,
   type ClaimStatus,
   type CoverageStatus,
   type PrivacyStatus,
@@ -13,6 +15,7 @@ export interface LeadQuery {
   q?: string;
   rawQuery?: string;
   serviceType?: ServiceType;
+  region?: Region;
   claimStatus?: ClaimStatus;
   coverageStatus?: CoverageStatus;
   privacyStatus?: PrivacyStatus;
@@ -20,7 +23,7 @@ export interface LeadQuery {
   salesOnly?: boolean;
   /** 테스트 신청 포함 여부(test=include|exclude|only). 영업 대상 목록은 지정하지 않으면 제외 */
   tests?: "include" | "exclude" | "only";
-  sort?: "newest" | "oldest" | "next_contact";
+  sort?: "newest" | "oldest" | "next_contact" | "visit";
 }
 
 const oneOf = <T extends string>(list: readonly T[], v: string | undefined): T | undefined =>
@@ -37,6 +40,7 @@ export function parseLeadQuery(sp: Record<string, string | string[] | undefined>
     q,
     rawQuery: q,
     serviceType: oneOf(SERVICE_TYPES, get("type")),
+    region: oneOf(REGIONS, get("region")),
     claimStatus: oneOf(CLAIM_STATUSES, get("claim")),
     coverageStatus: oneOf(COVERAGE_STATUSES, get("coverage")),
     privacyStatus: oneOf(PRIVACY_STATUSES, get("privacy")),
@@ -44,7 +48,7 @@ export function parseLeadQuery(sp: Record<string, string | string[] | undefined>
     salesOnly: get("view") === "sales",
     // 테스트 신청이 실제 영업 대상에 섞이지 않도록 영업 대상 목록은 기본으로 제외한다
     tests: oneOf(["include", "exclude", "only"] as const, get("test")) ?? (get("view") === "sales" ? "exclude" : undefined),
-    sort: oneOf(["newest", "oldest", "next_contact"] as const, get("sort")),
+    sort: oneOf(["newest", "oldest", "next_contact", "visit"] as const, get("sort")),
   };
 }
 
@@ -56,7 +60,8 @@ export function describeLeadQuery(f: LeadQuery): string {
   const parts: string[] = [];
   if (f.q) parts.push("검색어 있음(내용 미기록)");
   if (f.serviceType) parts.push(`유형=${f.serviceType}`);
-  if (f.claimStatus) parts.push(`점검상태=${f.claimStatus}`);
+  if (f.region) parts.push(`지역=${f.region}`);
+  if (f.claimStatus) parts.push(`진행상태=${f.claimStatus}`);
   if (f.coverageStatus) parts.push(`보장분석=${f.coverageStatus}`);
   if (f.privacyStatus) parts.push(`개인정보=${f.privacyStatus}`);
   if (f.duplicatesOnly) parts.push("중복만");

@@ -44,7 +44,22 @@ describe("new lead SMS", () => {
   it("builds the requested message without the customer's phone number", async () => {
     const { newLeadMessage } = await import("@/lib/server/notify");
     expect(newLeadMessage(LEAD)).toBe(
-      "[내보험 통합 점검]\n신규 상담 신청이 접수되었습니다.\n고객명: 홍길동\n상담 유형: 병원비·수술비\n신청 시간: 2026-10-18 20:30\n관리자 CRM에서 확인하세요.",
+      "[내보험 통합 점검]\n신규 상담 신청이 접수되었습니다.\n고객명: 홍길동\n관심 서비스: 병원비·수술비\n신청 시간: 2026-10-18 20:30\n관리자 CRM에서 확인하세요.",
+    );
+    // 방문 점검 신청서(2026-11): 지역·관심 서비스를 함께 알린다
+    expect(newLeadMessage({ ...LEAD, region: "gyeonggi", interests: ["card_points", "unclaimed"] })).toBe(
+      "[내보험 통합 점검]\n신규 상담 신청이 접수되었습니다.\n고객명: 홍길동\n지역: 경기\n관심 서비스: 카드포인트, 미청구 보험금\n신청 시간: 2026-10-18 20:30\n관리자 CRM에서 확인하세요.",
+    );
+  });
+
+  it("builds the visit confirmation with planner affiliation and no phone number or passwords asked", async () => {
+    const { visitConfirmMessage } = await import("@/lib/server/notify");
+    const text = visitConfirmMessage(
+      { name: "홍길동", visitAt: "2026-11-25T05:00:00.000Z", visitPlace: "○○역 2번 출구 카페" },
+      { plannerName: "손국주", agencyName: "어센틱금융그룹", contactPhone: "010-8822-2341" },
+    );
+    expect(text).toBe(
+      "[무료 방문 점검 안내]\n홍길동님, 방문 일정을 알려드립니다.\n일시: 11월 25일(수) 오후 2:00\n장소: ○○역 2번 출구 카페\n담당: 손국주 (어센틱금융그룹 소속 보험설계사)\n일정 변경·취소: 010-8822-2341\n비밀번호·인증번호는 절대 여쭙지 않습니다.",
     );
   });
 

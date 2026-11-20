@@ -5,6 +5,8 @@ export function applyLeadFilter(rows: LeadRow[], f: LeadFilter): LeadRow[] {
   let out = rows.filter((l) => {
     if (f.serviceType && l.serviceType !== f.serviceType) return false;
     if (f.claimStatus && l.claimStatus !== f.claimStatus) return false;
+    if (f.region && l.region !== f.region) return false;
+    if (f.visitFrom && (!l.visitAt || l.visitAt < f.visitFrom)) return false;
     if (f.coverageStatus && l.coverageStatus !== f.coverageStatus) return false;
     if (f.privacyStatus && l.privacyStatus !== f.privacyStatus) return false;
     if (f.duplicatesOnly && !l.duplicateOf) return false;
@@ -21,6 +23,11 @@ export function applyLeadFilter(rows: LeadRow[], f: LeadFilter): LeadRow[] {
   const sort = f.sort ?? "newest";
   out = [...out].sort((a, b) => {
     if (sort === "oldest") return a.createdAt.localeCompare(b.createdAt);
+    if (sort === "visit") {
+      if (!a.visitAt) return 1;
+      if (!b.visitAt) return -1;
+      return a.visitAt.localeCompare(b.visitAt);
+    }
     if (sort === "next_contact") {
       if (!a.nextContactAt) return 1;
       if (!b.nextContactAt) return -1;

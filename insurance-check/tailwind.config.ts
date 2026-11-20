@@ -1,51 +1,65 @@
 import type { Config } from "tailwindcss";
 
 /**
- * 디자인 시스템
- *  navy  #102B4E  브랜드·제목      ink   #172B45  본문
- *  blue  #0866F5  주요 액션·강조   navy-500 #64748B 보조 글씨(흰 배경 전용 — 보조 배경 위에서는 navy-600)
- *  deep  #0B2445  다크 섹션 배경   navy-50 #F3F7FC 보조 배경
- *  mint  #16A085  포인트·성공 상태(텍스트는 mint-700)
+ * 디자인 시스템 (2026-11 방문 점검 개편 — 50~60대 고객용 따뜻하고 차분한 팔레트)
+ *
+ *  고객 화면 기본색
+ *    ivory    #FAF8F4  페이지 배경          sage   #E5EFE7  보조 배경·카드
+ *    forest   #31594C  주요 버튼·강조(딥그린)  gold   #D5B58A  장식·포인트(글자색 금지 — 글자는 gold-700)
+ *    charcoal #303B35  제목·본문
+ *
+ *  ⚠️ 기존 토큰 이름(blue·navy·deep·ink·mint)은 관리자·신청 완료·처리방침 화면 등 수십 곳에서 쓰므로 이름은 유지하고
+ *     값만 새 팔레트로 바꿨다: blue = 딥그린 계열(주요 액션), navy = 차콜·그린그레이 계열(글자·중립), deep = 진한 숲색.
+ *     새 코드는 forest·charcoal·sage·ivory·gold를 쓴다.
+ *  대비(WCAG): forest/ivory 7.4:1 · charcoal/ivory 11:1 · navy-600/sage 6.0:1 · navy-500/white 5.6:1 · 흰 글자/forest 7.9:1
  */
+const forest = {
+  DEFAULT: "#31594C",
+  800: "#1F3B32",
+  700: "#264639",
+  600: "#2C5044",
+  400: "#5E8576",
+  300: "#94B3A6",
+  200: "#C4D8CE",
+  100: "#DCE8E0",
+  50: "#EEF4F0",
+};
+
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
   theme: {
-    container: { center: true, padding: { DEFAULT: "1.25rem", sm: "1.5rem", lg: "2.5rem" }, screens: { xl: "1280px" } },
+    container: { center: true, padding: { DEFAULT: "1.25rem", sm: "1.5rem", lg: "2.5rem" }, screens: { xl: "1200px" } },
     extend: {
       colors: {
-        ink: "#172B45",
-        deep: { DEFAULT: "#0B2445", 800: "#0F2C52", 700: "#14365F" },
+        ivory: "#FAF8F4",
+        sage: { DEFAULT: "#E5EFE7", 200: "#D3E3D7", 50: "#F1F6F2" },
+        gold: { DEFAULT: "#D5B58A", 700: "#7A5A2E", 200: "#EBDAC1", 100: "#F5ECDF" },
+        charcoal: "#303B35",
+        forest,
+        ink: "#303B35",
+        deep: { DEFAULT: "#1F3B32", 800: "#264639", 700: "#31594C" },
         navy: {
-          DEFAULT: "#102B4E",
-          900: "#0B1F3A",
-          800: "#0E2645",
-          700: "#1B3A63",
-          600: "#475569",
-          500: "#64748B",
-          400: "#94A3B8", // 장식·비활성 전용
-          300: "#CBD5E1",
-          200: "#E2E8F0",
-          100: "#EDF1F7",
-          50: "#F3F7FC",
+          DEFAULT: "#303B35",
+          900: "#1F2722",
+          800: "#28312C",
+          700: "#3A4740",
+          600: "#4F5B54",
+          500: "#5F6B64",
+          400: "#9AA39D", // 장식·비활성 전용
+          300: "#C9CFC9",
+          200: "#DDE2DC",
+          100: "#E9ECE6",
+          50: "#F3F1EB",
         },
-        blue: {
-          DEFAULT: "#0866F5",
-          700: "#0550C4",
-          600: "#065BDB",
-          400: "#4D93FF",
-          300: "#8DB9FF",
-          200: "#C2DAFE",
-          100: "#DCEAFE",
-          50: "#EEF5FF",
-        },
+        blue: forest,
         mint: {
-          DEFAULT: "#16A085",
-          700: "#0D7563",
-          100: "#D2F0E9",
-          50: "#E9F7F3",
+          DEFAULT: "#3E8A6E",
+          700: "#2D6B54",
+          100: "#D6EBDF",
+          50: "#EAF5EE",
         },
         caution: { DEFAULT: "#8A5A00", 50: "#FFF8EA", 200: "#F1DDAE" },
-        danger: { DEFAULT: "#C0352B", 50: "#FDF3F2", 200: "#F6CCC8" },
+        danger: { DEFAULT: "#B3372D", 50: "#FDF3F2", 200: "#F6CCC8" },
       },
       fontFamily: {
         sans: [
@@ -74,11 +88,11 @@ const config: Config = {
       },
       borderRadius: { "4xl": "2rem" },
       boxShadow: {
-        card: "0 1px 2px rgba(16,43,78,0.04), 0 6px 20px -8px rgba(16,43,78,0.08)",
-        lift: "0 1px 2px rgba(16,43,78,0.05), 0 20px 48px -20px rgba(16,43,78,0.22)",
-        cta: "0 10px 24px -10px rgba(8,102,245,0.55)",
-        glow: "0 0 0 1px rgba(77,147,255,0.18), 0 24px 80px -24px rgba(8,102,245,0.55)",
-        ring: "0 0 0 1px rgba(16,43,78,0.06)",
+        card: "0 1px 2px rgba(48,59,53,0.05), 0 8px 24px -12px rgba(48,59,53,0.12)",
+        lift: "0 1px 2px rgba(48,59,53,0.05), 0 20px 48px -20px rgba(48,59,53,0.22)",
+        cta: "0 10px 24px -12px rgba(49,89,76,0.6)",
+        glow: "0 0 0 1px rgba(94,133,118,0.18), 0 24px 80px -24px rgba(49,89,76,0.45)",
+        ring: "0 0 0 1px rgba(48,59,53,0.08)",
       },
       keyframes: {
         "fade-up": { from: { opacity: "0", transform: "translateY(10px)" }, to: { opacity: "1", transform: "none" } },

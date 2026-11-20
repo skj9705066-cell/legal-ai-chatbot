@@ -3,6 +3,10 @@ import { randomUUID } from "node:crypto";
 import {
   CLAIM_STATUSES,
   COVERAGE_ACTIVE_STATUSES,
+  INTERESTS,
+  REGIONS,
+  serviceTypeFor,
+  type LeadActivity,
   PREFERRED_TIMES,
   SERVICE_TYPES,
   type AuditLog,
@@ -28,6 +32,7 @@ interface DemoState {
   /** 후기는 시드하지 않는다 — 가짜 후기를 자동 생성하지 않음 */
   reviews: Review[];
   reviewImages: Map<string, ReviewImage>;
+  activities: LeadActivity[];
 }
 
 const g = globalThis as unknown as { __icDemo?: DemoState };
@@ -119,6 +124,10 @@ function seed(): DemoState {
       phoneEnc: encryptPii(phone),
       phoneHash: hashPhone(phone),
       idempotencyKey: null,
+      region: null,
+      interests: [],
+      visitAt: null,
+      visitPlace: null,
       preferredTime: pick(PREFERRED_TIMES),
       memo: rand() < 0.4 ? "데모 메모: 작년 통원 치료 영수증 보관 중" : "",
       attribution: {
@@ -154,6 +163,27 @@ function seed(): DemoState {
       isDemo: true,
     });
   }
+
+  // 방문 점검 개편(2026-11) 항목: 난수 순서를 바꾸지 않도록 순번으로 정한다. 앞쪽 6건은 개편 이전 신청처럼 비워 둔다
+  const activities: LeadActivity[] = [];
+  leads.forEach((l, idx) => {
+    if (idx < 6) return;
+    l.region = REGIONS[idx % REGIONS.length];
+    l.interests = idx % 5 === 0 ? ["card_points", "unclaimed"] : [INTERESTS[idx % INTERESTS.length]];
+    l.serviceType = serviceTypeFor(l.interests);
+    if (idx % 4 === 0) {
+      l.region = REGIONS[(idx / 4) % 3]; // 방문 예약은 서울·경기·인천에 고르게
+      const at = new Date(now + ((idx % 7) + 1) * day);
+      at.setUTCHours(5, 0, 0, 0); // 한국 시간 오후 2시
+      l.visitAt = at.toISOString();
+      l.visitPlace = idx % 8 === 0 ? "고객 자택 (데모)" : "○○역 근처 카페 (데모)";
+      l.claimStatus = "visit_booked";
+      activities.push(
+        { id: randomUUID(), leadId: l.id, at: new Date(Date.parse(l.createdAt) + 3_600_000).toISOString(), actor: "상담사A(데모)", kind: "call", content: "첫 통화 — 방문 일정 조율 (데모 기록)" },
+        { id: randomUUID(), leadId: l.id, at: new Date(Date.parse(l.createdAt) + 3_700_000).toISOString(), actor: "상담사A(데모)", kind: "memo", content: "카드포인트·병원비 영수증 확인 희망 (데모 기록)" },
+      );
+    }
+  });
 
   // 광고 수신 동의 기록(시각·문구 버전). 난수 순서를 바꾸지 않도록 생성 후에 채운다
   for (const l of leads) {
@@ -199,6 +229,7 @@ function seed(): DemoState {
     privacy,
     reviews: [],
     reviewImages: new Map(),
+    activities,
     audit: [
       {
         id: randomUUID(),
@@ -217,6 +248,7 @@ function state(): DemoState {
   const s = (g.__icDemo ??= seed());
   s.reviews ??= [];
   s.reviewImages ??= new Map();
+  s.activities ??= [];
   return s;
 }
 
@@ -249,6 +281,19 @@ export const demoRepository: Repository = {
     if (!lead) return null;
     Object.assign(lead, patch);
     return lead;
+  },
+  async addActivity(a) {
+    state().activities.unshift(a);
+  },
+  async listActivities(leadId) {
+    return state()
+      .activities.filter((a) => a.leadId === leadId)
+      .sort((a, b) => b.at.localeCompare(a.at));
+  },
+  async deleteActivities(leadIds) {
+    const set = new Set(leadIds);
+    const s = state();
+    s.activities = s.activities.filter((a) => !set.has(a.leadId));
   },
   async addAudit(entry) {
     state().audit.unshift({ ...entry, id: randomUUID(), at: new Date().toISOString() });
@@ -284,6 +329,7 @@ export const demoRepository: Repository = {
   async purgeBefore(beforeIso) {
     const leads = state().leads.filter((l) => l.createdAt < beforeIso && l.name !== DELETED_NAME);
     for (const l of leads) Object.assign(l, LEAD_SCRUB);
+    await demoRepository.deleteActivities(leads.map((l) => l.id));
     const reqs = state().privacy.filter((p) => p.createdAt < beforeIso && p.name !== DELETED_NAME);
     for (const p of reqs) Object.assign(p, PRIVACY_REQUEST_SCRUB);
     return { leads: leads.length, privacyRequests: reqs.length };

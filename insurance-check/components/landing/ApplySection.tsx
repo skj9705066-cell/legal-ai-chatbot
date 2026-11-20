@@ -1,83 +1,30 @@
-import Link from "next/link";
-import { Check, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { APPLY } from "@/lib/content";
 import type { PublicConfig } from "@/lib/config";
-import { isPlaceholder, nameWithRegNo, orSetting, settingLine } from "@/lib/display";
-import { cn } from "@/lib/utils";
 import { ApplyForm } from "./ApplyForm";
 
 /**
- * 신청 — 이름·전화번호를 입력하기 직전의 불안을 줄인다.
- * 위: 제목·설명·"어떤 도움을 받을 수 있나요?" / 가운데: 폼 / 아래: 지급 비보장·공식 조회 안내 + 실제 운영 주체 정보.
- * 운영 주체 정보는 설정된 값만 보여 준다(임의로 채우지 않음). 비어 있으면 데모·테스트는 '[설정 필요]', 운영 화면은 '준비 중'.
- * 데스크톱은 왼쪽(안내)·오른쪽(폼) 2열.
+ * 7. 방문 상담 신청서 섹션. 데스크톱은 왼쪽(안내)·오른쪽(폼) 2열, 모바일은 안내 → 폼.
  */
 export function ApplySection({ config }: { config: PublicConfig }) {
-  const o = config.operator;
-  const m = config.mode;
-  // 아래 값은 모두 환경변수에서 읽는다. 비어 있으면 운영 모드에서는 접수가 잠긴다.
-  //   OPERATOR_NAME · AGENCY_NAME · AGENCY_REG_NO · PLANNER_NAME · PLANNER_REG_NO · CONTACT_PHONE · CONTACT_HOURS · AD_REVIEW_NO
-  //   확인되지 않은 회사명·자격·경력·심의번호를 코드에 직접 적지 않는다.
-  const rows = [
-    { label: "운영 주체", value: orSetting(o.operatorName, "운영 주체", m) },
-    { label: "소속 보험대리점", value: nameWithRegNo(o.agencyName, o.agencyRegNo, "소속 GA", "GA 등록번호", m) },
-    { label: "담당 설계사", value: nameWithRegNo(o.plannerName, o.plannerRegNo, "설계사 성명", "설계사 등록번호", m) },
-    { label: "고객 문의", value: settingLine(`${orSetting(o.contactPhone, "대표 연락처", m)}${o.contactHours ? ` · ${o.contactHours}` : ""}`, m) },
-    { label: "광고 심의", value: orSetting(o.adReviewNo, "광고 심의필 번호", m) },
-  ];
   return (
-    <section id="apply" aria-labelledby="apply-title" className="scroll-mt-16 bg-navy-50 py-12 sm:py-20 lg:py-24">
-      <div className="container grid gap-7 lg:grid-cols-[0.85fr_1.15fr] lg:gap-x-16 lg:gap-y-8">
-        <div className="lg:col-start-1 lg:row-start-1 lg:pt-6">
-          <h2 id="apply-title" className="text-balance text-[26px] font-extrabold leading-[1.32] tracking-[-0.03em] text-navy sm:text-[32px] lg:text-[40px]">
+    <section id="apply" aria-labelledby="apply-title" className="scroll-mt-16 bg-sage py-12 sm:py-20 lg:py-24">
+      <div className="container grid gap-7 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14">
+        <div className="lg:pt-4">
+          <h2 id="apply-title" tabIndex={-1} className="text-balance text-[30px] font-extrabold leading-[1.32] tracking-[-0.03em] text-charcoal focus:outline-none sm:text-[36px] lg:text-[42px]">
             {APPLY.title}
           </h2>
-          <p className="mt-2.5 text-[16px] leading-[1.6] text-navy-600 sm:text-[17px]">{APPLY.description}</p>
-          <div className="mt-5 rounded-2xl bg-white p-4 ring-1 ring-navy-100 sm:p-5" data-testid="apply-help">
-            <p className="text-[15.5px] font-bold text-navy">{APPLY.helpTitle}</p>
-            <ul className="mt-2.5 space-y-2">
-              {APPLY.help.map((t) => (
-                <li key={t} className="flex items-start gap-2 text-[15px] leading-snug text-ink">
-                  <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-mint-50 text-mint-700">
-                    <Check className="h-3 w-3" strokeWidth={3.2} aria-hidden="true" />
-                  </span>
-                  {t}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
-          <ApplyForm config={config} />
-        </div>
-
-        <div className="lg:col-start-1 lg:row-start-2" data-testid="apply-trust">
-          <ul className="space-y-1.5">
+          <p className="mt-3 text-[18px] leading-[1.7] text-navy-700 sm:text-[19px]">{APPLY.description}</p>
+          <ul className="mt-6 space-y-2" data-testid="apply-trust">
             {APPLY.notes.map((n) => (
-              <li key={n} className="flex gap-1.5 text-[13.5px] leading-relaxed text-navy-600">
-                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <li key={n} className="flex gap-2 text-[15.5px] leading-relaxed text-navy-600">
+                <Info className="mt-1 h-4 w-4 shrink-0" aria-hidden="true" />
                 {n}
               </li>
             ))}
           </ul>
-          <dl className="mt-4 divide-y divide-navy-100 rounded-2xl bg-white px-4 ring-1 ring-navy-100" data-testid="apply-operator">
-            {rows.map((r) => (
-              <div key={r.label} className="flex gap-3 py-2.5 text-[13.5px]">
-                <dt className="w-[92px] shrink-0 text-navy-600">{r.label}</dt>
-                <dd className={cn("min-w-0 font-semibold text-ink [word-break:keep-all]", isPlaceholder(r.value) && "font-medium text-caution")}>{r.value}</dd>
-              </div>
-            ))}
-            <div className="flex gap-3 py-2.5 text-[13.5px]">
-              <dt className="w-[92px] shrink-0 text-navy-600">개인정보</dt>
-              <dd>
-                <Link href="/privacy" className="font-semibold text-blue-700 underline underline-offset-2">
-                  개인정보 처리방침
-                </Link>
-              </dd>
-            </div>
-          </dl>
         </div>
+        <ApplyForm config={config} />
       </div>
     </section>
   );

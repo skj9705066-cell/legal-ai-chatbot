@@ -82,29 +82,25 @@ for (const size of SIZES) {
       await expectTarget(heroCta, 44, "히어로 CTA");
       await press(heroCta, size.touch);
       const form = page.locator("#apply");
-      await expect(form.getByText(/1단계\s*\/\s*2/)).toBeVisible();
+      await expect(page.locator("#apply-name")).toBeFocused();
 
-      // ── 유형 선택: 세 유형 모두 눌러 보고, 선택 표시(파란 테두리·체크)가 옮겨 가는지
-      for (const pick of ["병원비·수술비", "숨은·만기보험금", "과오납·해지환급금"]) {
-        const card = form.getByRole("radiogroup").locator("label").filter({ hasText: pick });
-        await expectTarget(card, 44, `유형 카드 ${pick}`);
-        await expectNotCovered(card, `유형 카드 ${pick}`);
-        await press(card, size.touch);
-        await expect(card).toHaveClass(/border-blue/);
+      // ── 선택: 지역·연락 시간·관심 서비스 버튼을 눌러 보고, 선택 표시(딥그린 채움·체크)가 옮겨 가는지
+      for (const id of ["apply-region-seoul", "apply-region-incheon", "apply-time-weekday_afternoon", "apply-interest-card_points", "apply-interest-hidden"]) {
+        const btn = form.locator(`label:has(#${id})`);
+        await expectTarget(btn, 56, id);
+        await expectNotCovered(btn, id);
+        await press(btn, size.touch);
+        await expect(page.locator(`#${id}`)).toBeChecked();
       }
+      await expect(page.locator("#apply-region-seoul")).not.toBeChecked();
+      await expect(form.locator("label:has(#apply-region-incheon)")).toHaveClass(/bg-forest/);
       if (!size.touch) {
-        // 키보드: 화살표로 유형 이동
-        await page.locator("#apply-type-refund").focus();
-        await page.keyboard.press("ArrowUp");
-        await expect(page.locator("#apply-type-hidden")).toBeChecked();
+        // 키보드: 화살표로 지역 이동
+        await page.locator("#apply-region-incheon").focus();
+        await page.keyboard.press("ArrowLeft");
+        await expect(page.locator("#apply-region-gyeonggi")).toBeChecked();
       }
-      await expectNoClippedText(form, "유형 단계");
-      const next = form.getByRole("button", { name: "다음", exact: true });
-      await expectNotCovered(next, "다음 버튼");
-      await press(next, size.touch);
-      await expect(form.getByText(/2단계\s*\/\s*2/)).toBeVisible();
-      const picked = size.touch ? "과오납·해지환급금" : "숨은·만기보험금";
-      await expect(page.getByTestId("apply-picked-type")).toContainText(picked);
+      await expectNoClippedText(form, "선택 항목");
 
       // ── 입력: 칸을 눌러 포커스 → 키보드 입력 → 수정
       for (const [id, text, want] of [
@@ -132,11 +128,11 @@ for (const size of SIZES) {
       await press(page.locator('label[for="apply-privacy"]'), size.touch);
       await expect(page.locator("#apply-privacy")).toBeChecked();
       await expect(page.locator("#apply-marketing")).not.toBeChecked();
-      await expectNoClippedText(form, "연락처 단계");
+      await expectNoClippedText(form, "신청서");
       await expectNoHorizontalScroll(page, "신청서");
 
-      const submit = page.getByRole("button", { name: "무료 점검 상담 신청하기", exact: true });
-      await expectTarget(submit, 44, "신청 버튼");
+      const submit = form.locator("form").getByRole("button", { name: "무료 점검 신청하기", exact: true });
+      await expectTarget(submit, 60, "신청 버튼");
       await expectNotCovered(submit, "신청 버튼");
 
       let refNo = "";
